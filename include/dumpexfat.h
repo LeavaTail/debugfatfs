@@ -227,7 +227,7 @@ struct exfat_dentry {
 			uint8_t SecondaryCount;
 			uint16_t SetChecksum;
 			uint16_t GeneralPrimaryFlags;
-			unsigned char VoluleGuid[16];
+			unsigned char VolumeGuid[16];
 			unsigned char Reserved[10];
 		} __attribute__((packed)) guid;
 		/* Stream Extension Directory Entry */
