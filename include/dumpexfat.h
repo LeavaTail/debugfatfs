@@ -1,6 +1,7 @@
 #ifndef _DUMPEXFAT_H
 #define _DUMPEXFAT_H
 
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -92,6 +93,7 @@ enum FStype
 struct device_info {
 	char name[255];
 	int fd;
+	FILE *out;
 	size_t total_size;
 	size_t sector_size;
 	uint8_t cluster_shift;

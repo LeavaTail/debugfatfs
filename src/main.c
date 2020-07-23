@@ -24,6 +24,7 @@ enum
 /* option data {"long name", needs argument, flags, "short name"} */
 static struct option const longopts[] =
 {
+	{"output",required_argument, NULL, 'o'},
 	{"verbose",no_argument, NULL, 'v'},
 	{"help",no_argument, NULL, GETOPT_HELP_CHAR},
 	{"version",no_argument, NULL, GETOPT_VERSION_CHAR},
@@ -164,13 +165,19 @@ int main(int argc, char *argv[])
 	int opt;
 	int longindex;
 	int ret = 0;
+	bool outflag = false;
+	char *outfile = NULL;
 	struct device_info info;
 	struct pseudo_bootsector bootsec;
 
 	while ((opt = getopt_long(argc, argv,
-					"v",
+					"o:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
+			case 'o':
+				outflag = true;
+				outfile = optarg;
+				break;
 			case 'v':
 				print_level = DUMP_INFO;
 				break;
@@ -195,6 +202,15 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if(outflag) {
+		if ((info.out = fopen(outfile, "w")) == NULL) {
+			dump_err("can't open %s.", optarg);
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		info.out = stdout;
+	}
+
 	memcpy(info.name, argv[optind], 255);
 	ret = get_device_info(&info);
 	if (ret < 0)
@@ -210,6 +226,10 @@ int main(int argc, char *argv[])
 
 file_err:
 	close(info.fd);
+
 out:
+	if(outflag)
+		fclose(info.out);
+
 	return ret;
 }
