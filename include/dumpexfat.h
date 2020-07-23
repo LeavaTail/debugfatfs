@@ -136,7 +136,7 @@ struct fat_bootsec {
 			unsigned char BS_FilSysType[FILSYSTYPESIZE];
 			unsigned char BS_BootCode[BOOTCODESIZE];
 			unsigned char BS_BootSign[BOOTSIGNSIZE];
-		} fat12_reserved_info;
+		} __attribute__((packed)) fat12_reserved_info;
 
 		struct {
 			uint32_t BPB_FATSz32;
@@ -154,9 +154,9 @@ struct fat_bootsec {
 			unsigned char BS_FilSysType[FILSYSTYPESIZE];
 			unsigned char BS_BootCode32[BOOTCODE32SIZE];
 			unsigned char BS_BootSign[BOOTSIGNSIZE];
-		} fat32_reserved_info;
-	} reserved_info;
-};
+		} __attribute__((packed)) fat32_reserved_info;
+	} __attribute__((packed)) reserved_info;
+} __attribute__((packed)) ;
 
 struct exfat_bootsec {
 	unsigned char JumpBoot[JMPBOOTSIZE];
