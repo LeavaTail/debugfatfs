@@ -16,7 +16,7 @@ int exfat_get_root_dir(struct device_info *info, void *data)
 
 int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 {
-	if (verbose) {
+	if (print_level >= DUMP_INFO) {
 		fprintf(stdout, "%-28s\t: %8lx (sector)\n", "media-relative sector offset", b->PartitionOffset);
 		fprintf(stdout, "%-28s\t: %8x (sector)\n", "Offset of the First FAT", b->FatOffset);
 		fprintf(stdout, "%-28s\t: %8u (sector)\n", "Length of FAT table", b->FatLength);

@@ -44,7 +44,6 @@ extern unsigned int print_level;
 #define dump_info(fmt, ...)  dump_msg(DUMP_INFO, fmt, ##__VA_ARGS__)
 #define dump_debug(fmt, ...)  dump_msg(DUMP_DEBUG, fmt, ##__VA_ARGS__)
 
-bool verbose;
 #define SECSIZE 512
 
 /*

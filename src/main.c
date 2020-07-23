@@ -11,8 +11,7 @@
 #include <sys/stat.h>
 
 #include "dumpexfat.h"
-bool verbose = false;
-unsigned int print_level = 7;
+unsigned int print_level = DUMP_WARNING;
 /**
  * Special Option(no short option)
  */
@@ -173,7 +172,7 @@ int main(int argc, char *argv[])
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'v':
-				verbose = true;
+				print_level = DUMP_INFO;
 				break;
 			case GETOPT_HELP_CHAR:
 				usage(EXIT_SUCCESS);
@@ -186,6 +185,10 @@ int main(int argc, char *argv[])
 				exit(EXIT_FAILURE);
 		}
 	}
+
+#ifdef DUMPEXFAT_DEBUG
+	print_level = DUMP_DEBUG;
+#endif
 
 	if (optind != argc - 1) {
 		usage();
