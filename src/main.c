@@ -62,7 +62,6 @@ void version(const char *command_name, const char *version,
 void* get_sector(struct device_info *info, off_t index, size_t count)
 {
 	void *data;
-	size_t ret = 0;
 	size_t sector_size = info->sector_size;
 
 	dump_debug("Get: Sector from %lx to %lx\n", index , index + (count * sector_size) - 1);
