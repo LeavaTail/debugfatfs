@@ -84,7 +84,11 @@ void *get_cluster(struct device_info *info, off_t index)
 	void *data;
 	size_t sector_size = info->sector_size;
 	off_t heap_start = info->heap_offset * sector_size;
-	size_t heap_end = info->cluster_count * sector_size;
+
+	if (index < 2 || index > info->cluster_count + 1) {
+		dump_err("invalid cluster index %lu.", index);
+		return NULL;
+	}
 
 	data = get_sector(info,
 			heap_start + ((index - 2) * (1 << info->cluster_shift) * sector_size),
