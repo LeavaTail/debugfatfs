@@ -53,6 +53,45 @@ void version(const char *command_name, const char *version,
 	fprintf(stdout, "Written by %s.\n", author);
 }
 
+/**
+ * get_sector - Get Raw-Data from any sector.
+ * @info:       Target device information
+ * @index:      Start bytes
+ * @count:      The number of sectors
+ */
+void* get_sector(struct device_info *info, off_t index, size_t count)
+{
+	void *data;
+	size_t ret = 0;
+	size_t sector_size = info->sector_size;
+
+	dump_debug("Get: Sector from %lx to %lx\n", index , index + (count * sector_size) - 1);
+	data = (char *)malloc(sector_size * count);
+	if ((pread(info->fd, data, count * sector_size, index)) < 0) {
+		dump_err("can't read %s.", info->name);
+		return NULL;
+	}
+	return data;
+}
+
+/**
+ * get_cluster - Get Raw-Data from any cluster.
+ * @info:       Target device information
+ * @index:      Start cluster index
+ */
+void *get_cluster(struct device_info *info, off_t index)
+{
+	void *data;
+	size_t sector_size = info->sector_size;
+	off_t heap_start = info->heap_offset * sector_size;
+	size_t heap_end = info->cluster_count * sector_size;
+
+	data = get_sector(info,
+			heap_start + ((index - 2) * (1 << info->cluster_shift) * sector_size),
+			(1 << info->cluster_shift));
+	return data;
+}
+
 int get_device_info(struct device_info *info)
 {
 	int fd;
