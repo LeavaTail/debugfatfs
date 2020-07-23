@@ -94,8 +94,12 @@ struct device_info {
 	size_t total_size;
 	size_t sector_size;
 	uint8_t cluster_shift;
+	uint16_t cluster_count;
 	enum FStype fstype;
 	unsigned short flags;
+	uint32_t fat_offset;
+	uint32_t heap_offset;
+	uint32_t root_offset;
 };
 
 struct pseudo_bootsector {

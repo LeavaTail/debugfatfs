@@ -13,8 +13,12 @@ int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 		fprintf(stdout, "%-28s\t: %8u (cluster)\n", "The first cluster of the root", b->FirstClusterOfRootDirectory);
 	}
 
+	info->fat_offset = b->FatOffset;
+	info->heap_offset = b->ClusterHeapOffset;
+	info->root_offset = b->FirstClusterOfRootDirectory;
 	info->sector_size  = 1 << b->BytesPerSectorShift;
 	info->cluster_shift = b->SectorsPerClusterShift;
+	info->cluster_count = b->ClusterCount;
 
 	fprintf(stdout, "%-28s\t: %8lu (sector)\n", "Size of exFAT volumes", b->VolumeLength);
 	fprintf(stdout, "%-28s\t: %8lu (byte)\n", "Bytes per sector", info->sector_size);
