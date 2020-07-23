@@ -133,6 +133,33 @@ int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsector *boo
 	return 0;
 }
 
+int pseudo_get_root_dir(struct device_info *info)
+{
+	int i;
+	void *data;
+	data = get_cluster(info, info->root_offset);
+
+	switch (info->fstype) {
+		case EXFAT_FILESYSTEM:
+			exfat_get_root_dir(info, data);
+			break;
+		case FAT12_FILESYSTEM:
+			/* FALLTHROUGH */
+		case FAT16_FILESYSTEM:
+			/* FIXME: Unimplemented*/
+			break;
+		case FAT32_FILESYSTEM:
+			/* FIXME: Unimplemented*/
+			break;
+		default:
+			dump_err("invalid filesystem image.");
+			return -1;
+	}
+
+	free(data);
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	int opt;
@@ -174,6 +201,11 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		goto out;
 
+	ret = pseudo_get_root_dir(&info);
+	if (ret < 0)
+		goto file_err;
+
+file_err:
 	close(info.fd);
 out:
 	return ret;

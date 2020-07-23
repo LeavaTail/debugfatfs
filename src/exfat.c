@@ -2,6 +2,18 @@
 #include <stdbool.h>
 #include "dumpexfat.h"
 
+int exfat_get_root_dir(struct device_info *info, void *data)
+{
+	int i;
+	for(i = 0;
+			i < (((1 << info->cluster_shift) * info->sector_size) / sizeof(struct exfat_dentry));
+			i++) {
+		struct exfat_dentry root = ((struct exfat_dentry *)data)[i];
+	}
+
+	return 0;
+}
+
 int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 {
 	if (verbose) {

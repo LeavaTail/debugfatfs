@@ -76,8 +76,10 @@ bool verbose;
 /*
  * FAT/exFAT definition
  */
-#define JMPBOOTSIZE  3
-#define ORMNAMESIZE  8
+#define JMPBOOTSIZE			3
+#define ORMNAMESIZE			8
+#define VOLUME_LABEL_MAX	11
+#define ENTRY_NAME_MAX		15
 
 enum FStype
 {
@@ -179,10 +181,93 @@ struct exfat_bootsec {
 	unsigned char BootSignature[2];
 };
 
+struct exfat_dentry {
+	uint8_t EntryType;
+	union dentry {
+		/* Allocation Bitmap Directory Entry */
+		struct {
+			uint8_t BitmapFlags;
+			unsigned char Reserved[18];
+			uint32_t FirstCluster;
+			uint64_t DataLength;
+		} __attribute__((packed)) bitmap;
+		/* Up-case Table Directory Entry */
+		struct {
+			unsigned char Reserved1[3];
+			uint32_t TableCheckSum;
+			unsigned char Reserved2[12];
+			uint32_t FirstCluster;
+			uint32_t DataLength;
+		} __attribute__((packed)) upcase;
+		/* Volume Label Directory Entry */
+		struct {
+			uint8_t CharacterCount;
+			uint16_t VolumeLabel[VOLUME_LABEL_MAX];
+			unsigned char Reserved[8];
+		} __attribute__((packed)) vol;
+		/* File Directory Entry */
+		struct {
+			uint8_t SecondaryCount;
+			uint16_t SetChecksum;
+			uint16_t FileAttributes;
+			unsigned char Reserved1[2];
+			uint32_t CreateTimestamp;
+			uint32_t LastModifiedTimestamp;
+			uint32_t LastAccessedTimestamp;
+			uint8_t Create10msIncrement;
+			uint8_t LastModified10msIncrement;
+			uint8_t CreateUtcOffset;
+			uint8_t LastModifiedUtcOffset;
+			uint8_t LastAccessdUtcOffset;
+			unsigned char Reserved2[7];
+		} __attribute__((packed)) file;
+		/* Volume GUID Directory Entry */
+		struct {
+			uint8_t SecondaryCount;
+			uint16_t SetChecksum;
+			uint16_t GeneralPrimaryFlags;
+			unsigned char VoluleGuid[16];
+			unsigned char Reserved[10];
+		} __attribute__((packed)) guid;
+		/* Stream Extension Directory Entry */
+		struct {
+			uint8_t GeneralSecondaryFlags;
+			unsigned char Reserved1;
+			uint8_t NameLength;
+			uint16_t NameHash;
+			unsigned char Reserved2[2];
+			uint64_t ValidDataLength;
+			unsigned char Reserved3[4];
+			uint32_t FirstCluster;
+			uint64_t DataLength;
+		} __attribute__((packed)) stream;
+		/* File Name Directory Entry */
+		struct {
+			uint8_t GeneralSecondaryFlags;
+			uint16_t FileName[ENTRY_NAME_MAX];
+		} __attribute__((packed)) name;
+		/* Vendor Extension Directory Entry */
+		struct {
+			uint8_t GeneralSecondaryFlags;
+			unsigned char VendorGuid[16];
+			unsigned char VendorDefined[14];
+		} __attribute__((packed)) vendor;
+		/* Vendor Allocation Directory Entry */
+		struct {
+			uint8_t GeneralSecondaryFlags;
+			unsigned char VendorGuid[16];
+			unsigned char VendorDefined[2];
+			uint32_t FirstCluster;
+			uint64_t DataLength;
+		} __attribute__((packed)) vendor_alloc;
+	} __attribute__((packed)) dentry;
+} __attribute__ ((packed));
+
 /* FAT function*/
 int fat_show_boot_sec(struct device_info *, struct fat_bootsec *);
 
 /* exFAT function */
 int exfat_show_boot_sec(struct device_info *, struct exfat_bootsec *);
+int exfat_get_root_dir(struct device_info *, void *);
 
 #endif /*_DUMPEXFAT_H */
