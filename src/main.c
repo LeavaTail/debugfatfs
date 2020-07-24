@@ -136,16 +136,16 @@ int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsector *boo
 	return 0;
 }
 
-int pseudo_get_root_dir(struct device_info *info)
+int pseudo_get_cluster_chain(struct device_info *info)
 {
-	int i;
-	void *data;
-	data = get_cluster(info, info->root_offset);
-
 	switch (info->fstype) {
 		case EXFAT_FILESYSTEM:
-			exfat_get_root_dir(info, data);
+		{
+			void *root = get_cluster(info, info->root_offset);
+			exfat_get_allocation_bitmap(info, root);
+			free(root);
 			break;
+		}
 		case FAT12_FILESYSTEM:
 			/* FALLTHROUGH */
 		case FAT16_FILESYSTEM:
@@ -159,7 +159,6 @@ int pseudo_get_root_dir(struct device_info *info)
 			return -1;
 	}
 
-	free(data);
 	return 0;
 }
 
@@ -223,7 +222,7 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		goto out;
 
-	ret = pseudo_get_root_dir(&info);
+	ret = pseudo_get_cluster_chain(&info);
 	if (ret < 0)
 		goto file_err;
 

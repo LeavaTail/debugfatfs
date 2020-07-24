@@ -288,6 +288,6 @@ int fat_show_boot_sec(struct device_info *, struct fat_bootsec *);
 
 /* exFAT function */
 int exfat_show_boot_sec(struct device_info *, struct exfat_bootsec *);
-int exfat_get_root_dir(struct device_info *, void *);
+int exfat_get_allocation_bitmap(struct device_info *, void *);
 
 #endif /*_DUMPEXFAT_H */
