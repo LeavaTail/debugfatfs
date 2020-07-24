@@ -35,7 +35,7 @@ static struct option const longopts[] =
  * usage - print out usage.
  * @status: Status code
  */
-void usage()
+static void usage()
 {
 	fprintf(stderr, "Usage: %s [OPTION] FILE\n", PROGRAM_NAME);
 }
@@ -46,7 +46,7 @@ void usage()
  * @version:      program version
  * @author:       program authoer
  */
-void version(const char *command_name, const char *version,
+static void version(const char *command_name, const char *version,
 		const char *author)
 {
 	fprintf(stdout, "%s %s\n", command_name, version);
@@ -95,7 +95,7 @@ void *get_cluster(struct device_info *info, off_t index)
 	return data;
 }
 
-int get_device_info(struct device_info *info)
+static int get_device_info(struct device_info *info)
 {
 	int fd;
 	struct stat s;
@@ -116,7 +116,7 @@ int get_device_info(struct device_info *info)
 	return 0;
 }
 
-int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsector *boot)
+static int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsector *boot)
 {
 	size_t count = 0;
 
@@ -136,7 +136,7 @@ int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsector *boo
 	return 0;
 }
 
-int pseudo_get_cluster_chain(struct device_info *info)
+static int pseudo_get_cluster_chain(struct device_info *info)
 {
 	switch (info->fstype) {
 		case EXFAT_FILESYSTEM:

@@ -283,6 +283,10 @@ struct exfat_dentry {
 #define DENTRY_VENDOR		0xE0
 #define DENTRY_VENDOR_ALLOC	0xE1
 
+/* General function */
+void* get_sector(struct device_info *, off_t, size_t);
+void *get_cluster(struct device_info *, off_t);
+
 /* FAT function*/
 int fat_show_boot_sec(struct device_info *, struct fat_bootsec *);
 
