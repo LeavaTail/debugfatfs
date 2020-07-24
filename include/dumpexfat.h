@@ -265,6 +265,24 @@ struct exfat_dentry {
 	} __attribute__((packed)) dentry;
 } __attribute__ ((packed));
 
+/* FAT dentry type */
+#define ATTR_READ_ONLY		0x01
+#define ATTR_HIDDEN			0x02
+#define ATTR_SYSTEM			0x04
+#define ATTR_VOLUME_ID		0x08
+#define ATTR_DIRECTORY		0x10
+#define ATTR_ARCHIVE		0x20
+/* exFAT dentry type */
+#define DENTRY_BITMAP		0x81
+#define DENTRY_UPCASE		0x82
+#define DENTRY_VOLUME		0x83
+#define DENTRY_FILE			0x85
+#define DENTRY_GUID			0xA0
+#define DENTRY_STREAM		0xC0
+#define DENTRY_NAME			0xC1
+#define DENTRY_VENDOR		0xE0
+#define DENTRY_VENDOR_ALLOC	0xE1
+
 /* FAT function*/
 int fat_show_boot_sec(struct device_info *, struct fat_bootsec *);
 
