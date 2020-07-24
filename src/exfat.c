@@ -1,11 +1,32 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <limits.h>
 #include "dumpexfat.h"
+
+static int exfat_create_allocation_chain(struct device_info *info, void *bitmap)
+{
+	int i, bit;
+	uint8_t entry;
+	for (i = 0; i < (info->cluster_count / CHAR_BIT); i++) {
+		entry = ((uint8_t *)bitmap)[i];
+		if (!entry)
+			continue;
+
+		for (bit = 0; bit < CHAR_BIT; bit++, entry >>= 1) {
+			if(entry & 0x01) {
+				uint8_t clu = (i * CHAR_BIT) + bit + EXFAT_FIRST_CLUSTER;
+				append_node(info->chain_head, clu);
+			}
+		}
+	}
+	return 0;
+}
 
 int exfat_get_allocation_bitmap(struct device_info *info, void *root)
 {
 	int i;
+	info->chain_head = init_node();
 	for(i = 0;
 			i < (((1 << info->cluster_shift) * info->sector_size) / sizeof(struct exfat_dentry));
 			i++) {
@@ -16,6 +37,7 @@ int exfat_get_allocation_bitmap(struct device_info *info, void *root)
 					dentry.dentry.bitmap.FirstCluster,
 					dentry.dentry.bitmap.DataLength);
 			void *allocation = get_cluster(info, dentry.dentry.bitmap.FirstCluster);
+			exfat_create_allocation_chain(info, allocation);
 			free(allocation);
 			return 0;
 		}

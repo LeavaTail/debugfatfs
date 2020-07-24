@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "list.h"
 /**
  * Program Name, version, author.
  * displayed when 'usage' and 'version'
@@ -73,6 +74,9 @@ extern unsigned int print_level;
 #define VOLUMEDIRTY		0x0002
 #define MEDIAFAILURE	0x0004
 #define CLEARTOZERO		0x0008
+
+#define EXFAT_FIRST_CLUSTER	2
+
 /*
  * FAT/exFAT definition
  */
@@ -104,6 +108,7 @@ struct device_info {
 	uint32_t fat_length;
 	uint32_t heap_offset;
 	uint32_t root_offset;
+	node_t *chain_head;
 };
 
 struct pseudo_bootsector {

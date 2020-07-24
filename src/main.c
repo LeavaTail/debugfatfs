@@ -217,6 +217,7 @@ int main(int argc, char *argv[])
 	ret = get_device_info(&info);
 	if (ret < 0)
 		goto out;
+	info.chain_head = init_node();
 
 	ret = pseudo_show_boot_sec(&info, &bootsec);
 	if (ret < 0)
@@ -230,6 +231,7 @@ file_err:
 	close(info.fd);
 
 out:
+	free_list(info.chain_head);
 	if(outflag)
 		fclose(info.out);
 
