@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include "dumpexfat.h"
 
 int exfat_get_allocation_bitmap(struct device_info *info, void *root)
@@ -9,6 +10,15 @@ int exfat_get_allocation_bitmap(struct device_info *info, void *root)
 			i < (((1 << info->cluster_shift) * info->sector_size) / sizeof(struct exfat_dentry));
 			i++) {
 		struct exfat_dentry dentry = ((struct exfat_dentry *)root)[i];
+
+		if (dentry.EntryType == DENTRY_BITMAP) {
+			dump_debug("Get: allocation table: cluster %x, size: %lx\n",
+					dentry.dentry.bitmap.FirstCluster,
+					dentry.dentry.bitmap.DataLength);
+			void *allocation = get_cluster(info, dentry.dentry.bitmap.FirstCluster);
+			free(allocation);
+			return 0;
+		}
 	}
 
 	return 0;
