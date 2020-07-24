@@ -101,6 +101,7 @@ struct device_info {
 	enum FStype fstype;
 	unsigned short flags;
 	uint32_t fat_offset;
+	uint32_t fat_length;
 	uint32_t heap_offset;
 	uint32_t root_offset;
 };
