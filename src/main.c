@@ -210,15 +210,8 @@ static int pseudo_print_cluster(struct device_info *info, uint32_t cluster)
 {
 	switch (info->fstype) {
 		case EXFAT_FILESYSTEM:
-			{
-				void *data = get_cluster(info, cluster);
-				if (data) {
-					fprintf(info->out, "Cluster #%u:\n", cluster);
-					exfat_print_cluster(info, data);
-					free(data);
-				}
-				break;
-			}
+			exfat_print_cluster(info, cluster);
+			break;
 		case FAT12_FILESYSTEM:
 			/* FALLTHROUGH */
 		case FAT16_FILESYSTEM:

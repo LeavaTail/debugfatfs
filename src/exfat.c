@@ -77,9 +77,14 @@ int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 	return 0;
 }
 
-int exfat_print_cluster(struct device_info *info, void *cluster)
+int exfat_print_cluster(struct device_info *info, uint32_t index)
 {
-	size_t size = ((1 << info->cluster_shift) * info->sector_size);
-	hexdump(info->out, cluster, size);	
-	return 0;
+	void *data = get_cluster(info, index);
+	if (data) {
+		fprintf(info->out, "Cluster #%u:\n", index);
+		size_t size = ((1 << info->cluster_shift) * info->sector_size);
+		hexdump(info->out, data, size);	
+		return 0;
+	}
+	return -1;
 }
