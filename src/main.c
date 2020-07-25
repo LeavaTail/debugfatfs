@@ -24,6 +24,7 @@ enum
 /* option data {"long name", needs argument, flags, "short name"} */
 static struct option const longopts[] =
 {
+	{"cluster",required_argument, NULL, 'c'},
 	{"output",required_argument, NULL, 'o'},
 	{"verbose",no_argument, NULL, 'v'},
 	{"help",no_argument, NULL, GETOPT_HELP_CHAR},
@@ -140,12 +141,41 @@ static int pseudo_get_cluster_chain(struct device_info *info)
 {
 	switch (info->fstype) {
 		case EXFAT_FILESYSTEM:
-		{
-			void *root = get_cluster(info, info->root_offset);
-			exfat_get_allocation_bitmap(info, root);
-			free(root);
+			{
+				void *root = get_cluster(info, info->root_offset);
+				exfat_get_allocation_bitmap(info, root);
+				free(root);
+				break;
+			}
+		case FAT12_FILESYSTEM:
+			/* FALLTHROUGH */
+		case FAT16_FILESYSTEM:
+			/* FIXME: Unimplemented*/
 			break;
-		}
+		case FAT32_FILESYSTEM:
+			/* FIXME: Unimplemented*/
+			break;
+		default:
+			dump_err("invalid filesystem image.");
+			return -1;
+	}
+
+	return 0;
+}
+
+static int pseudo_print_cluster(struct device_info *info, uint32_t cluster)
+{
+	switch (info->fstype) {
+		case EXFAT_FILESYSTEM:
+			{
+				void *data = get_cluster(info, cluster);
+				if (data) {
+					fprintf(info->out, "Cluster #%u:\n", cluster);
+					exfat_print_cluster(info, data);
+					free(data);
+				}
+				break;
+			}
 		case FAT12_FILESYSTEM:
 			/* FALLTHROUGH */
 		case FAT16_FILESYSTEM:
@@ -167,15 +197,21 @@ int main(int argc, char *argv[])
 	int opt;
 	int longindex;
 	int ret = 0;
+	bool cflag = false;
+	uint32_t cluster = 0;
 	bool outflag = false;
 	char *outfile = NULL;
 	struct device_info info;
 	struct pseudo_bootsector bootsec;
 
 	while ((opt = getopt_long(argc, argv,
-					"o:v",
+					"c:o:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
+			case 'c':
+				cflag = true;
+				cluster = strtoul(optarg, NULL, 0);
+				break;
 			case 'o':
 				outflag = true;
 				outfile = optarg;
@@ -226,6 +262,12 @@ int main(int argc, char *argv[])
 	ret = pseudo_get_cluster_chain(&info);
 	if (ret < 0)
 		goto file_err;
+
+	if (cflag) {
+		ret = pseudo_print_cluster(&info, cluster);
+		if (ret < 0)
+			goto file_err;
+	}
 
 file_err:
 	close(info.fd);
