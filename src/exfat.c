@@ -4,6 +4,17 @@
 #include <limits.h>
 #include "dumpexfat.h"
 
+static void exfat_print_allocation_bitmap(struct device_info *info, uint32_t index)
+{
+	dump_notice("Allocation Bitmap (#%u):\n", index);
+	node_t *node = info->chain_head;
+	while (node->next != NULL) {
+		node = node->next;
+		dump_notice("%u ", node->x);
+	}
+	dump_notice("\n");
+}
+
 static int exfat_create_allocation_chain(struct device_info *info, void *bitmap)
 {
 	int i, bit;
@@ -47,6 +58,7 @@ int exfat_get_allocation_bitmap(struct device_info *info, void *root)
 			void *allocation = get_cluster(info, dentry.dentry.bitmap.FirstCluster);
 			exfat_create_allocation_chain(info, allocation);
 			free(allocation);
+			exfat_print_allocation_bitmap(info, dentry.dentry.bitmap.FirstCluster);
 			return 0;
 		}
 	}
@@ -94,6 +106,6 @@ int exfat_print_cluster(struct device_info *info, uint32_t index)
 
 	dump_notice("Cluster #%u:\n", index);
 	size_t size = ((1 << info->cluster_shift) * info->sector_size);
-	hexdump(output, data, size);	
+	hexdump(output, data, size);
 	return 0;
 }
