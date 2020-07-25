@@ -292,8 +292,9 @@ struct exfat_dentry {
 #define DENTRY_VENDOR_ALLOC	0xE1
 
 /* General function */
-void* get_sector(struct device_info *, off_t, size_t);
+void *get_sector(struct device_info *, off_t, size_t);
 void *get_cluster(struct device_info *, off_t);
+void *get_clusters(struct device_info *, off_t, size_t);
 void hexdump(FILE *, void *, size_t);
 
 /* FAT function*/

@@ -102,18 +102,29 @@ void* get_sector(struct device_info *info, off_t index, size_t count)
  */
 void *get_cluster(struct device_info *info, off_t index)
 {
+	return get_clusters(info, index, 1);
+}
+
+/**
+ * get_clusters - Get Raw-Data from any cluster.
+ * @info:       Target device information
+ * @index:      Start cluster index
+ * @num:        The number of clusters
+ */
+void *get_clusters(struct device_info *info, off_t index, size_t num)
+{
 	void *data;
 	size_t sector_size = info->sector_size;
 	off_t heap_start = info->heap_offset * sector_size;
 
-	if (index < 2 || index > info->cluster_count + 1) {
+	if (index < 2 || index + num > info->cluster_count) {
 		dump_err("invalid cluster index %lu.", index);
 		return NULL;
 	}
 
 	data = get_sector(info,
 			heap_start + ((index - 2) * (1 << info->cluster_shift) * sector_size),
-			(1 << info->cluster_shift));
+			(1 << info->cluster_shift) * num);
 	return data;
 }
 
