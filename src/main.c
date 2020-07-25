@@ -189,7 +189,7 @@ static int pseudo_get_cluster_chain(struct device_info *info)
 		case EXFAT_FILESYSTEM:
 			{
 				void *root = get_cluster(info, info->root_offset);
-				exfat_get_allocation_bitmap(info, root);
+				exfat_load_root_dentry(info, root);
 				free(root);
 				break;
 			}

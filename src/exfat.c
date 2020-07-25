@@ -42,27 +42,36 @@ static bool exfat_check_allocation_cluster(struct device_info *info, uint32_t in
 	return false;
 }
 
-int exfat_get_allocation_bitmap(struct device_info *info, void *root)
+int exfat_load_root_dentry(struct device_info *info, void *root)
 {
 	int i;
+	void *data;
 	info->chain_head = init_node();
 	for(i = 0;
 			i < (((1 << info->cluster_shift) * info->sector_size) / sizeof(struct exfat_dentry));
 			i++) {
 		struct exfat_dentry dentry = ((struct exfat_dentry *)root)[i];
-
-		if (dentry.EntryType == DENTRY_BITMAP) {
-			dump_debug("Get: allocation table: cluster %x, size: %lx\n",
-					dentry.dentry.bitmap.FirstCluster,
-					dentry.dentry.bitmap.DataLength);
-			void *allocation = get_cluster(info, dentry.dentry.bitmap.FirstCluster);
-			exfat_create_allocation_chain(info, allocation);
-			free(allocation);
-			exfat_print_allocation_bitmap(info, dentry.dentry.bitmap.FirstCluster);
-			return 0;
+		switch (dentry.EntryType) {
+			case DENTRY_BITMAP:
+				dump_debug("Get: allocation table: cluster %x, size: %lx\n",
+						dentry.dentry.bitmap.FirstCluster,
+						dentry.dentry.bitmap.DataLength);
+				data = get_cluster(info, dentry.dentry.bitmap.FirstCluster);
+				exfat_create_allocation_chain(info, data);
+				free(data);
+				exfat_print_allocation_bitmap(info, dentry.dentry.bitmap.FirstCluster);
+				break;
+			case DENTRY_UPCASE:
+				break;
+			case DENTRY_VOLUME:
+				break;
+			case DENTRY_GUID:
+				break;
+			case DENTRY_UNUSED:
+				goto out;
 		}
 	}
-
+out:
 	return 0;
 }
 
