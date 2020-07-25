@@ -12,7 +12,8 @@
 #include <sys/stat.h>
 
 #include "dumpexfat.h"
-unsigned int print_level = DUMP_WARNING;
+FILE *output = NULL;
+unsigned int print_level = DUMP_NOTICE;
 /**
  * Special Option(no short option)
  */
@@ -126,16 +127,16 @@ void hexdump(FILE *out, void *data, size_t size)
 	size_t count = size / 0x10;
 
 	for (line = 0; line < count; line++) {
-		fprintf(out, "%08lX:  ", line * 0x10);
+		dump_notice("%08lX:  ", line * 0x10);
 		for (byte = 0; byte < 0x10; byte++) {
-			fprintf(out, "%02X ", ((unsigned char *)data)[line * 0x10 + byte]);
+			dump_notice("%02X ", ((unsigned char *)data)[line * 0x10 + byte]);
 		}
 		putchar(' ');
 		for (byte = 0; byte < 0x10; byte++) {
 			char ch = ((unsigned char *)data)[line * 0x10 + byte];
-			fprintf(out, "%c", isprint(ch)? ch: '.');
+			dump_notice("%c", isprint(ch)? ch: '.');
 		}
-		fprintf(out, "\n");
+		dump_notice("\n");
 	}
 }
 
@@ -232,8 +233,8 @@ static int pseudo_print_sector(struct device_info *info, uint32_t sector)
 {
 	void *data = get_sector(info, sector, 1);
 	if (data) {
-		fprintf(info->out, "Sector #%u:\n", sector);
-		hexdump(info->out, data, info->sector_size);
+		dump_notice("Sector #%u:\n", sector);
+		hexdump(output, data, info->sector_size);
 		free(data);
 	}
 	return 0;
@@ -293,13 +294,12 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	output = stdout;
 	if(outflag) {
-		if ((info.out = fopen(outfile, "w")) == NULL) {
+		if ((output = fopen(outfile, "w")) == NULL) {
 			dump_err("can't open %s.", optarg);
 			exit(EXIT_FAILURE);
 		}
-	} else {
-		info.out = stdout;
 	}
 
 	memcpy(info.name, argv[optind], 255);
@@ -334,7 +334,7 @@ file_err:
 out:
 	free_list(info.chain_head);
 	if(outflag)
-		fclose(info.out);
+		fclose(output);
 
 	return ret;
 }

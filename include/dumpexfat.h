@@ -19,6 +19,7 @@
  * Debug code
  */
 extern unsigned int print_level;
+extern FILE *output;
 #define DUMP_EMERG    0
 #define DUMP_ALERT    1
 #define DUMP_CRIT     2
@@ -28,16 +29,17 @@ extern unsigned int print_level;
 #define DUMP_INFO     6
 #define DUMP_DEBUG    7 
 
-#define dump_msg(level, fmt, ...)								\
-	do {														\
-		if (print_level >= level) {								\
-			if (print_level <= DUMP_ERR)						\
-			fprintf( stderr, "(%s.%u):" fmt, 				\
+#define dump_msg(level, fmt, ...)							\
+	do {													\
+		if (print_level >= level) {							\
+			if (level <= DUMP_ERR)							\
+			fprintf( stderr, "" fmt, ##__VA_ARGS__);		\
+			else if(level <= DUMP_INFO)						\
+			fprintf( output, "" fmt, ##__VA_ARGS__); 		\
+			else if(level <= DUMP_DEBUG)					\
+			fprintf( output, "(%s:%u): " fmt,				\
 					__func__, __LINE__, ##__VA_ARGS__);		\
-			else												\
-			fprintf( stdout, "(%s:%u):" fmt,				\
-					__func__, __LINE__, ##__VA_ARGS__); 	\
-		}														\
+		}													\
 	} while (0) \
 
 #define dump_err(fmt, ...)  dump_msg(DUMP_ERR, fmt, ##__VA_ARGS__)
@@ -97,7 +99,6 @@ enum FStype
 struct device_info {
 	char name[255];
 	int fd;
-	FILE *out;
 	size_t total_size;
 	size_t sector_size;
 	uint8_t cluster_shift;

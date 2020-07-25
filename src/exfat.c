@@ -56,16 +56,12 @@ int exfat_get_allocation_bitmap(struct device_info *info, void *root)
 
 int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 {
-	FILE* fp = info->out;
-
-	if (print_level >= DUMP_INFO) {
-		fprintf(fp, "%-28s\t: %8lx (sector)\n", "media-relative sector offset", b->PartitionOffset);
-		fprintf(fp, "%-28s\t: %8x (sector)\n", "Offset of the First FAT", b->FatOffset);
-		fprintf(fp, "%-28s\t: %8u (sector)\n", "Length of FAT table", b->FatLength);
-		fprintf(fp, "%-28s\t: %8x (sector)\n", "Offset of the Cluster Heap", b->ClusterHeapOffset);
-		fprintf(fp, "%-28s\t: %8u (cluster)\n", "The number of clusters", b->ClusterCount);
-		fprintf(fp, "%-28s\t: %8u (cluster)\n", "The first cluster of the root", b->FirstClusterOfRootDirectory);
-	}
+	dump_info("%-28s\t: %8lx (sector)\n", "media-relative sector offset", b->PartitionOffset);
+	dump_info("%-28s\t: %8x (sector)\n", "Offset of the First FAT", b->FatOffset);
+	dump_info("%-28s\t: %8u (sector)\n", "Length of FAT table", b->FatLength);
+	dump_info("%-28s\t: %8x (sector)\n", "Offset of the Cluster Heap", b->ClusterHeapOffset);
+	dump_info("%-28s\t: %8u (cluster)\n", "The number of clusters", b->ClusterCount);
+	dump_info("%-28s\t: %8u (cluster)\n", "The first cluster of the root", b->FirstClusterOfRootDirectory);
 
 	info->fat_offset = b->FatOffset;
 	info->heap_offset = b->ClusterHeapOffset;
@@ -75,12 +71,12 @@ int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 	info->cluster_count = b->ClusterCount;
 	info->fat_length = b->NumberOfFats * b->FatLength * info->sector_size;
 
-	fprintf(fp, "%-28s\t: %8lu (sector)\n", "Size of exFAT volumes", b->VolumeLength);
-	fprintf(fp, "%-28s\t: %8lu (byte)\n", "Bytes per sector", info->sector_size);
-	fprintf(fp, "%-28s\t: %8lu (byte)\n", "Bytes per cluster", info->sector_size * (1 << info->cluster_shift));
+	dump_notice("%-28s\t: %8lu (sector)\n", "Size of exFAT volumes", b->VolumeLength);
+	dump_notice("%-28s\t: %8lu (byte)\n", "Bytes per sector", info->sector_size);
+	dump_notice("%-28s\t: %8lu (byte)\n", "Bytes per cluster", info->sector_size * (1 << info->cluster_shift));
 
-	fprintf(fp, "%-28s\t: %8u\n", "The number of FATs", b->NumberOfFats);
-	fprintf(fp, "%-28s\t: %8u (%%)\n", "The percentage of clusters", b->PercentInUse);
+	dump_notice("%-28s\t: %8u\n", "The number of FATs", b->NumberOfFats);
+	dump_notice("%-28s\t: %8u (%%)\n", "The percentage of clusters", b->PercentInUse);
 
 	return 0;
 }
@@ -96,8 +92,8 @@ int exfat_print_cluster(struct device_info *info, uint32_t index)
 	if (!data)
 		return -1;
 
-	fprintf(info->out, "Cluster #%u:\n", index);
+	dump_notice("Cluster #%u:\n", index);
 	size_t size = ((1 << info->cluster_shift) * info->sector_size);
-	hexdump(info->out, data, size);	
+	hexdump(output, data, size);	
 	return 0;
 }
