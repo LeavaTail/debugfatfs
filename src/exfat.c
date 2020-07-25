@@ -23,6 +23,14 @@ static int exfat_create_allocation_chain(struct device_info *info, void *bitmap)
 	return 0;
 }
 
+static bool exfat_check_allocation_cluster(struct device_info *info, uint32_t index)
+{
+	node_t *node = search_node(info->chain_head, index);
+	if (node)
+		return true;
+	return false;
+}
+
 int exfat_get_allocation_bitmap(struct device_info *info, void *root)
 {
 	int i;
@@ -79,12 +87,17 @@ int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 
 int exfat_print_cluster(struct device_info *info, uint32_t index)
 {
-	void *data = get_cluster(info, index);
-	if (data) {
-		fprintf(info->out, "Cluster #%u:\n", index);
-		size_t size = ((1 << info->cluster_shift) * info->sector_size);
-		hexdump(info->out, data, size);	
-		return 0;
+	if (!exfat_check_allocation_cluster(info, index)) {
+		dump_err("cluster %u is not allocated.\n", index);
+		return -1;
 	}
-	return -1;
+
+	void *data = get_cluster(info, index);
+	if (!data)
+		return -1;
+
+	fprintf(info->out, "Cluster #%u:\n", index);
+	size_t size = ((1 << info->cluster_shift) * info->sector_size);
+	hexdump(info->out, data, size);	
+	return 0;
 }
