@@ -99,6 +99,7 @@ enum FStype
 struct device_info {
 	char name[255];
 	int fd;
+	bool force;
 	size_t total_size;
 	size_t sector_size;
 	uint8_t cluster_shift;

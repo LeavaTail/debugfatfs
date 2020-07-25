@@ -27,6 +27,7 @@ enum
 static struct option const longopts[] =
 {
 	{"cluster",required_argument, NULL, 'c'},
+	{"force",no_argument, NULL, 'f'},
 	{"output",required_argument, NULL, 'o'},
 	{"sector",required_argument, NULL, 's'},
 	{"verbose",no_argument, NULL, 'v'},
@@ -46,6 +47,7 @@ static void usage()
 	fprintf(stderr, "\n");
 
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
+	fprintf(stderr, "  -f, --force\tdump the cluster forcibly in spite of the non-allocated.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
 	fprintf(stderr, "  -s, --sector=index\tdump the sector index after dump filesystem information.\n");
 	fprintf(stderr, "  -v, --verbose\tVersion mode.\n");
@@ -247,6 +249,7 @@ int main(int argc, char *argv[])
 	int ret = 0;
 	bool cflag = false;
 	uint32_t cluster = 0;
+	bool fflag = false;
 	bool sflag = false;
 	uint32_t sector = 0;
 	bool outflag = false;
@@ -255,12 +258,15 @@ int main(int argc, char *argv[])
 	struct pseudo_bootsector bootsec;
 
 	while ((opt = getopt_long(argc, argv,
-					"c:o:s:v",
+					"c:fo:s:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'c':
 				cflag = true;
 				cluster = strtoul(optarg, NULL, 0);
+				break;
+			case 'f':
+				fflag = true;
 				break;
 			case 'o':
 				outflag = true;
@@ -301,6 +307,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	}
+	info.force = fflag;
 
 	memcpy(info.name, argv[optind], 255);
 	ret = get_device_info(&info);

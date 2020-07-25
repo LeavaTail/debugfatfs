@@ -83,7 +83,7 @@ int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 
 int exfat_print_cluster(struct device_info *info, uint32_t index)
 {
-	if (!exfat_check_allocation_cluster(info, index)) {
+	if (!exfat_check_allocation_cluster(info, index) && !info->force) {
 		dump_err("cluster %u is not allocated.\n", index);
 		return -1;
 	}
