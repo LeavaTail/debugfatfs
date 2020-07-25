@@ -4,9 +4,8 @@
 #include <limits.h>
 #include "dumpexfat.h"
 
-static void exfat_print_allocation_bitmap(struct device_info *info, uint32_t index)
+static void exfat_print_allocation_bitmap(struct device_info *info)
 {
-	dump_notice("Allocation Bitmap (#%u):\n", index);
 	node_t *node = info->chain_head;
 	while (node->next != NULL) {
 		node = node->next;
@@ -59,7 +58,8 @@ int exfat_load_root_dentry(struct device_info *info, void *root)
 				data = get_cluster(info, dentry.dentry.bitmap.FirstCluster);
 				exfat_create_allocation_chain(info, data);
 				free(data);
-				exfat_print_allocation_bitmap(info, dentry.dentry.bitmap.FirstCluster);
+				dump_notice("Allocation Bitmap (#%u):\n", dentry.dentry.bitmap.FirstCluster);
+				exfat_print_allocation_bitmap(info);
 				break;
 			case DENTRY_UPCASE:
 				break;
