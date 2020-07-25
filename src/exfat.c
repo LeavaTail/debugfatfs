@@ -70,7 +70,7 @@ static bool exfat_check_allocation_cluster(struct device_info *info, uint32_t in
 
 int exfat_load_root_dentry(struct device_info *info, void *root)
 {
-	int i;
+	int i, byte;
 	for(i = 0;
 			i < (((1 << info->cluster_shift) * info->sector_size) / sizeof(struct exfat_dentry));
 			i++) {
@@ -100,6 +100,12 @@ int exfat_load_root_dentry(struct device_info *info, void *root)
 				exfat_print_upcase_table(info);
 				break;
 			case DENTRY_VOLUME:
+				dump_notice("volume Label: ");
+				/* FIXME: VolumeLabel is Unicode string, But %c is ASCII code */
+				for(byte = 0; byte < dentry.dentry.vol.CharacterCount; byte++) {
+					dump_notice("%c", dentry.dentry.vol.VolumeLabel[byte]);
+				}
+				dump_notice("\n");
 				break;
 			case DENTRY_GUID:
 				break;
