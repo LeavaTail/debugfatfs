@@ -351,6 +351,7 @@ file_err:
 
 out:
 	free_list(info.chain_head);
+	free(info.upcase_table);
 	if(outflag)
 		fclose(output);
 

@@ -111,6 +111,8 @@ struct device_info {
 	uint32_t heap_offset;
 	uint32_t root_offset;
 	node_t *chain_head;
+	uint16_t *upcase_table;
+	size_t upcase_size;
 };
 
 struct pseudo_bootsector {

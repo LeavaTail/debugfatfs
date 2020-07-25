@@ -14,6 +14,33 @@ static void exfat_print_allocation_bitmap(struct device_info *info)
 	dump_notice("\n");
 }
 
+static void exfat_print_upcase_table(struct device_info *info)
+{
+	int byte, offset;
+	size_t uni_count = 0x10 / sizeof(uint16_t);
+	size_t length = info->upcase_size;
+
+	if (print_level < DUMP_INFO) {
+		 dump_notice("Upcase-table was skipped.\n");
+		 return;
+	}
+
+	/* Output table header */
+	dump_info("Offset  ");
+	for(byte = 0; byte < uni_count; byte++)
+		dump_info("  +%u ",byte);
+	dump_info("\n");
+
+	/* Output Table contents */
+	for(offset = 0; offset < length / uni_count; offset++) {
+		 dump_info("%04lxh:  ", offset * 0x10 / sizeof(uint16_t));
+		for(byte = 0; byte < uni_count; byte++) {
+			dump_info("%04x ", info->upcase_table[offset * uni_count + byte]);
+		}
+		dump_info("\n");
+	}
+}
+
 static int exfat_create_allocation_chain(struct device_info *info, void *bitmap)
 {
 	int i, bit;
@@ -44,8 +71,6 @@ static bool exfat_check_allocation_cluster(struct device_info *info, uint32_t in
 int exfat_load_root_dentry(struct device_info *info, void *root)
 {
 	int i;
-	void *data;
-	info->chain_head = init_node();
 	for(i = 0;
 			i < (((1 << info->cluster_shift) * info->sector_size) / sizeof(struct exfat_dentry));
 			i++) {
@@ -55,13 +80,24 @@ int exfat_load_root_dentry(struct device_info *info, void *root)
 				dump_debug("Get: allocation table: cluster %x, size: %lx\n",
 						dentry.dentry.bitmap.FirstCluster,
 						dentry.dentry.bitmap.DataLength);
-				data = get_cluster(info, dentry.dentry.bitmap.FirstCluster);
+				info->chain_head = init_node();
+				void *data = get_cluster(info, dentry.dentry.bitmap.FirstCluster);
 				exfat_create_allocation_chain(info, data);
 				free(data);
 				dump_notice("Allocation Bitmap (#%u):\n", dentry.dentry.bitmap.FirstCluster);
 				exfat_print_allocation_bitmap(info);
 				break;
 			case DENTRY_UPCASE:
+				info->upcase_size = dentry.dentry.upcase.DataLength;
+				size_t clusize = 1 << info->cluster_shift * info->sector_size;
+				size_t clusters = (clusize / info->upcase_size) + 1;
+				info->upcase_table = (uint16_t*)malloc(clusize * clusters);
+				dump_debug("Get: Up-case table: cluster %x, size: %x\n",
+						dentry.dentry.upcase.FirstCluster,
+						dentry.dentry.upcase.DataLength);
+				info->upcase_table = get_clusters(info, dentry.dentry.upcase.FirstCluster, clusters);
+				dump_notice("Allocation Bitmap (#%u):\n", dentry.dentry.upcase.FirstCluster);
+				exfat_print_upcase_table(info);
 				break;
 			case DENTRY_VOLUME:
 				break;
