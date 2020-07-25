@@ -27,6 +27,7 @@ static struct option const longopts[] =
 {
 	{"cluster",required_argument, NULL, 'c'},
 	{"output",required_argument, NULL, 'o'},
+	{"sector",required_argument, NULL, 's'},
 	{"verbose",no_argument, NULL, 'v'},
 	{"help",no_argument, NULL, GETOPT_HELP_CHAR},
 	{"version",no_argument, NULL, GETOPT_VERSION_CHAR},
@@ -39,7 +40,22 @@ static struct option const longopts[] =
  */
 static void usage()
 {
-	fprintf(stderr, "Usage: %s [OPTION] FILE\n", PROGRAM_NAME);
+	fprintf(stderr, "Usage: %s [OPTION]... FILE\n", PROGRAM_NAME);
+	fprintf(stderr, "dump FAT/exFAT filesystem information.\n");
+	fprintf(stderr, "\n");
+
+	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
+	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
+	fprintf(stderr, "  -s, --sector=index\tdump the sector index after dump filesystem information.\n");
+	fprintf(stderr, "  -v, --verbose\tVersion mode.\n");
+	fprintf(stderr, "  --help\tdisplay this help and exit.\n");
+	fprintf(stderr, "  --version\toutput version information and exit.\n");
+	fprintf(stderr, "\n");
+
+	fprintf(stderr, "Examples:\n");
+	fprintf(stderr, "  %s /dev/sda\tdump FAT/exFAT filesystem information.\n", PROGRAM_NAME);
+	fprintf(stderr, "  %s -c 2 /dev/sda\tdump FAT/exFAT filesystem information and cluster #2.\n", PROGRAM_NAME);
+	fprintf(stderr, "\n");
 }
 
 /**
@@ -52,6 +68,7 @@ static void version(const char *command_name, const char *version,
 		const char *author)
 {
 	fprintf(stdout, "%s %s\n", command_name, version);
+	fprintf(stdout, "\n");
 	fprintf(stdout, "Written by %s.\n", author);
 }
 
@@ -218,6 +235,17 @@ static int pseudo_print_cluster(struct device_info *info, uint32_t cluster)
 	return 0;
 }
 
+static int pseudo_print_sector(struct device_info *info, uint32_t sector)
+{
+	void *data = get_sector(info, sector, 1);
+	if (data) {
+		fprintf(info->out, "Sector #%u:\n", sector);
+		hexdump(info->out, data, info->sector_size);
+		free(data);
+	}
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	int opt;
@@ -225,13 +253,15 @@ int main(int argc, char *argv[])
 	int ret = 0;
 	bool cflag = false;
 	uint32_t cluster = 0;
+	bool sflag = false;
+	uint32_t sector = 0;
 	bool outflag = false;
 	char *outfile = NULL;
 	struct device_info info;
 	struct pseudo_bootsector bootsec;
 
 	while ((opt = getopt_long(argc, argv,
-					"c:o:v",
+					"c:o:s:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'c':
@@ -241,6 +271,10 @@ int main(int argc, char *argv[])
 			case 'o':
 				outflag = true;
 				outfile = optarg;
+				break;
+			case 's':
+				sflag = true;
+				sector = strtoul(optarg, NULL, 0);
 				break;
 			case 'v':
 				print_level = DUMP_INFO;
@@ -288,6 +322,12 @@ int main(int argc, char *argv[])
 	ret = pseudo_get_cluster_chain(&info);
 	if (ret < 0)
 		goto file_err;
+
+	if (sflag) {
+		ret = pseudo_print_sector(&info, sector);
+		if (ret < 0)
+			goto file_err;
+	}
 
 	if (cflag) {
 		ret = pseudo_print_cluster(&info, cluster);
