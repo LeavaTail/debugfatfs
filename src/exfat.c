@@ -140,6 +140,7 @@ int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 
 	dump_notice("%-28s\t: %8u\n", "The number of FATs", b->NumberOfFats);
 	dump_notice("%-28s\t: %8u (%%)\n", "The percentage of clusters", b->PercentInUse);
+	dump_notice("\n");
 
 	return 0;
 }
