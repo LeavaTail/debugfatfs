@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -94,6 +95,31 @@ void *get_cluster(struct device_info *info, off_t index)
 			heap_start + ((index - 2) * (1 << info->cluster_shift) * sector_size),
 			(1 << info->cluster_shift));
 	return data;
+}
+
+/**
+ * hexdump - Hex dump of a given data
+ * @out:        Output stream
+ * @data:       Input data
+ * @index:      Input data size
+ */
+void hexdump(FILE *out, void *data, size_t size)
+{
+	size_t line, byte = 0;
+	size_t count = size / 0x10;
+
+	for (line = 0; line < count; line++) {
+		fprintf(out, "%08lX:  ", line * 0x10);
+		for (byte = 0; byte < 0x10; byte++) {
+			fprintf(out, "%02X ", ((unsigned char *)data)[line * 0x10 + byte]);
+		}
+		putchar(' ');
+		for (byte = 0; byte < 0x10; byte++) {
+			char ch = ((unsigned char *)data)[line * 0x10 + byte];
+			fprintf(out, "%c", isprint(ch)? ch: '.');
+		}
+		fprintf(out, "\n");
+	}
 }
 
 static int get_device_info(struct device_info *info)

@@ -291,6 +291,7 @@ struct exfat_dentry {
 /* General function */
 void* get_sector(struct device_info *, off_t, size_t);
 void *get_cluster(struct device_info *, off_t);
+void hexdump(FILE *, void *, size_t);
 
 /* FAT function*/
 int fat_show_boot_sec(struct device_info *, struct fat_bootsec *);

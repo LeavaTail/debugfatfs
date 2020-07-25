@@ -2,7 +2,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <limits.h>
-#include <ctype.h>
 #include "dumpexfat.h"
 
 static int exfat_create_allocation_chain(struct device_info *info, void *bitmap)
@@ -80,21 +79,7 @@ int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 
 int exfat_print_cluster(struct device_info *info, void *cluster)
 {
-	size_t line, byte = 0;
-	size_t count = ((1 << info->cluster_shift) * info->sector_size) / 0x10;
-
-	for (line = 0; line < count; line++) {
-		fprintf(info->out, "%08lX:  ", line * 0x10);
-		for (byte = 0; byte < 0x10; byte++) {
-			fprintf(info->out, "%02X ", ((unsigned char *)cluster)[line * 0x10 + byte]);
-		}
-		putchar(' ');
-		for (byte = 0; byte < 0x10; byte++) {
-			char ch = ((unsigned char *)cluster)[line * 0x10 + byte];
-			fprintf(info->out, "%c", isprint(ch)? ch: '.');
-		}
-		fprintf(info->out, "\n");
-	}
-
+	size_t size = ((1 << info->cluster_shift) * info->sector_size);
+	hexdump(info->out, cluster, size);	
 	return 0;
 }
