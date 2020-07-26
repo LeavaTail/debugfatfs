@@ -314,5 +314,6 @@ int fat_show_boot_sec(struct device_info *, struct fat_bootsec *);
 int exfat_show_boot_sec(struct device_info *, struct exfat_bootsec *);
 int exfat_load_root_dentry(struct device_info *, void *);
 int exfat_print_cluster(struct device_info *, uint32_t);
+int exfat_traverse_directory(struct device_info *, uint32_t);
 
 #endif /*_DUMPEXFAT_H */

@@ -42,7 +42,7 @@ static void exfat_print_upcase_table(struct device_info *info)
 	}
 }
 
-static void exfat_load_timestamp(struct tm *t, uint32_t time, uint8_t subsec, uint8_t tz)
+static void exfat_load_timestamp(struct tm *t, char *str, uint32_t time, uint8_t subsec, uint8_t tz)
 {
 	int8_t offset = tz * 15;
 	t->tm_year = (time >> EXFAT_YEAR) & 0x7f;
@@ -52,13 +52,33 @@ static void exfat_load_timestamp(struct tm *t, uint32_t time, uint8_t subsec, ui
 	t->tm_min  = (time >> EXFAT_MINUTE) & 0x3f;
 	t->tm_sec  = (time & 0x1f) * 2;
 	t->tm_sec += subsec / 100;
-	dump_debug("Time: %d-%02d-%02d %02d:%02d:%02d.%02d (UTC + %02d:%02d)\n",
-		1980 + t->tm_year, t->tm_mon, t->tm_mday,
-		t->tm_hour, t->tm_min,
-		t->tm_sec,
-		subsec % 100,
-		offset / 60,
-		offset % 60);
+	dump_info("%s: %d-%02d-%02d %02d:%02d:%02d.%02d (UTC + %02d:%02d)\n", str,
+			1980 + t->tm_year, t->tm_mon, t->tm_mday,
+			t->tm_hour, t->tm_min,
+			t->tm_sec,
+			subsec % 100,
+			offset / 60,
+			offset % 60);
+}
+
+static void exfat_load_filename(union dentry name, uint64_t name_len, uint8_t count)
+{
+	/* FIXME: decode and output name */
+	dump_info("Name: Optimized out. (%lu)\n", name_len);
+}
+
+static void exfat_print_file_entry(struct device_info *info, union dentry file, union dentry stream, union dentry name, uint8_t count)
+{
+	struct tm ctime, mtime, atime;
+
+	exfat_load_filename(name, stream.stream.NameLength, count);
+	dump_info("Size: %lu\n", stream.stream.DataLength);
+	dump_debug("First Cluster: %u\n", stream.stream.FirstCluster);
+
+	exfat_load_timestamp(&ctime, "Create", file.file.CreateTimestamp, file.file.Create10msIncrement, file.file.CreateUtcOffset);
+	exfat_load_timestamp(&mtime, "Modify", file.file.LastModifiedTimestamp, file.file.LastModified10msIncrement, file.file.LastModifiedUtcOffset);
+	exfat_load_timestamp(&atime, "Access", file.file.LastAccessedTimestamp, 0, file.file.LastAccessdUtcOffset);
+	dump_info("\n");
 }
 
 static int exfat_create_allocation_chain(struct device_info *info, void *bitmap)
@@ -86,6 +106,52 @@ static bool exfat_check_allocation_cluster(struct device_info *info, uint32_t in
 	if (node)
 		return true;
 	return false;
+}
+
+int exfat_traverse_directory(struct device_info *info, uint32_t index)
+{
+	int i;
+	uint16_t attr = 0;
+	uint64_t c, len;
+	size_t size = (1 << info->cluster_shift) * info->sector_size;
+	void *clu = get_cluster(info, index);
+	struct exfat_dentry d, next;
+
+	for(i = 1; i < (size / sizeof(struct exfat_dentry)); i++){
+		d = ((struct exfat_dentry *)clu)[i - 1];
+		next = ((struct exfat_dentry *)clu)[i];
+
+		switch (d.EntryType) {
+			case DENTRY_UNUSED:
+				return 0;
+			case DENTRY_BITMAP:
+				c = d.dentry.bitmap.FirstCluster;
+				len = d.dentry.bitmap.DataLength;
+				dump_debug("Insert Bitmap table to %lu\n", c);
+				break;
+			case DENTRY_UPCASE:
+				c = d.dentry.upcase.FirstCluster;
+				len = d.dentry.upcase.DataLength;
+				dump_debug("Insert Upcase table to %lu\n", c);
+				break;
+			case DENTRY_FILE:
+				if (next.EntryType != DENTRY_STREAM) {
+					dump_warn("File should have stream entry, but This don't have.\n");
+					return -1;
+				}
+				attr = d.dentry.file.FileAttributes;
+				c = next.dentry.stream.FirstCluster;
+				len = next.dentry.stream.DataLength;
+				exfat_print_file_entry(info, d.dentry, next.dentry, d.dentry, d.dentry.file.SecondaryCount);
+				i += d.dentry.file.SecondaryCount;
+				break;
+			case DENTRY_STREAM:
+				dump_warn("Stream needs be File entry, but This is not.\n");
+				break;
+		}
+	}
+	free(clu);
+	return 0;
 }
 
 int exfat_load_root_dentry(struct device_info *info, void *root)
