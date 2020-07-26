@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <time.h>
 #include "dumpexfat.h"
 
 static void exfat_print_allocation_bitmap(struct device_info *info)
@@ -39,6 +40,25 @@ static void exfat_print_upcase_table(struct device_info *info)
 		}
 		dump_info("\n");
 	}
+}
+
+static void exfat_load_timestamp(struct tm *t, uint32_t time, uint8_t subsec, uint8_t tz)
+{
+	int8_t offset = tz * 15;
+	t->tm_year = (time >> EXFAT_YEAR) & 0x7f;
+	t->tm_mon  = (time >> EXFAT_MONTH) & 0x0f;
+	t->tm_mday = (time >> EXFAT_DAY) & 0x1f;
+	t->tm_hour = (time >> EXFAT_HOUR) & 0x0f;
+	t->tm_min  = (time >> EXFAT_MINUTE) & 0x3f;
+	t->tm_sec  = (time & 0x1f) * 2;
+	t->tm_sec += subsec / 100;
+	dump_debug("Time: %d-%02d-%02d %02d:%02d:%02d.%02d (UTC + %02d:%02d)\n",
+		1980 + t->tm_year, t->tm_mon, t->tm_mday,
+		t->tm_hour, t->tm_min,
+		t->tm_sec,
+		subsec % 100,
+		offset / 60,
+		offset % 60);
 }
 
 static int exfat_create_allocation_chain(struct device_info *info, void *bitmap)

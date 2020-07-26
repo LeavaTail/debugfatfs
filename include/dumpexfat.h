@@ -293,6 +293,14 @@ struct exfat_dentry {
 #define DENTRY_VENDOR		0xE0
 #define DENTRY_VENDOR_ALLOC	0xE1
 
+/* TimeStamp */
+#define EXFAT_DSEC		0
+#define EXFAT_MINUTE	5
+#define EXFAT_HOUR		11
+#define EXFAT_DAY		16
+#define EXFAT_MONTH		21
+#define EXFAT_YEAR		25
+
 /* General function */
 void *get_sector(struct device_info *, off_t, size_t);
 void *get_cluster(struct device_info *, off_t);
