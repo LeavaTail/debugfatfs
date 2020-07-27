@@ -153,6 +153,25 @@ void hexdump(FILE *out, void *data, size_t size)
 	}
 }
 
+static void init_device_info(struct device_info *info)
+{
+	info->fd = -1;
+	info->force = false;
+	info->total_size = 0;
+	info->sector_size = 0;
+	info->cluster_shift = 0;
+	info->cluster_count = 0;
+	info->fstype = 0;
+	info->flags = 0;
+	info->fat_offset = 0;
+	info->fat_length = 0;
+	info->heap_offset = 0;
+	info->root_offset = 0;
+	info->chain_head = NULL;
+	info->upcase_table = NULL;
+	info->upcase_size = 0;
+}
+
 static int get_device_info(struct device_info *info)
 {
 	int fd;
@@ -333,6 +352,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	init_device_info(&info);
 	output = stdout;
 	if(outflag) {
 		if ((output = fopen(outfile, "w")) == NULL) {
