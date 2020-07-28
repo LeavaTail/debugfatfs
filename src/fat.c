@@ -2,6 +2,13 @@
 #include <stdbool.h>
 #include "dumpexfat.h"
 
+/**
+ * fat_show_boot_sec - show boot sector in FAT12/16/32
+ * @info:      structure to be shown device_info
+ * @b:         boot sector pointer in FAT
+ *
+ * TODO: implement function in FAT12/16/32
+ */
 int fat_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 {
 	dump_notice("%-28s\t: %8u (byte)\n", "Bytes per Sector", b->BPB_BytesPerSec);

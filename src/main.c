@@ -153,6 +153,10 @@ void hexdump(FILE *out, void *data, size_t size)
 	}
 }
 
+/**
+ * init_device_info - Initialize member in struct device_info
+ * @info:      structure to be Initialized
+ */
 static void init_device_info(struct device_info *info)
 {
 	info->fd = -1;
@@ -175,6 +179,10 @@ static void init_device_info(struct device_info *info)
 	info->root_maxsize = DENTRY_LISTSIZE;
 }
 
+/**
+ * get_device_info - get device name and store in device_info
+ * @info:      structure to be stored device name
+ */
 static int get_device_info(struct device_info *info)
 {
 	int fd;
@@ -196,6 +204,12 @@ static int get_device_info(struct device_info *info)
 	return 0;
 }
 
+/**
+ * free_dentry_list - release list2_t
+ * @info:      free to be stored device name
+ *
+ * TODO: Check for memory leaks
+ */
 static int free_dentry_list(struct device_info *info)
 {
 	int i;
@@ -208,6 +222,13 @@ static int free_dentry_list(struct device_info *info)
 	return 0;
 }
 
+/**
+ * pseudo_show_boot_sec - virtual function to show boot sector
+ * @info:      structure to be shown device_info
+ * @boot:      boot sector pointer
+ *
+ * TODO: implement function in FAT12/16/32
+ */
 static int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsector *boot)
 {
 	size_t count = 0;
@@ -228,6 +249,12 @@ static int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsect
 	return 0;
 }
 
+/**
+ * pseudo_get_cluster_chain - virtual function to get cluster chain
+ * @info:      structure to be get device_info
+ *
+ * TODO: implement function in FAT12/16/32
+ */
 static int pseudo_get_cluster_chain(struct device_info *info)
 {
 	switch (info->fstype) {
@@ -254,6 +281,12 @@ static int pseudo_get_cluster_chain(struct device_info *info)
 	return 0;
 }
 
+/**
+ * pseudo_traverse_directory - virtual function to traverse all cluster
+ * @info:      structure to be get device_info
+ *
+ * TODO: implement function in FAT12/16/32
+ */
 static int pseudo_traverse_directory(struct device_info *info)
 {
 	switch (info->fstype) {
@@ -276,6 +309,13 @@ static int pseudo_traverse_directory(struct device_info *info)
 	return 0;
 }
 
+/**
+ * pseudo_print_cluster - virtual function to print any cluster
+ * @info:      structure to be get device_info
+ * @cluster:   cluster index to display
+ *
+ * TODO: implement function in FAT12/16/32
+ */
 static int pseudo_print_cluster(struct device_info *info, uint32_t cluster)
 {
 	switch (info->fstype) {
@@ -298,6 +338,11 @@ static int pseudo_print_cluster(struct device_info *info, uint32_t cluster)
 	return 0;
 }
 
+/**
+ * pseudo_print_sector - virtual function to print any sector
+ * @info:      structure to be get device_info
+ * @sector:    sector index to display
+ */
 static int pseudo_print_sector(struct device_info *info, uint32_t sector)
 {
 	void *data = get_sector(info, sector, 1);
@@ -309,6 +354,11 @@ static int pseudo_print_sector(struct device_info *info, uint32_t sector)
 	return 0;
 }
 
+/**
+ * main - main function
+ * @argc:      argument count
+ * @argv:      argument vector
+ */
 int main(int argc, char *argv[])
 {
 	int opt;
