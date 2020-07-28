@@ -151,7 +151,7 @@ struct fat_bootsec {
 			unsigned char BS_FilSysType[FILSYSTYPESIZE];
 			unsigned char BS_BootCode[BOOTCODESIZE];
 			unsigned char BS_BootSign[BOOTSIGNSIZE];
-		} __attribute__((packed)) fat12_reserved_info;
+		} __attribute__((packed)) fat16_reserved_info;
 
 		struct {
 			uint32_t BPB_FATSz32;
