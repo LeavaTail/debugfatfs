@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "list.h"
+#include "list2.h"
 /**
  * Program Name, version, author.
  * displayed when 'usage' and 'version'
@@ -49,6 +50,7 @@ extern FILE *output;
 #define dump_debug(fmt, ...)  dump_msg(DUMP_DEBUG, fmt, ##__VA_ARGS__)
 
 #define SECSIZE 512
+#define DENTRY_LISTSIZE 32
 
 /*
  * FAT definition
@@ -113,6 +115,9 @@ struct device_info {
 	node_t *chain_head;
 	uint16_t *upcase_table;
 	size_t upcase_size;
+	node2_t **root;
+	size_t root_size;
+	size_t root_maxsize;
 };
 
 struct pseudo_bootsector {

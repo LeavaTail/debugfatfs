@@ -108,7 +108,7 @@ static bool exfat_check_allocation_cluster(struct device_info *info, uint32_t in
 	return false;
 }
 
-int exfat_traverse_directory(struct device_info *info, uint32_t index)
+static int __exfat_traverse_directory(struct device_info *info, uint32_t index, size_t count)
 {
 	int i;
 	uint16_t attr = 0;
@@ -117,6 +117,15 @@ int exfat_traverse_directory(struct device_info *info, uint32_t index)
 	void *clu = get_cluster(info, index);
 	struct exfat_dentry d, next;
 
+	if (count >= info->root_maxsize) {
+		info->root_maxsize += DENTRY_LISTSIZE;
+		node2_t **tmp = (node2_t **)realloc(info->root, sizeof(node2_t *) * info->root_maxsize);
+		if (!tmp)
+			/* Failed to expand area */
+			return -1;
+		info->root = tmp;
+	}
+	info->root[count] = init_node2(index, 0);
 	for(i = 1; i < (size / sizeof(struct exfat_dentry)); i++){
 		d = ((struct exfat_dentry *)clu)[i - 1];
 		next = ((struct exfat_dentry *)clu)[i];
@@ -142,7 +151,14 @@ int exfat_traverse_directory(struct device_info *info, uint32_t index)
 				attr = d.dentry.file.FileAttributes;
 				c = next.dentry.stream.FirstCluster;
 				len = next.dentry.stream.DataLength;
-				exfat_print_file_entry(info, d.dentry, next.dentry, d.dentry, d.dentry.file.SecondaryCount);
+				if (attr == ATTR_DIRECTORY) {
+					insert_node2(info->root[count], c, len);
+					info->root_size++;
+					__exfat_traverse_directory(info, c, count + 1);
+				} else {
+					insert_node2(info->root[count], c, len);
+				}
+exfat_print_file_entry(info, d.dentry, next.dentry, d.dentry, d.dentry.file.SecondaryCount);
 				i += d.dentry.file.SecondaryCount;
 				break;
 			case DENTRY_STREAM:
@@ -152,6 +168,12 @@ int exfat_traverse_directory(struct device_info *info, uint32_t index)
 	}
 	free(clu);
 	return 0;
+}
+
+int exfat_traverse_directory(struct device_info *info, uint32_t index)
+{
+	info->root = (node2_t **)malloc(sizeof(node2_t *) * info->root_maxsize);
+	return __exfat_traverse_directory(info, index, 0);
 }
 
 int exfat_load_root_dentry(struct device_info *info, void *root)

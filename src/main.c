@@ -170,6 +170,9 @@ static void init_device_info(struct device_info *info)
 	info->chain_head = NULL;
 	info->upcase_table = NULL;
 	info->upcase_size = 0;
+	info->root = NULL;
+	info->root_size = 0;
+	info->root_maxsize = DENTRY_LISTSIZE;
 }
 
 static int get_device_info(struct device_info *info)
@@ -190,6 +193,18 @@ static int get_device_info(struct device_info *info)
 
 	info->fd = fd;
 	info->total_size = s.st_size;
+	return 0;
+}
+
+static int free_dentry_list(struct device_info *info)
+{
+	int i;
+	for(i = 0; i < info->root_size; i++) {
+		/* FIXME: There may be areas that have not been released. */
+		free_list2(info->root[i]);
+	}
+	free(info->root);
+
 	return 0;
 }
 
@@ -396,6 +411,7 @@ file_err:
 out:
 	free_list(info.chain_head);
 	free(info.upcase_table);
+	free_dentry_list(&info);
 	if(outflag)
 		fclose(output);
 
