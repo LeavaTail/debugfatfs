@@ -70,7 +70,8 @@ extern FILE *output;
 #define BKBOOTSECSIZE	2
 #define RESERVEDSIZE	12
 #define BOOTCODE32SIZE	420
-
+#define FSIRESV1SIZE	480
+#define FSIRESV2SIZE	12
 /*
  * exFAT definition
  */
@@ -172,6 +173,16 @@ struct fat_bootsec {
 		} __attribute__((packed)) fat32_reserved_info;
 	} __attribute__((packed)) reserved_info;
 } __attribute__((packed)) ;
+
+struct fat32_fsinfo {
+  u_int32_t FSI_LeadSig;
+  unsigned char FSI_Reserved1[FSIRESV1SIZE];
+  u_int32_t FSI_StrucSig;
+  u_int32_t FSI_Free_Count;
+  u_int32_t FSI_Nxt_Free;
+  unsigned char FSI_Reserved2[FSIRESV2SIZE];
+  u_int32_t FSI_TrailSig;
+};
 
 struct exfat_bootsec {
 	unsigned char JumpBoot[JMPBOOTSIZE];

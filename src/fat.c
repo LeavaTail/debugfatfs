@@ -5,6 +5,7 @@
 int fat_show_boot_sec(struct device_info *, struct fat_bootsec *);
 int fat16_show_boot_sec(struct device_info *, struct fat_bootsec *);
 int fat32_show_boot_sec(struct device_info *, struct fat_bootsec *);
+int fat32_show_fsinfo(struct device_info *, struct fat32_fsinfo *);
 int fat_determine_type(struct device_info *, struct fat_bootsec *);
 
 /**
@@ -39,6 +40,7 @@ int fat_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 			void *fsinfo;
 			fat32_show_boot_sec(info, b);
 			fsinfo = get_sector(info, b->reserved_info.fat32_reserved_info.BPB_FSInfo * info->sector_size, 1);
+			fat32_show_fsinfo(info, fsinfo);
 			free(fsinfo);
 			break;
 		}
@@ -114,6 +116,22 @@ int fat32_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 	return 0;
 }
 
+/**
+ * fat32_show_fsinfo - show FSinfo Structure in FAT32
+ * @info:      structure to be shown device_info
+ * @b:         boot sector pointer in FAT
+ */
+int fat32_show_fsinfo(struct device_info *info, struct fat32_fsinfo *fsi)
+{
+	if((fsi->FSI_LeadSig != 0x41615252) ||
+		(fsi->FSI_StrucSig != 0x61417272) ||
+		(fsi->FSI_TrailSig != 0xAA550000))
+		dump_warn("FSinfo is expected specific sigunature, But this is difference.\n");
+
+	dump_notice("%-28s\t: %8u (cluster)\n", "free cluster count", fsi->FSI_Free_Count);
+	dump_notice("%-28s\t: %8u (cluster)\n", "first available cluster", fsi->FSI_Nxt_Free);
+	return 0;
+}
 /**
  * fat_determine_type - Determination of FAT type
  * @info:      structure to be shown device_info
