@@ -20,6 +20,7 @@ int exfat_traverse_directory(struct device_info *, uint32_t);
 static int __exfat_traverse_directory(struct device_info *, uint32_t, size_t);
 /* Check function prototype */
 static bool exfat_check_allocation_cluster(struct device_info *, uint32_t);
+static uint32_t exfat_check_fatentry(struct device_info *, uint32_t);
 
 
 /**
@@ -357,5 +358,24 @@ static bool exfat_check_allocation_cluster(struct device_info *info, uint32_t in
 	if (node)
 		return true;
 	return false;
+}
+
+/**
+ * exfat_check_fatentry - Whether or not cluster is continuous
+ * @info:          Target device information
+ * @index:         index of the cluster want to check
+ *
+ * TODO: validate index
+ */
+static uint32_t exfat_check_fatentry(struct device_info *info, uint32_t index)
+{
+	uint32_t ret = 0xffffffff;
+	size_t entry_per_sector = info->sector_size / sizeof(uint32_t);
+	uint32_t fat_index = (info->fat_offset +  index / entry_per_sector) * info->sector_size;
+	uint32_t *fat = get_sector(info, fat_index, 1);
+
+	ret = fat[index];
+	free(fat);
+	return ret;
 }
 
