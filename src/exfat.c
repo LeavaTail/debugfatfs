@@ -243,7 +243,7 @@ int exfat_load_root_dentry(struct device_info *info, void *root)
 						dentry.dentry.upcase.FirstCluster,
 						dentry.dentry.upcase.DataLength);
 				info->upcase_table = get_clusters(info, dentry.dentry.upcase.FirstCluster, clusters);
-				dump_notice("Allocation Bitmap (#%u):\n", dentry.dentry.upcase.FirstCluster);
+				dump_notice("Upcase table (#%u):\n", dentry.dentry.upcase.FirstCluster);
 				exfat_print_upcase_table(info);
 				break;
 			case DENTRY_VOLUME:

@@ -30,7 +30,7 @@ The percentage of clusters      :        0 (%)
 volume Label: VOLUME
 Allocation Bitmap (#2):
 2 3 4 5 6 7 8 9 10 
-Allocation Bitmap (#6):
+Upcase table (#6):
 Upcase-table was skipped.
 ```
 
@@ -45,7 +45,7 @@ The percentage of clusters      :        0 (%)
 volume Label: VOLUME
 Allocation Bitmap (#2):
 2 3 4 5 6 7 8 9 10 
-Allocation Bitmap (#6):
+Upcase table (#6):
 Upcase-table was skipped.
 Cluster #8:
 00000000:  85 02 6C B5 20 00 00 00 5C AE F9 50 5D AE F9 50  ..l. ...\..P]..P
