@@ -17,6 +17,7 @@ config.h.in
 config.log
 stamp-h1
 config.h.in~
+dumpexfat.1
 
 # build
 dumpexfat

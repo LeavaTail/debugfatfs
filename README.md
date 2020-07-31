@@ -62,6 +62,8 @@ Cluster #8:
 * [autoconf](http://www.gnu.org/software/autoconf/)
 * [automake](https://www.gnu.org/software/automake/)
 * [libtool](https://www.gnu.org/software/libtool/)
+* [help2man](https://www.gnu.org/software/help2man/)
+* [make](https://www.gnu.org/software/make/)
 
 ## Install
 ```sh
