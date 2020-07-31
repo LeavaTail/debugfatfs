@@ -300,6 +300,7 @@ static int __exfat_traverse_directory(struct device_info *info, uint32_t index, 
 			return -1;
 		info->root = tmp;
 	}
+	info->root_size = count + 1;
 	info->root[count] = init_node2(index, 0);
 	for(i = 1; i < (size / sizeof(struct exfat_dentry)); i++){
 		d = ((struct exfat_dentry *)clu)[i - 1];
@@ -328,7 +329,6 @@ static int __exfat_traverse_directory(struct device_info *info, uint32_t index, 
 				len = next.dentry.stream.DataLength;
 				if (attr == ATTR_DIRECTORY) {
 					insert_node2(info->root[count], c, len);
-					info->root_size++;
 					__exfat_traverse_directory(info, c, count + 1);
 				} else {
 					insert_node2(info->root[count], c, len);
