@@ -43,13 +43,13 @@ int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 	info->heap_offset = b->ClusterHeapOffset;
 	info->root_offset = b->FirstClusterOfRootDirectory;
 	info->sector_size  = 1 << b->BytesPerSectorShift;
-	info->cluster_shift = b->SectorsPerClusterShift;
+	info->cluster_size = (1 << b->SectorsPerClusterShift) * info->sector_size;
 	info->cluster_count = b->ClusterCount;
 	info->fat_length = b->NumberOfFats * b->FatLength * info->sector_size;
 
 	dump_notice("%-28s\t: %8lu (sector)\n", "Size of exFAT volumes", b->VolumeLength);
 	dump_notice("%-28s\t: %8lu (byte)\n", "Bytes per sector", info->sector_size);
-	dump_notice("%-28s\t: %8lu (byte)\n", "Bytes per cluster", info->sector_size * (1 << info->cluster_shift));
+	dump_notice("%-28s\t: %8lu (byte)\n", "Bytes per cluster", info->cluster_size);
 
 	dump_notice("%-28s\t: %8u\n", "The number of FATs", b->NumberOfFats);
 	dump_notice("%-28s\t: %8u (%%)\n", "The percentage of clusters", b->PercentInUse);
@@ -144,8 +144,7 @@ int exfat_print_cluster(struct device_info *info, uint32_t index)
 		return -1;
 
 	dump_notice("Cluster #%u:\n", index);
-	size_t size = ((1 << info->cluster_shift) * info->sector_size);
-	hexdump(output, data, size);
+	hexdump(output, data, info->cluster_size);
 	return 0;
 }
 
@@ -221,7 +220,7 @@ int exfat_load_root_dentry(struct device_info *info, void *root)
 {
 	int i, byte;
 	for(i = 0;
-			i < (((1 << info->cluster_shift) * info->sector_size) / sizeof(struct exfat_dentry));
+			i < (info->cluster_size / sizeof(struct exfat_dentry));
 			i++) {
 		struct exfat_dentry dentry = ((struct exfat_dentry *)root)[i];
 		switch (dentry.EntryType) {
@@ -238,9 +237,8 @@ int exfat_load_root_dentry(struct device_info *info, void *root)
 				break;
 			case DENTRY_UPCASE:
 				info->upcase_size = dentry.dentry.upcase.DataLength;
-				size_t clusize = 1 << info->cluster_shift * info->sector_size;
-				size_t clusters = (clusize / info->upcase_size) + 1;
-				info->upcase_table = (uint16_t*)malloc(clusize * clusters);
+				size_t clusters = (info->cluster_size / info->upcase_size) + 1;
+				info->upcase_table = (uint16_t*)malloc(info->cluster_size * clusters);
 				dump_debug("Get: Up-case table: cluster %x, size: %x\n",
 						dentry.dentry.upcase.FirstCluster,
 						dentry.dentry.upcase.DataLength);
@@ -290,7 +288,7 @@ static int __exfat_traverse_directory(struct device_info *info, uint32_t index, 
 	int i;
 	uint16_t attr = 0;
 	uint64_t c, len;
-	size_t size = (1 << info->cluster_shift) * info->sector_size;
+	size_t size = info->cluster_size;
 	void *clu = get_cluster(info, index);
 	struct exfat_dentry d, next;
 

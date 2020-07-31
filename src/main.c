@@ -114,8 +114,8 @@ void *get_cluster(struct device_info *info, off_t index)
 void *get_clusters(struct device_info *info, off_t index, size_t num)
 {
 	void *data;
-	size_t sector_size = info->sector_size;
-	off_t heap_start = info->heap_offset * sector_size;
+	size_t clu_per_sec = info->cluster_size / info->sector_size;
+	off_t heap_start = info->heap_offset * info->sector_size;
 
 	if (index < 2 || index + num > info->cluster_count) {
 		dump_err("invalid cluster index %lu.", index);
@@ -123,8 +123,8 @@ void *get_clusters(struct device_info *info, off_t index, size_t num)
 	}
 
 	data = get_sector(info,
-			heap_start + ((index - 2) * (1 << info->cluster_shift) * sector_size),
-			(1 << info->cluster_shift) * num);
+			heap_start + ((index - 2) * info->cluster_size),
+			clu_per_sec * num);
 	return data;
 }
 
@@ -163,7 +163,7 @@ static void init_device_info(struct device_info *info)
 	info->force = false;
 	info->total_size = 0;
 	info->sector_size = 0;
-	info->cluster_shift = 0;
+	info->cluster_size = 0;
 	info->cluster_count = 0;
 	info->fstype = 0;
 	info->flags = 0;

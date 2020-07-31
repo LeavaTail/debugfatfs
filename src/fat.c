@@ -27,7 +27,7 @@ int fat_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 	dump_notice("%-28s\t: %8u (sector)\n", "Sector count in Volume", b->BPB_TotSec16);
 
 	info->sector_size = b->BPB_BytesPerSec;
-	info->cluster_shift = b->BPB_SecPerClus;
+	info->cluster_size = b->BPB_SecPerClus * b->BPB_BytesPerSec;
 
 	switch (info->fstype) {
 		case FAT12_FILESYSTEM:

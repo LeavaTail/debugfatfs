@@ -105,7 +105,7 @@ struct device_info {
 	bool force;
 	size_t total_size;
 	size_t sector_size;
-	uint8_t cluster_shift;
+	size_t cluster_size;
 	uint16_t cluster_count;
 	enum FStype fstype;
 	unsigned short flags;
