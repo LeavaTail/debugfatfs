@@ -164,7 +164,7 @@ static int exfat_create_allocation_chain(struct device_info *info, void *bitmap)
 
 		for (bit = 0; bit < CHAR_BIT; bit++, entry >>= 1) {
 			if(entry & 0x01) {
-				uint8_t clu = (i * CHAR_BIT) + bit + EXFAT_FIRST_CLUSTER;
+				uint64_t clu = (i * CHAR_BIT) + bit + EXFAT_FIRST_CLUSTER;
 				append_node(info->chain_head, clu);
 			}
 		}
