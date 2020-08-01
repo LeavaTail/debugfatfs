@@ -38,8 +38,9 @@ int fat_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 		case FAT32_FILESYSTEM:
 		{
 			void *fsinfo;
+			fsinfo = malloc(info->sector_size);
 			fat32_show_boot_sec(info, b);
-			fsinfo = get_sector(info,
+			get_sector(info, fsinfo,
 						b->reserved_info.fat32_reserved_info.BPB_FSInfo * info->sector_size, 1);
 			fat32_show_fsinfo(info, fsinfo);
 			free(fsinfo);

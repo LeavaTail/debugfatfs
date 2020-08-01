@@ -318,9 +318,9 @@ struct exfat_dentry {
 #define EXFAT_YEAR		25
 
 /* General function */
-void *get_sector(struct device_info *, off_t, size_t);
-void *get_cluster(struct device_info *, off_t);
-void *get_clusters(struct device_info *, off_t, size_t);
+int get_sector(struct device_info *, void *, off_t, size_t);
+int get_cluster(struct device_info *, void *, off_t);
+int get_clusters(struct device_info *, void *, off_t, size_t);
 void hexdump(FILE *, void *, size_t);
 
 /* FAT function*/
@@ -328,7 +328,7 @@ int fat_show_boot_sec(struct device_info *, struct fat_bootsec *);
 
 /* exFAT function */
 int exfat_show_boot_sec(struct device_info *, struct exfat_bootsec *);
-int exfat_load_root_dentry(struct device_info *, void *);
+int exfat_load_root_dentry(struct device_info *);
 int exfat_print_cluster(struct device_info *, uint32_t);
 int exfat_traverse_directory(struct device_info *, uint32_t);
 

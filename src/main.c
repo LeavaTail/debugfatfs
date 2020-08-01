@@ -81,18 +81,16 @@ static void version(const char *command_name, const char *version,
  * @index:      Start bytes
  * @count:      The number of sectors
  */
-void* get_sector(struct device_info *info, off_t index, size_t count)
+int get_sector(struct device_info *info, void *data, off_t index, size_t count)
 {
-	void *data;
 	size_t sector_size = info->sector_size;
 
 	dump_debug("Get: Sector from %lx to %lx\n", index , index + (count * sector_size) - 1);
-	data = (char *)malloc(sector_size * count);
 	if ((pread(info->fd, data, count * sector_size, index)) < 0) {
 		dump_err("can't read %s.", info->name);
-		return NULL;
+		return -1;
 	}
-	return data;
+	return 0;
 }
 
 /**
@@ -100,9 +98,9 @@ void* get_sector(struct device_info *info, off_t index, size_t count)
  * @info:       Target device information
  * @index:      Start cluster index
  */
-void *get_cluster(struct device_info *info, off_t index)
+int get_cluster(struct device_info *info, void *data, off_t index)
 {
-	return get_clusters(info, index, 1);
+	return get_clusters(info, data,index, 1);
 }
 
 /**
@@ -111,21 +109,20 @@ void *get_cluster(struct device_info *info, off_t index)
  * @index:      Start cluster index
  * @num:        The number of clusters
  */
-void *get_clusters(struct device_info *info, off_t index, size_t num)
+int get_clusters(struct device_info *info, void *data, off_t index, size_t num)
 {
-	void *data;
 	size_t clu_per_sec = info->cluster_size / info->sector_size;
 	off_t heap_start = info->heap_offset * info->sector_size;
 
 	if (index < 2 || index + num > info->cluster_count) {
 		dump_err("invalid cluster index %lu.", index);
-		return NULL;
+		return -1;
 	}
 
-	data = get_sector(info,
+	return get_sector(info,
+			data,
 			heap_start + ((index - 2) * info->cluster_size),
 			clu_per_sec * num);
-	return data;
 }
 
 /**
@@ -259,12 +256,8 @@ static int pseudo_get_cluster_chain(struct device_info *info)
 {
 	switch (info->fstype) {
 		case EXFAT_FILESYSTEM:
-			{
-				void *root = get_cluster(info, info->root_offset);
-				exfat_load_root_dentry(info, root);
-				free(root);
-				break;
-			}
+			exfat_load_root_dentry(info);
+			break;
 		case FAT12_FILESYSTEM:
 			/* FALLTHROUGH */
 		case FAT16_FILESYSTEM:
@@ -345,12 +338,14 @@ static int pseudo_print_cluster(struct device_info *info, uint32_t cluster)
  */
 static int pseudo_print_sector(struct device_info *info, uint32_t sector)
 {
-	void *data = get_sector(info, sector, 1);
-	if (data) {
+	void *data;
+
+	data = (char *)malloc(info->sector_size);
+	if (get_sector(info, data, sector, 1)) {
 		dump_notice("Sector #%u:\n", sector);
 		hexdump(output, data, info->sector_size);
-		free(data);
 	}
+	free(data);
 	return 0;
 }
 

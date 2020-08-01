@@ -18,7 +18,7 @@ static int exfat_create_allocation_chain(struct device_info *, void *);
 static void exfat_load_filename(union dentry, uint64_t, uint8_t);
 static void exfat_load_timestamp(struct tm *, char *,
 							uint32_t, uint8_t, uint8_t);
-int exfat_load_root_dentry(struct device_info *, void *);
+int exfat_load_root_dentry(struct device_info *);
 int exfat_traverse_directory(struct device_info *, uint32_t);
 static int __exfat_traverse_directory(struct device_info *, uint32_t, size_t);
 
@@ -162,12 +162,12 @@ int exfat_print_cluster(struct device_info *info, uint32_t index)
 		return -1;
 	}
 
-	void *data = get_cluster(info, index);
-	if (!data)
-		return -1;
-
+	void *data;
+	data = malloc(info->cluster_size);
+	get_cluster(info, data, index);
 	dump_notice("Cluster #%u:\n", index);
 	hexdump(output, data, info->cluster_size);
+	free(data);
 	return 0;
 }
 
@@ -240,9 +240,16 @@ static void exfat_load_timestamp(struct tm *t, char *str,
  * @info:          Target device information
  * @root:          root directory dentry
  */
-int exfat_load_root_dentry(struct device_info *info, void *root)
+int exfat_load_root_dentry(struct device_info *info)
 {
-	int i, byte;
+	int i, byte, ret = 0;
+	void *root, *data;
+	root = malloc(info->cluster_size);
+
+	ret = get_cluster(info, root, info->root_offset);
+	if (ret)
+		goto out;
+
 	for(i = 0;
 			i < (info->cluster_size / sizeof(struct exfat_dentry));
 			i++) {
@@ -253,9 +260,11 @@ int exfat_load_root_dentry(struct device_info *info, void *root)
 						dentry.dentry.bitmap.FirstCluster,
 						dentry.dentry.bitmap.DataLength);
 				info->chain_head = init_node();
-				void *data = get_cluster(info, dentry.dentry.bitmap.FirstCluster);
+				data = malloc(info->cluster_size);
+				get_cluster(info, data, dentry.dentry.bitmap.FirstCluster);
 				exfat_create_allocation_chain(info, data);
 				free(data);
+
 				dump_notice("Allocation Bitmap (#%u):\n", dentry.dentry.bitmap.FirstCluster);
 				exfat_print_allocation_bitmap(info);
 				break;
@@ -266,8 +275,8 @@ int exfat_load_root_dentry(struct device_info *info, void *root)
 				dump_debug("Get: Up-case table: cluster %x, size: %x\n",
 						dentry.dentry.upcase.FirstCluster,
 						dentry.dentry.upcase.DataLength);
-				info->upcase_table = get_clusters(info,
-												dentry.dentry.upcase.FirstCluster, clusters);
+				get_clusters(info,
+						info->upcase_table, dentry.dentry.upcase.FirstCluster, clusters);
 				dump_notice("Upcase table (#%u):\n", dentry.dentry.upcase.FirstCluster);
 				exfat_print_upcase_table(info);
 				break;
@@ -285,8 +294,10 @@ int exfat_load_root_dentry(struct device_info *info, void *root)
 				goto out;
 		}
 	}
+
 out:
-	return 0;
+	free(root);
+	return ret;
 }
 
 /**
@@ -314,9 +325,9 @@ static int __exfat_traverse_directory(struct device_info *info, uint32_t index, 
 	uint16_t attr = 0;
 	uint64_t c, len;
 	size_t size = info->cluster_size;
-	void *clu = get_cluster(info, index);
+	void *clu = malloc(size);
 	struct exfat_dentry d, next;
-
+	get_cluster(info, clu, index);
 	if (count >= info->root_maxsize) {
 		info->root_maxsize += DENTRY_LISTSIZE;
 		node2_t **tmp = (node2_t **)realloc(info->root, sizeof(node2_t *) * info->root_maxsize);
@@ -396,8 +407,10 @@ static uint32_t exfat_check_fatentry(struct device_info *info, uint32_t index)
 	uint32_t ret = 0xffffffff;
 	size_t entry_per_sector = info->sector_size / sizeof(uint32_t);
 	uint32_t fat_index = (info->fat_offset +  index / entry_per_sector) * info->sector_size;
-	uint32_t *fat = get_sector(info, fat_index, 1);
+	uint32_t *fat;
 
+	fat = (uint32_t *)malloc(info->sector_size);
+	get_sector(info, fat, fat_index, 1);
 	ret = fat[index];
 	free(fat);
 	return ret;
