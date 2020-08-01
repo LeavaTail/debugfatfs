@@ -81,6 +81,8 @@ extern FILE *output;
 #define CLEARTOZERO		0x0008
 
 #define EXFAT_FIRST_CLUSTER	2
+#define EXFAT_BADCLUSTER	0xFFFFFFF7
+#define EXFAT_LASTCLUSTER	0xFFFFFFFF
 
 /*
  * FAT/exFAT definition

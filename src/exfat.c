@@ -323,10 +323,14 @@ static int __exfat_traverse_directory(struct device_info *info, uint32_t index, 
 {
 	int i;
 	uint16_t attr = 0;
+	uint32_t next_index;
 	uint64_t c, len;
 	size_t size = info->cluster_size;
-	void *clu = malloc(size);
+	size_t entries = size / sizeof(struct exfat_dentry);
+	void *clu, *clu_tmp;
 	struct exfat_dentry d, next;
+
+	clu = malloc(size);
 	get_cluster(info, clu, index);
 	if (count >= info->root_maxsize) {
 		info->root_maxsize += DENTRY_LISTSIZE;
@@ -338,46 +342,67 @@ static int __exfat_traverse_directory(struct device_info *info, uint32_t index, 
 	}
 	info->root_size = count + 1;
 	info->root[count] = init_node2(index, 0);
-	for(i = 1; i < (size / sizeof(struct exfat_dentry)); i++){
-		d = ((struct exfat_dentry *)clu)[i - 1];
-		next = ((struct exfat_dentry *)clu)[i];
+	do {
+		for(i = 0; i < entries; i++){
+			d = ((struct exfat_dentry *)clu)[i];
 
-		switch (d.EntryType) {
-			case DENTRY_UNUSED:
-				return 0;
-			case DENTRY_BITMAP:
-				c = d.dentry.bitmap.FirstCluster;
-				len = d.dentry.bitmap.DataLength;
-				dump_debug("Insert Bitmap table to %lu\n", c);
-				break;
-			case DENTRY_UPCASE:
-				c = d.dentry.upcase.FirstCluster;
-				len = d.dentry.upcase.DataLength;
-				dump_debug("Insert Upcase table to %lu\n", c);
-				break;
-			case DENTRY_FILE:
-				if (next.EntryType != DENTRY_STREAM) {
-					dump_warn("File should have stream entry, but This don't have.\n");
-					return -1;
-				}
-				attr = d.dentry.file.FileAttributes;
-				c = next.dentry.stream.FirstCluster;
-				len = next.dentry.stream.DataLength;
-				if (attr == ATTR_DIRECTORY) {
-					insert_node2(info->root[count], c, len);
-					__exfat_traverse_directory(info, c, count + 1);
-				} else {
-					insert_node2(info->root[count], c, len);
-				}
-				exfat_print_file_entry(info,
+			switch (d.EntryType) {
+				case DENTRY_UNUSED:
+					return 0;
+				case DENTRY_BITMAP:
+					c = d.dentry.bitmap.FirstCluster;
+					len = d.dentry.bitmap.DataLength;
+					dump_debug("Insert Bitmap table to %lu\n", c);
+					break;
+				case DENTRY_UPCASE:
+					c = d.dentry.upcase.FirstCluster;
+					len = d.dentry.upcase.DataLength;
+					dump_debug("Insert Upcase table to %lu\n", c);
+					break;
+				case DENTRY_FILE:
+					if (i + d.dentry.file.SecondaryCount > entries) {
+						next_index = exfat_check_fatentry(info, index);
+						if (!next_index) {
+							dump_err("Dentry must be continuous, but fat chain is nothing.\n");
+							return -1;
+						}
+						dump_notice("Dentry is followed by next cluster. (%u) -> (%u)\n", index, next_index);
+
+						clu_tmp = realloc(clu, size + info->cluster_size);
+						if (!clu_tmp)
+							/* Failed to expand area */
+							return -1;
+						clu = clu_tmp;
+						get_cluster(info, clu + size, next_index);
+						size += info->cluster_size;
+						entries = size / sizeof(struct exfat_dentry);
+						index = next_index;
+					}
+
+					next = ((struct exfat_dentry *)clu)[i + 1];
+					if (next.EntryType != DENTRY_STREAM) {
+						dump_warn("File should have stream entry, but This don't have.\n");
+						return -1;
+					}
+					attr = d.dentry.file.FileAttributes;
+					c = next.dentry.stream.FirstCluster;
+					len = next.dentry.stream.DataLength;
+					if (attr == ATTR_DIRECTORY) {
+						insert_node2(info->root[count], c, len);
+						__exfat_traverse_directory(info, c, count + 1);
+					} else {
+						insert_node2(info->root[count], c, len);
+					}
+					exfat_print_file_entry(info,
 							d.dentry, next.dentry, d.dentry, d.dentry.file.SecondaryCount);
-				i += d.dentry.file.SecondaryCount;
-				break;
-			case DENTRY_STREAM:
-				dump_warn("Stream needs be File entry, but This is not.\n");
-				break;
+					i += d.dentry.file.SecondaryCount;
+					break;
+				case DENTRY_STREAM:
+					dump_warn("Stream needs be File entry, but This is not.\n");
+					break;
+			}
 		}
-	}
+	} while((index = exfat_check_fatentry(info, index)) != 0);
 	free(clu);
 	return 0;
 }
@@ -400,18 +425,33 @@ static bool exfat_check_allocation_cluster(struct device_info *info, uint32_t in
  * @info:          Target device information
  * @index:         index of the cluster want to check
  *
- * TODO: validate index
+ * @retrun:        next cluster (@index has next cluster)
+ *                 0            (@index doesn't have next cluster)
  */
 static uint32_t exfat_check_fatentry(struct device_info *info, uint32_t index)
 {
-	uint32_t ret = 0xffffffff;
+	uint32_t ret;
 	size_t entry_per_sector = info->sector_size / sizeof(uint32_t);
 	uint32_t fat_index = (info->fat_offset +  index / entry_per_sector) * info->sector_size;
 	uint32_t *fat;
 
 	fat = (uint32_t *)malloc(info->sector_size);
 	get_sector(info, fat, fat_index, 1);
-	ret = fat[index];
+	/* validate index */
+	if (index == EXFAT_BADCLUSTER) {
+		ret = 0;
+		dump_err("cluster: %u is bad cluster.\n", index);
+	} else if (index == EXFAT_LASTCLUSTER) {
+		ret = 0;
+		dump_debug("cluster: %u is the last cluster of cluster chain.\n", index);
+	} else if (index < EXFAT_FIRST_CLUSTER || index > info->cluster_count + 1) {
+		ret = 0;
+		dump_debug("cluster: %u is invalid.\n", index);
+	} else {
+		ret = fat[index];
+		dump_debug("cluster: %u has chain. next is %u.\n", ret, fat[index]);
+	}
+
 	free(fat);
 	return ret;
 }
