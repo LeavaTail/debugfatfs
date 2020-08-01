@@ -39,7 +39,8 @@ int fat_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 		{
 			void *fsinfo;
 			fat32_show_boot_sec(info, b);
-			fsinfo = get_sector(info, b->reserved_info.fat32_reserved_info.BPB_FSInfo * info->sector_size, 1);
+			fsinfo = get_sector(info,
+						b->reserved_info.fat32_reserved_info.BPB_FSInfo * info->sector_size, 1);
 			fat32_show_fsinfo(info, fsinfo);
 			free(fsinfo);
 			break;
@@ -67,7 +68,8 @@ int fat16_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 	info->fat_offset = b->BPB_RevdSecCnt;
 	info->fat_length = b->BPB_NumFATs * b->BPB_FATSz16;
 	info->root_offset = info->fat_offset + info->fat_length;
-	info->heap_offset = info->root_offset + (b->BPB_RootEntCnt * 32 + b->BPB_BytesPerSec - 1) / b->BPB_BytesPerSec;
+	info->heap_offset = info->root_offset +
+				(b->BPB_RootEntCnt * 32 + b->BPB_BytesPerSec - 1) / b->BPB_BytesPerSec;
 
 	dump_notice("%-28s\t: ", "Volume ID");
 	for(i = 0; i < VOLIDSIZE; i++)
@@ -97,7 +99,9 @@ int fat32_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 	info->fat_offset = b->BPB_RevdSecCnt;
 	info->fat_length = b->BPB_NumFATs * b->reserved_info.fat32_reserved_info.BPB_FATSz32;
 	info->heap_offset = info->fat_offset + info->fat_length;
-	info->root_offset = info->heap_offset + (b->reserved_info.fat32_reserved_info.BPB_RootClus - 2) * b->BPB_SecPerClus * b->BPB_BytesPerSec;
+	info->root_offset = info->heap_offset +
+				(b->reserved_info.fat32_reserved_info.BPB_RootClus - 2) *
+				b->BPB_SecPerClus * b->BPB_BytesPerSec;
 
 	dump_notice("%-28s\t: ", "Volume ID");
 	for(i = 0; i < VOLIDSIZE; i++)
@@ -109,10 +113,14 @@ int fat32_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 		dump_notice("%c", b->reserved_info.fat32_reserved_info.BS_VolLab[i]);
 	dump_notice("\n");
 
-	dump_notice("%-28s\t: %8x\n", "Sectors Per FAT", b->reserved_info.fat32_reserved_info.BPB_FATSz32);
-	dump_notice("%-28s\t: %8x (sector)\n", "The first sector of the Root", b->reserved_info.fat32_reserved_info.BPB_RootClus);
-	dump_notice("%-28s\t: %8x (sector)\n", "FSINFO sector", b->reserved_info.fat32_reserved_info.BPB_FSInfo);
-	dump_notice("%-28s\t: %8x (sector)\n", "Backup Boot sector", b->reserved_info.fat32_reserved_info.BPB_BkBootSec);
+	dump_notice("%-28s\t: %8x\n", "Sectors Per FAT",
+						b->reserved_info.fat32_reserved_info.BPB_FATSz32);
+	dump_notice("%-28s\t: %8x (sector)\n", "The first sector of the Root",
+						b->reserved_info.fat32_reserved_info.BPB_RootClus);
+	dump_notice("%-28s\t: %8x (sector)\n", "FSINFO sector",
+						b->reserved_info.fat32_reserved_info.BPB_FSInfo);
+	dump_notice("%-28s\t: %8x (sector)\n", "Backup Boot sector",
+						b->reserved_info.fat32_reserved_info.BPB_BkBootSec);
 	return 0;
 }
 
@@ -139,7 +147,8 @@ int fat32_show_fsinfo(struct device_info *info, struct fat32_fsinfo *fsi)
  */
 int fat_determine_type(struct device_info *info, struct fat_bootsec *b)
 {
-	uint16_t RootDirSectors = ((b->BPB_RootEntCnt * 32) + (b->BPB_BytesPerSec -1)) / b->BPB_BytesPerSec;
+	uint16_t RootDirSectors = ((b->BPB_RootEntCnt * 32) +
+								(b->BPB_BytesPerSec -1)) / b->BPB_BytesPerSec;
 	uint32_t FATSz;
 	uint32_t TotSec;
 	uint32_t DataSec;
