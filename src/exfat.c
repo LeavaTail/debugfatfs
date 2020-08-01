@@ -10,14 +10,14 @@ int exfat_show_boot_sec(struct device_info *, struct exfat_bootsec *);
 static void exfat_print_allocation_bitmap(struct device_info *);
 static void exfat_print_upcase_table(struct device_info *);
 static void exfat_print_file_entry(struct device_info *,
-							union dentry, union dentry, union dentry, uint8_t);
+		union dentry, union dentry, union dentry, uint8_t);
 int exfat_print_cluster(struct device_info *, uint32_t);
 
 /* Load function prototype */
 static int exfat_create_allocation_chain(struct device_info *, void *);
 static void exfat_load_filename(union dentry, uint64_t, uint8_t);
 static void exfat_load_timestamp(struct tm *, char *,
-							uint32_t, uint8_t, uint8_t);
+		uint32_t, uint8_t, uint8_t);
 int exfat_load_root_dentry(struct device_info *);
 int exfat_traverse_directory(struct device_info *, uint32_t);
 static int __exfat_traverse_directory(struct device_info *, uint32_t, size_t);
@@ -37,17 +37,17 @@ static uint32_t exfat_check_fatentry(struct device_info *, uint32_t);
 int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 {
 	dump_info("%-28s\t: %8lx (sector)\n", "media-relative sector offset",
-										b->PartitionOffset);
+			b->PartitionOffset);
 	dump_info("%-28s\t: %8x (sector)\n", "Offset of the First FAT",
-										b->FatOffset);
+			b->FatOffset);
 	dump_info("%-28s\t: %8u (sector)\n", "Length of FAT table",
-										b->FatLength);
+			b->FatLength);
 	dump_info("%-28s\t: %8x (sector)\n", "Offset of the Cluster Heap",
-										b->ClusterHeapOffset);
+			b->ClusterHeapOffset);
 	dump_info("%-28s\t: %8u (cluster)\n", "The number of clusters",
-										b->ClusterCount);
+			b->ClusterCount);
 	dump_info("%-28s\t: %8u (cluster)\n", "The first cluster of the root",
-										b->FirstClusterOfRootDirectory);
+			b->FirstClusterOfRootDirectory);
 
 	info->fat_offset = b->FatOffset;
 	info->heap_offset = b->ClusterHeapOffset;
@@ -58,16 +58,16 @@ int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 	info->fat_length = b->NumberOfFats * b->FatLength * info->sector_size;
 
 	dump_notice("%-28s\t: %8lu (sector)\n", "Size of exFAT volumes",
-										b->VolumeLength);
+			b->VolumeLength);
 	dump_notice("%-28s\t: %8lu (byte)\n", "Bytes per sector",
-										info->sector_size);
+			info->sector_size);
 	dump_notice("%-28s\t: %8lu (byte)\n", "Bytes per cluster",
-										info->cluster_size);
+			info->cluster_size);
 
 	dump_notice("%-28s\t: %8u\n", "The number of FATs",
-										b->NumberOfFats);
+			b->NumberOfFats);
 	dump_notice("%-28s\t: %8u (%%)\n", "The percentage of clusters",
-										b->PercentInUse);
+			b->PercentInUse);
 	dump_notice("\n");
 
 	return 0;
@@ -99,8 +99,8 @@ static void exfat_print_upcase_table(struct device_info *info)
 
 	/* Usually, we don't want to display raw upcase table */
 	if (print_level < DUMP_INFO) {
-		 dump_notice("Upcase-table was skipped.\n");
-		 return;
+		dump_notice("Upcase-table was skipped.\n");
+		return;
 	}
 
 	/* Output table header */
@@ -111,7 +111,7 @@ static void exfat_print_upcase_table(struct device_info *info)
 
 	/* Output Table contents */
 	for(offset = 0; offset < length / uni_count; offset++) {
-		 dump_info("%04lxh:  ", offset * 0x10 / sizeof(uint16_t));
+		dump_info("%04lxh:  ", offset * 0x10 / sizeof(uint16_t));
 		for(byte = 0; byte < uni_count; byte++) {
 			dump_info("%04x ", info->upcase_table[offset * uni_count + byte]);
 		}
@@ -127,8 +127,8 @@ static void exfat_print_upcase_table(struct device_info *info)
  * @name:       File Name dentry
  */
 static void exfat_print_file_entry(struct device_info *info,
-					union dentry file, union dentry stream, union dentry name,
-					uint8_t count)
+		union dentry file, union dentry stream, union dentry name,
+		uint8_t count)
 {
 	struct tm ctime, mtime, atime;
 
@@ -137,14 +137,14 @@ static void exfat_print_file_entry(struct device_info *info,
 	dump_debug("First Cluster: %u\n", stream.stream.FirstCluster);
 
 	exfat_load_timestamp(&ctime, "Create", file.file.CreateTimestamp,
-						file.file.Create10msIncrement,
-						file.file.CreateUtcOffset);
+			file.file.Create10msIncrement,
+			file.file.CreateUtcOffset);
 	exfat_load_timestamp(&mtime, "Modify", file.file.LastModifiedTimestamp,
-						file.file.LastModified10msIncrement,
-						file.file.LastModifiedUtcOffset);
+			file.file.LastModified10msIncrement,
+			file.file.LastModifiedUtcOffset);
 	exfat_load_timestamp(&atime, "Access", file.file.LastAccessedTimestamp,
-						0,
-						file.file.LastAccessdUtcOffset);
+			0,
+			file.file.LastAccessdUtcOffset);
 	dump_info("\n");
 }
 
@@ -216,7 +216,7 @@ static void exfat_load_filename(union dentry name, uint64_t name_len, uint8_t co
  * @tz:             UtcOffset in File Directory Entry
  */
 static void exfat_load_timestamp(struct tm *t, char *str,
-								uint32_t time, uint8_t subsec, uint8_t tz)
+		uint32_t time, uint8_t subsec, uint8_t tz)
 {
 	int8_t offset = tz * 15;
 	t->tm_year = (time >> EXFAT_YEAR) & 0x7f;
