@@ -256,34 +256,6 @@ static int pseudo_get_cluster_chain(struct device_info *info)
 {
 	switch (info->fstype) {
 		case EXFAT_FILESYSTEM:
-			exfat_load_root_dentry(info);
-			break;
-		case FAT12_FILESYSTEM:
-			/* FALLTHROUGH */
-		case FAT16_FILESYSTEM:
-			/* FIXME: Unimplemented*/
-			break;
-		case FAT32_FILESYSTEM:
-			/* FIXME: Unimplemented*/
-			break;
-		default:
-			dump_err("invalid filesystem image.");
-			return -1;
-	}
-
-	return 0;
-}
-
-/**
- * pseudo_traverse_directory - virtual function to traverse all cluster
- * @info:      structure to be get device_info
- *
- * TODO: implement function in FAT12/16/32
- */
-static int pseudo_traverse_directory(struct device_info *info)
-{
-	switch (info->fstype) {
-		case EXFAT_FILESYSTEM:
 			exfat_traverse_directory(info, info->root_offset);
 			break;
 		case FAT12_FILESYSTEM:
@@ -435,8 +407,6 @@ int main(int argc, char *argv[])
 	ret = pseudo_get_cluster_chain(&info);
 	if (ret < 0)
 		goto file_err;
-
-	ret = pseudo_traverse_directory(&info);
 
 	if (sflag) {
 		ret = pseudo_print_sector(&info, sector);

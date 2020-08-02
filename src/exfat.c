@@ -18,7 +18,6 @@ static int exfat_create_allocation_chain(struct device_info *, void *);
 static void exfat_load_filename(union dentry, uint64_t, uint8_t);
 static void exfat_load_timestamp(struct tm *, char *,
 		uint32_t, uint8_t, uint8_t);
-int exfat_load_root_dentry(struct device_info *);
 int exfat_traverse_directory(struct device_info *, uint32_t);
 static int __exfat_traverse_directory(struct device_info *, uint32_t, size_t);
 
@@ -237,71 +236,6 @@ static void exfat_load_timestamp(struct tm *t, char *str,
 }
 
 /**
- * exfat_load_root_dentry - load extra entry(bitmap/upcase/volume)
- * @info:          Target device information
- * @root:          root directory dentry
- */
-int exfat_load_root_dentry(struct device_info *info)
-{
-	int i, byte, ret = 0;
-	void *root, *data;
-	root = malloc(info->cluster_size);
-
-	ret = get_cluster(info, root, info->root_offset);
-	if (ret)
-		goto out;
-
-	for(i = 0;
-			i < (info->cluster_size / sizeof(struct exfat_dentry));
-			i++) {
-		struct exfat_dentry dentry = ((struct exfat_dentry *)root)[i];
-		switch (dentry.EntryType) {
-			case DENTRY_BITMAP:
-				dump_debug("Get: allocation table: cluster %x, size: %lx\n",
-						dentry.dentry.bitmap.FirstCluster,
-						dentry.dentry.bitmap.DataLength);
-				info->chain_head = init_node();
-				data = malloc(info->cluster_size);
-				get_cluster(info, data, dentry.dentry.bitmap.FirstCluster);
-				exfat_create_allocation_chain(info, data);
-				free(data);
-
-				dump_notice("Allocation Bitmap (#%u):\n", dentry.dentry.bitmap.FirstCluster);
-				exfat_print_allocation_bitmap(info);
-				break;
-			case DENTRY_UPCASE:
-				info->upcase_size = dentry.dentry.upcase.DataLength;
-				size_t clusters = (info->cluster_size / info->upcase_size) + 1;
-				info->upcase_table = (uint16_t*)malloc(info->cluster_size * clusters);
-				dump_debug("Get: Up-case table: cluster %x, size: %x\n",
-						dentry.dentry.upcase.FirstCluster,
-						dentry.dentry.upcase.DataLength);
-				get_clusters(info,
-						info->upcase_table, dentry.dentry.upcase.FirstCluster, clusters);
-				dump_notice("Upcase table (#%u):\n", dentry.dentry.upcase.FirstCluster);
-				exfat_print_upcase_table(info);
-				break;
-			case DENTRY_VOLUME:
-				dump_notice("volume Label: ");
-				/* FIXME: VolumeLabel is Unicode string, But %c is ASCII code */
-				for(byte = 0; byte < dentry.dentry.vol.CharacterCount; byte++) {
-					dump_notice("%c", dentry.dentry.vol.VolumeLabel[byte]);
-				}
-				dump_notice("\n");
-				break;
-			case DENTRY_GUID:
-				break;
-			case DENTRY_UNUSED:
-				goto out;
-		}
-	}
-
-out:
-	free(root);
-	return ret;
-}
-
-/**
  * __exfat_traverse_directory - function interface to traverse all cluster
  * @info:          Target device information
  * @index:         index of the cluster want to check
@@ -322,7 +256,7 @@ int exfat_traverse_directory(struct device_info *info, uint32_t index)
  */
 static int __exfat_traverse_directory(struct device_info *info, uint32_t index, size_t count)
 {
-	int i;
+	int i, byte;
 	uint16_t attr = 0;
 	uint32_t next_index;
 	uint64_t c, len;
@@ -351,14 +285,37 @@ static int __exfat_traverse_directory(struct device_info *info, uint32_t index, 
 				case DENTRY_UNUSED:
 					return 0;
 				case DENTRY_BITMAP:
-					c = d.dentry.bitmap.FirstCluster;
-					len = d.dentry.bitmap.DataLength;
-					dump_debug("Insert Bitmap table to %lu\n", c);
+					dump_debug("Get: allocation table: cluster %x, size: %lx\n",
+							d.dentry.bitmap.FirstCluster,
+							d.dentry.bitmap.DataLength);
+					info->chain_head = init_node();
+					clu_tmp = malloc(info->cluster_size);
+					get_cluster(info, clu_tmp, d.dentry.bitmap.FirstCluster);
+					exfat_create_allocation_chain(info, clu_tmp);
+					free(clu_tmp);
+
+					dump_notice("Allocation Bitmap (#%u):\n", d.dentry.bitmap.FirstCluster);
+					exfat_print_allocation_bitmap(info);
 					break;
 				case DENTRY_UPCASE:
-					c = d.dentry.upcase.FirstCluster;
-					len = d.dentry.upcase.DataLength;
-					dump_debug("Insert Upcase table to %lu\n", c);
+					info->upcase_size = d.dentry.upcase.DataLength;
+					len = (info->cluster_size / info->upcase_size) + 1;
+					info->upcase_table = (uint16_t*)malloc(info->cluster_size * len);
+					dump_debug("Get: Up-case table: cluster %x, size: %x\n",
+							d.dentry.upcase.FirstCluster,
+							d.dentry.upcase.DataLength);
+					get_clusters(info,
+							info->upcase_table, d.dentry.upcase.FirstCluster, len);
+					dump_notice("Upcase table (#%u):\n", d.dentry.upcase.FirstCluster);
+					exfat_print_upcase_table(info);
+					break;
+				case DENTRY_VOLUME:
+					dump_notice("volume Label: ");
+					/* FIXME: VolumeLabel is Unicode string, But %c is ASCII code */
+					for(byte = 0; byte < d.dentry.vol.CharacterCount; byte++) {
+						dump_notice("%c", d.dentry.vol.VolumeLabel[byte]);
+					}
+					dump_notice("\n");
 					break;
 				case DENTRY_FILE:
 					if (i + d.dentry.file.SecondaryCount > entries) {
