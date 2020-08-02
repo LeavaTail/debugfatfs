@@ -256,7 +256,7 @@ static int pseudo_get_cluster_chain(struct device_info *info)
 {
 	switch (info->fstype) {
 		case EXFAT_FILESYSTEM:
-			exfat_traverse_directory(info, info->root_offset);
+			exfat_traverse_directories(info, info->root_offset);
 			break;
 		case FAT12_FILESYSTEM:
 			/* FALLTHROUGH */

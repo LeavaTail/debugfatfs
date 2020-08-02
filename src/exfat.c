@@ -18,8 +18,8 @@ static int exfat_create_allocation_chain(struct device_info *, void *);
 static void exfat_load_filename(union dentry, uint64_t, uint8_t);
 static void exfat_load_timestamp(struct tm *, char *,
 		uint32_t, uint8_t, uint8_t);
-int exfat_traverse_directory(struct device_info *, uint32_t);
-static int __exfat_traverse_directory(struct device_info *, uint32_t, size_t);
+int exfat_traverse_directories(struct device_info *, uint32_t);
+int exfat_traverse_one_directory(struct device_info *, uint32_t);
 
 /* Check function prototype */
 static bool exfat_check_allocation_cluster(struct device_info *, uint32_t);
@@ -236,25 +236,23 @@ static void exfat_load_timestamp(struct tm *t, char *str,
 }
 
 /**
- * __exfat_traverse_directory - function interface to traverse all cluster
+ * exfat_traverse_directories - function interface to traverse all cluster
  * @info:          Target device information
  * @index:         index of the cluster want to check
  */
-int exfat_traverse_directory(struct device_info *info, uint32_t index)
+int exfat_traverse_directories(struct device_info *info, uint32_t index)
 {
 	info->root = (node2_t **)malloc(sizeof(node2_t *) * info->root_maxsize);
-	return __exfat_traverse_directory(info, index, 0);
+	return exfat_traverse_one_directory(info, index);
 }
 
 /**
- * __exfat_traverse_directory - function to traverse all cluster
+ * exfat_traverse_one_directory - function to traverse one directory
  * @info:          Target device information
  * @index:         index of the cluster want to check
  * @count:         Directory depth count
- *
- * TODO: check FAT entry for discontinuous index
  */
-static int __exfat_traverse_directory(struct device_info *info, uint32_t index, size_t count)
+int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 {
 	int i, byte;
 	uint16_t attr = 0;
@@ -267,7 +265,7 @@ static int __exfat_traverse_directory(struct device_info *info, uint32_t index, 
 
 	clu = malloc(size);
 	get_cluster(info, clu, index);
-	if (count >= info->root_maxsize) {
+	if (info->root_size++ >= info->root_maxsize) {
 		info->root_maxsize += DENTRY_LISTSIZE;
 		node2_t **tmp = (node2_t **)realloc(info->root, sizeof(node2_t *) * info->root_maxsize);
 		if (!tmp)
@@ -275,8 +273,7 @@ static int __exfat_traverse_directory(struct device_info *info, uint32_t index, 
 			return -1;
 		info->root = tmp;
 	}
-	info->root_size = count + 1;
-	info->root[count] = init_node2(index, 0);
+	info->root[info->root_size] = init_node2(index, 0);
 	do {
 		for(i = 0; i < entries; i++){
 			d = ((struct exfat_dentry *)clu)[i];
@@ -331,13 +328,7 @@ static int __exfat_traverse_directory(struct device_info *info, uint32_t index, 
 					}
 					attr = d.dentry.file.FileAttributes;
 					c = next.dentry.stream.FirstCluster;
-					len = next.dentry.stream.DataLength;
-					if (attr == ATTR_DIRECTORY) {
-						insert_node2(info->root[count], c, len);
-						__exfat_traverse_directory(info, c, count + 1);
-					} else {
-						insert_node2(info->root[count], c, len);
-					}
+					insert_node2(info->root[info->root_size], c, attr);
 					exfat_print_file_entry(info,
 							d.dentry, next.dentry, d.dentry, d.dentry.file.SecondaryCount);
 					i += d.dentry.file.SecondaryCount;
