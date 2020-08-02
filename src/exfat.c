@@ -26,6 +26,7 @@ static int __exfat_traverse_directory(struct device_info *, uint32_t, size_t);
 static bool exfat_check_allocation_cluster(struct device_info *, uint32_t);
 static uint32_t exfat_check_fatentry(struct device_info *, uint32_t);
 
+static uint32_t exfat_concat_cluster(struct device_info *, uint32_t, void *, size_t);
 
 /**
  * exfat_show_boot_sec - show boot sector in exFAT
@@ -361,22 +362,9 @@ static int __exfat_traverse_directory(struct device_info *info, uint32_t index, 
 					break;
 				case DENTRY_FILE:
 					if (i + d.dentry.file.SecondaryCount > entries) {
-						next_index = exfat_check_fatentry(info, index);
-						if (!next_index) {
-							dump_err("Dentry must be continuous, but fat chain is nothing.\n");
-							return -1;
-						}
-						dump_notice("Dentry is followed by next cluster. (%u) -> (%u)\n", index, next_index);
-
-						clu_tmp = realloc(clu, size + info->cluster_size);
-						if (!clu_tmp)
-							/* Failed to expand area */
-							return -1;
-						clu = clu_tmp;
-						get_cluster(info, clu + size, next_index);
+						index = exfat_concat_cluster(info, index, clu, size);
 						size += info->cluster_size;
 						entries = size / sizeof(struct exfat_dentry);
-						index = next_index;
 					}
 
 					next = ((struct exfat_dentry *)clu)[i + 1];
@@ -402,7 +390,13 @@ static int __exfat_traverse_directory(struct device_info *info, uint32_t index, 
 					break;
 			}
 		}
-	} while((index = exfat_check_fatentry(info, index)) != 0);
+		index = exfat_concat_cluster(info, index, clu, size);
+		if (!index) 
+			break;
+
+		size += info->cluster_size;
+		entries = size / sizeof(struct exfat_dentry);
+	} while(1);
 	free(clu);
 	return 0;
 }
@@ -456,3 +450,33 @@ static uint32_t exfat_check_fatentry(struct device_info *info, uint32_t index)
 	return ret;
 }
 
+/**
+ * exfat_concat_cluster - Contatenate cluster @data with next_cluster
+ * @info:          Target device information
+ * @index:         index of the cluster
+ * @data:          The cluster
+ * @size:          allocated size to store cluster data
+ *
+ * @retrun:        next cluster (@index has next cluster)
+ *                 0            (@index doesn't have next cluster, or failed to realloc)
+ */
+static uint32_t exfat_concat_cluster(struct device_info *info, uint32_t index, void *data, size_t size)
+{
+	uint32_t ret;
+	void *clu_tmp;
+	ret = exfat_check_fatentry(info, index);
+
+	if (ret) {
+		clu_tmp = realloc(data, size + info->cluster_size);
+		if (clu_tmp) {
+			data = clu_tmp;
+			get_cluster(info, data + size, ret);
+			dump_notice("Concatenate cluster #%u with #%u\n.\n", index, ret);
+			free(clu_tmp);
+		} else {
+			dump_err("Failed to Get new memory.\n");
+			ret = 0;
+		}
+	}
+	return ret;
+}
