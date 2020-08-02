@@ -265,7 +265,7 @@ int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 
 	clu = malloc(size);
 	get_cluster(info, clu, index);
-	if (info->root_size++ >= info->root_maxsize) {
+	if (info->root_size >= info->root_maxsize) {
 		info->root_maxsize += DENTRY_LISTSIZE;
 		node2_t **tmp = (node2_t **)realloc(info->root, sizeof(node2_t *) * info->root_maxsize);
 		if (!tmp)
@@ -280,7 +280,8 @@ int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 
 			switch (d.EntryType) {
 				case DENTRY_UNUSED:
-					return 0;
+					dump_debug("End of cluster#%u\n", index);
+					goto out;
 				case DENTRY_BITMAP:
 					dump_debug("Get: allocation table: cluster %x, size: %lx\n",
 							d.dentry.bitmap.FirstCluster,
@@ -345,6 +346,8 @@ int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 		size += info->cluster_size;
 		entries = size / sizeof(struct exfat_dentry);
 	} while(1);
+out:
+	info->root_size++;
 	free(clu);
 	return 0;
 }
