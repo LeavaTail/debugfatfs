@@ -141,6 +141,18 @@ int fat32_show_fsinfo(struct device_info *info, struct fat32_fsinfo *fsi)
 	dump_notice("%-28s\t: %8u (cluster)\n", "first available cluster", fsi->FSI_Nxt_Free);
 	return 0;
 }
+
+int fat_print_cluster(struct device_info *info, uint32_t index)
+{
+	void *data;
+	data = malloc(info->cluster_size);
+	get_cluster(info, data, index);
+	dump_notice("Cluster #%u:\n", index);
+	hexdump(output, data, info->cluster_size);
+	free(data);
+	return 0;
+}
+
 /**
  * fat_determine_type - Determination of FAT type
  * @info:      structure to be shown device_info

@@ -278,8 +278,6 @@ static int pseudo_get_cluster_chain(struct device_info *info)
  * pseudo_print_cluster - virtual function to print any cluster
  * @info:      structure to be get device_info
  * @cluster:   cluster index to display
- *
- * TODO: implement function in FAT12/16/32
  */
 static int pseudo_print_cluster(struct device_info *info, uint32_t cluster)
 {
@@ -290,10 +288,9 @@ static int pseudo_print_cluster(struct device_info *info, uint32_t cluster)
 		case FAT12_FILESYSTEM:
 			/* FALLTHROUGH */
 		case FAT16_FILESYSTEM:
-			/* FIXME: Unimplemented*/
-			break;
+			/* FALLTHROUGH */
 		case FAT32_FILESYSTEM:
-			/* FIXME: Unimplemented*/
+			fat_print_cluster(info, cluster);
 			break;
 		default:
 			dump_err("invalid filesystem image.");

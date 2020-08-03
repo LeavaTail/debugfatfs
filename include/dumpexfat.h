@@ -327,6 +327,7 @@ void hexdump(FILE *, void *, size_t);
 
 /* FAT function*/
 int fat_show_boot_sec(struct device_info *, struct fat_bootsec *);
+int fat_print_cluster(struct device_info *, uint32_t);
 
 /* exFAT function */
 int exfat_show_boot_sec(struct device_info *, struct exfat_bootsec *);
