@@ -254,14 +254,16 @@ int exfat_traverse_directories(struct device_info *info, uint32_t index)
  */
 int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 {
-	int i, byte;
+	int i, j, byte, name_len;
+	uint8_t scount;
 	uint16_t attr = 0;
+	uint16_t uniname[255] = {0};
 	uint32_t next_index;
 	uint64_t c, len;
 	size_t size = info->cluster_size;
 	size_t entries = size / sizeof(struct exfat_dentry);
 	void *clu, *clu_tmp;
-	struct exfat_dentry d, next;
+	struct exfat_dentry d, next, name;
 
 	clu = malloc(size);
 	get_cluster(info, clu, index);
@@ -316,16 +318,23 @@ int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 					dump_notice("\n");
 					break;
 				case DENTRY_FILE:
-					if (i + d.dentry.file.SecondaryCount > entries) {
+					scount = d.dentry.file.SecondaryCount;
+					if (i + scount > entries) {
 						index = exfat_concat_cluster(info, index, clu, size);
 						size += info->cluster_size;
 						entries = size / sizeof(struct exfat_dentry);
 					}
 
 					next = ((struct exfat_dentry *)clu)[i + 1];
-					if (next.EntryType != DENTRY_STREAM) {
-						dump_warn("File should have stream entry, but This don't have.\n");
+					name = ((struct exfat_dentry *)clu)[i + 2];
+					if (next.EntryType != DENTRY_STREAM || name.EntryType != DENTRY_NAME) {
+						dump_warn("File should have stream/name entry, but This don't have.\n");
 						return -1;
+					} 
+					name_len = next.dentry.stream.NameLength;
+					for (j = 0; j < scount - 1; j++) {
+						name_len = MIN(ENTRY_NAME_MAX, next.dentry.stream.NameLength - j * ENTRY_NAME_MAX);
+						memcpy(uniname + j * ENTRY_NAME_MAX, (((struct exfat_dentry *)clu)[i + 2 + j]).dentry.name.FileName, name_len * sizeof(uint16_t));
 					}
 					attr = d.dentry.file.FileAttributes;
 					c = next.dentry.stream.FirstCluster;

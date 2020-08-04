@@ -319,6 +319,9 @@ struct exfat_dentry {
 #define EXFAT_MONTH		21
 #define EXFAT_YEAR		25
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 /* General function */
 int get_sector(struct device_info *, void *, off_t, size_t);
 int get_cluster(struct device_info *, void *, off_t);
