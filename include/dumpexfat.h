@@ -7,6 +7,7 @@
 
 #include "list.h"
 #include "list2.h"
+#include "nls.h"
 /**
  * Program Name, version, author.
  * displayed when 'usage' and 'version'
@@ -337,5 +338,8 @@ int exfat_show_boot_sec(struct device_info *, struct exfat_bootsec *);
 int exfat_print_cluster(struct device_info *, uint32_t);
 int exfat_traverse_directories(struct device_info *, uint32_t);
 int exfat_traverse_one_directory(struct device_info *, uint32_t);
+
+/* nls function */
+int utf16_to_utf8(uint16_t *, uint16_t, unsigned char*);
 
 #endif /*_DUMPEXFAT_H */

@@ -1,5 +1,5 @@
 bin_PROGRAMS = dumpexfat
-dumpexfat_SOURCES = src/main.c src/fat.c src/exfat.c
+dumpexfat_SOURCES = src/main.c src/nls.c src/fat.c src/exfat.c
 man_MANS = dumpexfat.1
 
 AM_CPPFLAGS = -I$(top_srcdir)/include
