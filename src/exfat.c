@@ -202,7 +202,7 @@ static int exfat_create_allocation_chain(struct device_info *info, void *bitmap)
  */
 static void exfat_load_filename(uint16_t *uniname, uint64_t name_len)
 {
-	utf16_to_utf8(uniname, name_len, NULL);
+	utf16s_to_utf8s(uniname, name_len, NULL);
 }
 
 /**

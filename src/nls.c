@@ -3,7 +3,7 @@
 #include <string.h>
 #include "nls.h"
 
-int utf16_to_utf8(uint16_t *src, uint16_t namelen, unsigned char* dist)
+int utf16s_to_utf8s(uint16_t *src, uint16_t namelen, unsigned char* dist)
 {
 	uint16_t *u;
 	uint32_t w;
