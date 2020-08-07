@@ -6,6 +6,8 @@
 #define SURROGATE_PAIR_UPPER	0xD800	//1101 10?? ???? ????
 #define SURROGATE_PAIR_LOWER	0xDC00	//1101 11?? ???? ????
 
+#define UTF8_MAX_CHARSIZE		4
+
 int utf16s_to_utf8s(uint16_t *, uint16_t, unsigned char*);
 
 #endif /*_NLS_H */

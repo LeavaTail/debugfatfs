@@ -92,6 +92,7 @@ extern FILE *output;
 #define ORMNAMESIZE			8
 #define VOLUME_LABEL_MAX	11
 #define ENTRY_NAME_MAX		15
+#define MAX_NAME_LENGTH		255
 
 enum FStype
 {

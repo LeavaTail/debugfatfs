@@ -255,7 +255,7 @@ int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 	int i, j, byte, name_len;
 	uint8_t scount;
 	uint16_t attr = 0;
-	uint16_t uniname[255] = {0};
+	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint32_t next_index;
 	uint64_t c, len;
 	size_t size = info->cluster_size;
