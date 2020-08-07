@@ -71,9 +71,7 @@ int utf16s_to_utf8s(uint16_t *src, uint16_t namelen, unsigned char* dist)
 					size = utf32_to_utf8(w, dist);
 					break;
 			}
-			fprintf(stdout, "%08x ", w);
 		}
 	}
-	fprintf(stdout, "\n");
 	return 0;
 }

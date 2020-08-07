@@ -15,7 +15,7 @@ int exfat_print_cluster(struct device_info *, uint32_t);
 
 /* Load function prototype */
 static int exfat_create_allocation_chain(struct device_info *, void *);
-static void exfat_load_filename(uint16_t*, uint64_t);
+static void exfat_load_filename(uint16_t*, uint64_t, unsigned char*);
 static void exfat_load_timestamp(struct tm *, char *,
 		uint32_t, uint8_t, uint8_t);
 int exfat_traverse_directories(struct device_info *, uint32_t);
@@ -129,9 +129,12 @@ static void exfat_print_upcase_table(struct device_info *info)
 static void exfat_print_file_entry(struct device_info *info,
 		struct exfat_dentry *file, struct exfat_dentry *stream, uint16_t *uniname)
 {
+	unsigned char name[MAX_NAME_LENGTH * UTF8_MAX_CHARSIZE + 1] = {};
 	struct tm ctime, mtime, atime;
 
-	exfat_load_filename(uniname, stream->dentry.stream.NameLength);
+	exfat_load_filename(uniname, stream->dentry.stream.NameLength, name);
+	
+	dump_info("Name: %s\n", name);
 	dump_info("Size: %lu\n", stream->dentry.stream.DataLength);
 	dump_debug("First Cluster: %u\n", stream->dentry.stream.FirstCluster);
 
@@ -200,9 +203,9 @@ static int exfat_create_allocation_chain(struct device_info *info, void *bitmap)
  * @name_len:       filename length
  * @count:          the number of filename dentries
  */
-static void exfat_load_filename(uint16_t *uniname, uint64_t name_len)
+static void exfat_load_filename(uint16_t *uniname, uint64_t name_len, unsigned char *name)
 {
-	utf16s_to_utf8s(uniname, name_len, NULL);
+	utf16s_to_utf8s(uniname, name_len, name);
 }
 
 /**
