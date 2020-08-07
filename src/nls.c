@@ -3,6 +3,14 @@
 #include <string.h>
 #include "nls.h"
 
+/**
+ * utf32_to_utf8  - convert UTF-32 character to UTF-8
+ * @u               UTF-32 character
+ * @d               UTF-8 character (output)
+ *
+ * return:          Byte size in UTF-8
+ * TODO: Take measures about Redundant UTF-8 Encoding
+ */
 int utf32_to_utf8(uint32_t u, unsigned char *d)
 {
 	int len = 0;
@@ -31,6 +39,15 @@ int utf32_to_utf8(uint32_t u, unsigned char *d)
 	return len;
 }
 
+/**
+ * utf16s_to_utf8s  - convert UTF-16 characters to UTF-8
+ * @src               UTF-16 characters
+ * @namelen           UTF-16 characters length
+ * @dist              UTF-8 characters (output)
+ *
+ * return:            byte size in UTF-8
+ * TODO: Implement surrogate pair case
+ */
 int utf16s_to_utf8s(uint16_t *src, uint16_t namelen, unsigned char* dist)
 {
 	int size;
