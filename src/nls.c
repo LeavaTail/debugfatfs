@@ -50,7 +50,7 @@ int utf32_to_utf8(uint32_t u, unsigned char *d)
  */
 int utf16s_to_utf8s(uint16_t *src, uint16_t namelen, unsigned char* dist)
 {
-	int size;
+	int size, len = 0;
 	uint16_t *u;
 	uint32_t w;
 	while (namelen--) {
@@ -58,7 +58,8 @@ int utf16s_to_utf8s(uint16_t *src, uint16_t namelen, unsigned char* dist)
 		w = (uint32_t)*u;
 		if (*u < 0x7f) {
 			/* 1 byte character */
-			fprintf(stdout, "%c", (uint8_t)*u);
+			*(dist + len) = (unsigned char)*u;
+			len++;
 		} else {
 			/* mult bytes character */
 			switch (*u & SURROGATE_PAIR_MASK){
@@ -68,7 +69,8 @@ int utf16s_to_utf8s(uint16_t *src, uint16_t namelen, unsigned char* dist)
 					break;
 				default:
 					/* convert UTF32(w) to UTF8(dist) */
-					size = utf32_to_utf8(w, dist);
+					size = utf32_to_utf8(w, dist + len);
+					len += size;
 					break;
 			}
 		}
