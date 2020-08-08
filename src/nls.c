@@ -4,6 +4,46 @@
 #include "nls.h"
 
 /**
+ * utf8_to_utf32  - convert UTF-8 character to UTF-32
+ * @u               UTF-8 character
+ * @d               UTF-32 character (output)
+ *
+ * return:          Byte size in UTF-32
+ * TODO: Take measures about Redundant UTF-8 Encoding
+ */
+int utf8_to_utf32(unsigned char *u, uint32_t *d)
+{
+	int len = 0;
+	unsigned char c = *u;
+
+	/* 1 byte character   0x10?????? */
+	if ((c & 0x80) == 0x00) {
+		*d = c;
+		len = 1;
+	/* 2 bytes character  0x110????? 0x10?????? */
+	} else if ((c & 0xE0) == 0xC0) {
+		*d =  (*u & 0x1F) << 6;
+		*d |= (*(u + 1) & 0x3F);
+		len = 2;
+	/* 3 bytes character  0x1110???? 0x10?????? 0x10??????*/
+	} else if ((c & 0xF0) == 0xE0) {
+		*d =  (*u & 0x0F) << 12;
+		*d |= (*(u + 1) & 0x3F) << 6;
+		*d |= (*(u + 2) & 0x3F);
+		len = 3;
+	/* 4 bytes character  0x11110??? 0x10?????? 0x10?????? 0x10??????*/
+	} else if ((c & 0xF8) == 0xF0) {
+		*d =  (*u & 0x07) << 18;
+		*d |= (*(u + 1) & 0x3F) << 12;
+		*d |= (*(u + 2) & 0x3F) << 6;
+		*d |= (*(u + 3) & 0x3F);
+		len = 4;
+	} else {
+		fprintf(stderr, "can't convert to U+%04x.\n", u);
+	}
+	return len;
+}
+/**
  * utf32_to_utf8  - convert UTF-32 character to UTF-8
  * @u               UTF-32 character
  * @d               UTF-8 character (output)
