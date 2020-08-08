@@ -80,6 +80,38 @@ int utf32_to_utf8(uint32_t u, unsigned char *d)
 }
 
 /**
+ * utf8s_to_utf16s  - convert UTF-8 characters to UTF-16
+ * @src               UTF-8 characters
+ * @namelen           UTF-8 characters length
+ * @dist              UTF-16 characters (output)
+ *
+ * return:            byte size in UTF-16
+ * TODO: Implement surrogate pair case
+ */
+int utf8s_to_utf16s(unsigned char *src, uint16_t namelen, uint16_t* dist)
+{
+	int size = 0, len = 0;
+	unsigned char *u = src;
+	uint32_t w;
+	while (len < namelen) {
+		u = src + len;
+		w = (uint32_t)*u;
+		size = utf8_to_utf32(u, &w);
+		if (w <= 0xFFFF) {
+			*(dist + len) = w;
+			len += size;
+		} else if (w <= UNICODE_MAX) {
+			/* TODO: Implement surrogate pair */
+			return -1;
+		} else {
+			fprintf(stderr, "Unicode doesn't support. (%0x)\n", w);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+/**
  * utf16s_to_utf8s  - convert UTF-16 characters to UTF-8
  * @src               UTF-16 characters
  * @namelen           UTF-16 characters length
