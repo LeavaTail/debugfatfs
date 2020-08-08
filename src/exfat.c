@@ -8,6 +8,7 @@
 int exfat_show_boot_sec(struct device_info *, struct exfat_bootsec *);
 static void exfat_print_allocation_bitmap(struct device_info *);
 static void exfat_print_upcase_table(struct device_info *);
+static void exfat_print_volume_label(struct device_info *, uint16_t *, int);
 static void exfat_print_file_entry(struct device_info *, struct exfat_fileinfo*);
 int exfat_print_cluster(struct device_info *, uint32_t);
 
@@ -117,6 +118,23 @@ static void exfat_print_upcase_table(struct device_info *info)
 		}
 		dump_info("\n");
 	}
+}
+
+/**
+ * exfat_print_volume_label - print volume label
+ * @info:       Target device information
+ * @src:        volume label in UTF16
+ * @len:        volume label length
+ */
+static void exfat_print_volume_label(struct device_info *info, uint16_t *src, int len)
+{
+	unsigned char *name;
+
+	name = (unsigned char *)malloc(len * sizeof(uint16_t)  + 1);
+	memset(name, '\0', len * sizeof(uint16_t) + 1);
+	utf16s_to_utf8s(src, len, name);
+	printf("%s\n", name);
+	free(name);
 }
 
 /**
@@ -283,11 +301,9 @@ int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 					break;
 				case DENTRY_VOLUME:
 					dump_notice("volume Label: ");
-					/* FIXME: VolumeLabel is Unicode string, But %c is ASCII code */
-					for(byte = 0; byte < d.dentry.vol.CharacterCount; byte++) {
-						dump_notice("%c", d.dentry.vol.VolumeLabel[byte]);
-					}
-					dump_notice("\n");
+					name_len = d.dentry.vol.CharacterCount;
+					memcpy(uniname, d.dentry.vol.VolumeLabel, sizeof(uint16_t) * name_len);
+					exfat_print_volume_label(info, uniname, name_len);
 					break;
 				case DENTRY_FILE:
 					scount = d.dentry.file.SecondaryCount;
