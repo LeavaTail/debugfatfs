@@ -6,8 +6,8 @@
 #include <stdlib.h>
 
 typedef struct node2 {
-	uint64_t x;
-	uint64_t y;
+	uint32_t index;
+	void *data;
 	struct node2 *next;
 } node2_t;
 
@@ -18,20 +18,20 @@ static inline node2_t* last_node2(node2_t *node)
 	return node;
 }
 
-static inline void insert_node2(node2_t *head, uint64_t x, uint64_t y)
+static inline void insert_node2(node2_t *head, uint32_t i, void *d)
 {
 	node2_t *node;
 
 	node = (node2_t *)malloc(sizeof(node2_t));
-	node->x = x;
-	node->y = y;
+	node->index = i;
+	node->data = d;
 	node->next = head->next;
 	head->next = node;
 }
 
-static inline void append_node2(node2_t *head, uint64_t x, uint64_t y)
+static inline void append_node2(node2_t *head, uint32_t i, void *d)
 {
-	insert_node2(last_node2(head), x, y);
+	insert_node2(last_node2(head), i, d);
 }
 
 static inline void delete_node2(node2_t *node)
@@ -40,17 +40,18 @@ static inline void delete_node2(node2_t *node)
 
 	if ((tmp = node->next) != NULL) {
 		node->next = tmp->next;
+		free(tmp->data);
 		free(tmp);
 	}
 }
 
-static inline node2_t *init_node2(uint64_t x, uint64_t y)
+static inline node2_t *init_node2(uint32_t i, void *d)
 {
 	node2_t *new_node;
 
 	new_node = (node2_t *)malloc(sizeof(node2_t));
-	new_node->x = x;
-	new_node->y = y;
+	new_node->index = i;
+	new_node->data = d;
 	new_node->next = NULL;
 	return new_node;
 }
@@ -61,21 +62,11 @@ static inline void free_list2(node2_t *node)
 		delete_node2(node);
 }
 
-static inline node2_t *searchx_node2(node2_t *node, uint64_t x)
+static inline node2_t *search_node2(node2_t *node, uint32_t i)
 {
 	while (node->next != NULL) {
 		node = node->next;
-		if(x == node->x)
-			return node;
-	}
-	return NULL;
-}
-
-static inline node2_t *searchy_node2(node2_t *node, uint64_t y)
-{
-	while (node->next != NULL) {
-		node = node->next;
-		if(y == node->y)
+		if(i == node->index)
 			return node;
 	}
 	return NULL;
@@ -85,7 +76,7 @@ static inline void print_node2(node2_t *node)
 {
 	while (node->next != NULL) {
 		node = node->next;
-		fprintf(stdout, "(%lu, %lu) -> ", node->x, node->y);
+		fprintf(stdout, "%u: (%p) -> ", node->index, node->data);
 	}
 	fprintf(stdout, "NULL\n");
 }
