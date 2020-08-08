@@ -2,15 +2,13 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <limits.h>
-#include <time.h>
 #include "dumpexfat.h"
 
 /* Print function prototype */
 int exfat_show_boot_sec(struct device_info *, struct exfat_bootsec *);
 static void exfat_print_allocation_bitmap(struct device_info *);
 static void exfat_print_upcase_table(struct device_info *);
-static void exfat_print_file_entry(struct device_info *,
-		struct exfat_dentry *, struct exfat_dentry*, uint16_t*);
+static void exfat_print_file_entry(struct device_info *, struct exfat_fileinfo*);
 int exfat_print_cluster(struct device_info *, uint32_t);
 
 /* Load function prototype */
@@ -25,7 +23,9 @@ int exfat_traverse_one_directory(struct device_info *, uint32_t);
 static bool exfat_check_allocation_cluster(struct device_info *, uint32_t);
 static uint32_t exfat_check_fatentry(struct device_info *, uint32_t);
 
+/* Create function prototype */
 static uint32_t exfat_concat_cluster(struct device_info *, uint32_t, void *, size_t);
+static void exfat_create_fileinfo(struct device_info *, node2_t *, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 
 /**
  * exfat_show_boot_sec - show boot sector in exFAT
@@ -122,32 +122,11 @@ static void exfat_print_upcase_table(struct device_info *info)
 /**
  * exfat_print_file_entry - print file metadata
  * @info:       Target device information
- * @file:       file dentry
- * @stream:     stream Extension dentry
- * @name:       File Name dentry
+ * @f:          file information
  */
-static void exfat_print_file_entry(struct device_info *info,
-		struct exfat_dentry *file, struct exfat_dentry *stream, uint16_t *uniname)
+static void exfat_print_file_entry(struct device_info *info, struct exfat_fileinfo *f)
 {
-	unsigned char name[MAX_NAME_LENGTH * UTF8_MAX_CHARSIZE + 1] = {};
-	struct tm ctime, mtime, atime;
-
-	exfat_load_filename(uniname, stream->dentry.stream.NameLength, name);
-	
-	dump_info("Name: %s\n", name);
-	dump_info("Size: %lu\n", stream->dentry.stream.DataLength);
-	dump_debug("First Cluster: %u\n", stream->dentry.stream.FirstCluster);
-
-	exfat_load_timestamp(&ctime, "Create", file->dentry.file.CreateTimestamp,
-			file->dentry.file.Create10msIncrement,
-			file->dentry.file.CreateUtcOffset);
-	exfat_load_timestamp(&mtime, "Modify", file->dentry.file.LastModifiedTimestamp,
-			file->dentry.file.LastModified10msIncrement,
-			file->dentry.file.LastModifiedUtcOffset);
-	exfat_load_timestamp(&atime, "Access", file->dentry.file.LastAccessedTimestamp,
-			0,
-			file->dentry.file.LastAccessdUtcOffset);
-	dump_info("\n");
+	dump_notice("%s\n", f->name);
 }
 
 /**
@@ -219,7 +198,6 @@ static void exfat_load_filename(uint16_t *uniname, uint64_t name_len, unsigned c
 static void exfat_load_timestamp(struct tm *t, char *str,
 		uint32_t time, uint8_t subsec, uint8_t tz)
 {
-	int8_t offset = tz * 15;
 	t->tm_year = (time >> EXFAT_YEAR) & 0x7f;
 	t->tm_mon  = (time >> EXFAT_MONTH) & 0x0f;
 	t->tm_mday = (time >> EXFAT_DAY) & 0x1f;
@@ -227,13 +205,6 @@ static void exfat_load_timestamp(struct tm *t, char *str,
 	t->tm_min  = (time >> EXFAT_MINUTE) & 0x3f;
 	t->tm_sec  = (time & 0x1f) * 2;
 	t->tm_sec += subsec / 100;
-	dump_info("%s: %d-%02d-%02d %02d:%02d:%02d.%02d (UTC + %02d:%02d)\n", str,
-			1980 + t->tm_year, t->tm_mon, t->tm_mday,
-			t->tm_hour, t->tm_min,
-			t->tm_sec,
-			subsec % 100,
-			offset / 60,
-			offset % 60);
 }
 
 /**
@@ -337,10 +308,7 @@ int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 						name_len = MIN(ENTRY_NAME_MAX, next.dentry.stream.NameLength - j * ENTRY_NAME_MAX);
 						memcpy(uniname + j * ENTRY_NAME_MAX, (((struct exfat_dentry *)clu)[i + 2 + j]).dentry.name.FileName, name_len * sizeof(uint16_t));
 					}
-					attr = d.dentry.file.FileAttributes;
-					c = next.dentry.stream.FirstCluster;
-					insert_node2(info->root[info->root_size], c, attr);
-					exfat_print_file_entry(info,
+					exfat_create_fileinfo(info, info->root[info->root_size],
 							&d, &next, uniname);
 					i += scount;
 					break;
@@ -440,4 +408,40 @@ static uint32_t exfat_concat_cluster(struct device_info *info, uint32_t index, v
 		}
 	}
 	return ret;
+}
+
+/**
+ * exfat_create_file_entry - Create file infomarion
+ * @info:       Target device information
+ * @dir:        Directory chain head
+ * @file:       file dentry
+ * @stream:     stream Extension dentry
+ * @uniname:    File Name dentry
+ */
+static void exfat_create_fileinfo(struct device_info *info, node2_t *dir,
+		struct exfat_dentry *file, struct exfat_dentry *stream, uint16_t *uniname)
+{
+	struct exfat_fileinfo *finfo;
+	size_t namelen = stream->dentry.stream.NameLength;
+
+	finfo = (struct exfat_fileinfo*)malloc(sizeof(struct exfat_fileinfo));
+	finfo->name = (unsigned char *)malloc(namelen * UTF8_MAX_CHARSIZE + 1);
+	memset(finfo->name, '\0', namelen * UTF8_MAX_CHARSIZE + 1);
+
+	exfat_load_filename(uniname, namelen, finfo->name);
+	finfo->namelen = namelen;
+	finfo->datalen = stream->dentry.stream.DataLength;
+	finfo->attr = file->dentry.file.FileAttributes;
+	finfo->hash = stream->dentry.stream.NameHash;
+
+	exfat_load_timestamp(&finfo->ctime, "Create", file->dentry.file.CreateTimestamp,
+			file->dentry.file.Create10msIncrement,
+			file->dentry.file.CreateUtcOffset);
+	exfat_load_timestamp(&finfo->mtime, "Modify", file->dentry.file.LastModifiedTimestamp,
+			file->dentry.file.LastModified10msIncrement,
+			file->dentry.file.LastModifiedUtcOffset);
+	exfat_load_timestamp(&finfo->atime, "Access", file->dentry.file.LastAccessedTimestamp,
+			0,
+			file->dentry.file.LastAccessdUtcOffset);
+	append_node2(dir, stream->dentry.stream.FirstCluster, finfo);
 }

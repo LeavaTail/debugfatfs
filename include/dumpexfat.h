@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 
 #include "list.h"
 #include "list2.h"
@@ -123,6 +124,17 @@ struct device_info {
 	node2_t **root;
 	size_t root_size;
 	size_t root_maxsize;
+};
+
+struct exfat_fileinfo {
+	unsigned char *name;
+	size_t namelen;
+	size_t datalen;
+	uint16_t attr;
+	struct tm ctime;
+	struct tm atime;
+	struct tm mtime;
+	uint16_t hash;
 };
 
 struct pseudo_bootsector {
