@@ -10,4 +10,4 @@ AM_CPPFLAGS += -O2
 endif
 
 dumpexfat.1: dumpexfat$(EXEEXT)
-	help2man --no-discard-stderr -o dumpexfat.1 ./dumpexfat
+	help2man --no-discard-stderr -N -o dumpexfat.1 ./dumpexfat
