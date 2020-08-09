@@ -22,9 +22,6 @@ int fat_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
 	pr_msg("%-28s\t: %8u\n", "Root Directory entry count", b->BPB_RootEntCnt);
 	pr_msg("%-28s\t: %8u (sector)\n", "Sector count in Volume", b->BPB_TotSec16);
 
-	info->sector_size = b->BPB_BytesPerSec;
-	info->cluster_size = b->BPB_SecPerClus * b->BPB_BytesPerSec;
-
 	switch (info->fstype) {
 		case FAT12_FILESYSTEM:
 			/* FALLTHROUGH */
@@ -157,7 +154,7 @@ int fat_print_cluster(struct device_info *info, uint32_t index)
  * return:     1 (Image is FAT12/16/32 filesystem)
  *             0 (Image isn't FAT12/16/32 filesystem)
  */
-int fat_check_filesystem(struct device_info *info, struct pseudo_bootsec *boot)
+int fat_check_filesystem(struct device_info *info, struct pseudo_bootsec *boot, struct operations *ops)
 {
 	struct fat_bootsec *b = (struct fat_bootsec*)boot;
 	uint16_t RootDirSectors = ((b->BPB_RootEntCnt * 32) +
@@ -185,6 +182,14 @@ int fat_check_filesystem(struct device_info *info, struct pseudo_bootsec *boot)
 	} else {
 		info->fstype = FAT32_FILESYSTEM;
 	}
+
+	info->sector_size = b->BPB_BytesPerSec;
+	info->cluster_size = b->BPB_SecPerClus * b->BPB_BytesPerSec;
+
+	ops->statfs = fat_print_boot_sec;
+	ops->readdir = NULL;
+	ops->convert = NULL;
+	ops->print_cluster = fat_print_cluster;
 
 	return 0;
 }

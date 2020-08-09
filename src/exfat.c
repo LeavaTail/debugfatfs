@@ -43,22 +43,12 @@ int exfat_print_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 			b->ClusterCount);
 	pr_msg("%-28s\t: %8u (cluster)\n", "The first cluster of the root",
 			b->FirstClusterOfRootDirectory);
-
-	info->fat_offset = b->FatOffset;
-	info->heap_offset = b->ClusterHeapOffset;
-	info->root_offset = b->FirstClusterOfRootDirectory;
-	info->sector_size  = 1 << b->BytesPerSectorShift;
-	info->cluster_size = (1 << b->SectorsPerClusterShift) * info->sector_size;
-	info->cluster_count = b->ClusterCount;
-	info->fat_length = b->NumberOfFats * b->FatLength * info->sector_size;
-
 	pr_msg("%-28s\t: %8lu (sector)\n", "Size of exFAT volumes",
 			b->VolumeLength);
 	pr_msg("%-28s\t: %8lu (byte)\n", "Bytes per sector",
 			info->sector_size);
 	pr_msg("%-28s\t: %8lu (byte)\n", "Bytes per cluster",
 			info->cluster_size);
-
 	pr_msg("%-28s\t: %8u\n", "The number of FATs",
 			b->NumberOfFats);
 	pr_msg("%-28s\t: %8u (%%)\n", "The percentage of clusters",
@@ -226,7 +216,6 @@ static void exfat_load_timestamp(struct tm *t, char *str,
  */
 int exfat_traverse_directories(struct device_info *info, uint32_t index)
 {
-	info->root = (node2_t **)malloc(sizeof(node2_t *) * info->root_maxsize);
 	return exfat_traverse_one_directory(info, index);
 }
 
@@ -343,12 +332,26 @@ out:
  * return:     1 (Image is exFAT filesystem)
  *             0 (Image isn't exFAT filesystem)
  */
-int exfat_check_filesystem(struct device_info *info, struct pseudo_bootsec *boot)
+int exfat_check_filesystem(struct device_info *info, struct pseudo_bootsec *boot, struct operations *ops)
 {
 	int ret = 0;
+	struct exfat_bootsec *b = (struct exfat_bootset *)boot;
 
 	if (!strncmp((char *)boot->FileSystemName, "EXFAT   ", 8)) {
 		info->fstype = EXFAT_FILESYSTEM;
+
+		info->fat_offset = b->FatOffset;
+		info->heap_offset = b->ClusterHeapOffset;
+		info->root_offset = b->FirstClusterOfRootDirectory;
+		info->sector_size  = 1 << b->BytesPerSectorShift;
+		info->cluster_size = (1 << b->SectorsPerClusterShift) * info->sector_size;
+		info->cluster_count = b->ClusterCount;
+		info->fat_length = b->NumberOfFats * b->FatLength * info->sector_size;
+
+		ops->statfs = exfat_print_boot_sec;
+		ops->readdir = exfat_traverse_one_directory;
+		ops->convert = exfat_convert_character;
+		ops->print_cluster = exfat_print_cluster;
 		ret = 1;
 	}
 

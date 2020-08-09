@@ -14,6 +14,7 @@
 #include "dumpexfat.h"
 FILE *output = NULL;
 unsigned int print_level = PRINT_WARNING;
+struct operations ops;
 /**
  * Special Option(no short option)
  */
@@ -173,7 +174,7 @@ static void init_device_info(struct device_info *info)
 	info->chain_head = NULL;
 	info->upcase_table = NULL;
 	info->upcase_size = 0;
-	info->root = NULL;
+	info->root = (node2_t **)malloc(sizeof(node2_t *) * info->root_maxsize);
 	info->root_size = 0;
 	info->root_maxsize = DENTRY_LISTSIZE;
 }
@@ -239,129 +240,12 @@ static int pseudo_check_filesystem(struct device_info *info, struct pseudo_boots
 		return -1;
 	}
 
-	if (exfat_check_filesystem(info, boot))
+	if (exfat_check_filesystem(info, boot, &ops))
 		return 0;
-	if (fat_check_filesystem(info, boot))
+	if (fat_check_filesystem(info, boot, &ops))
 		return 0;
 
 	return -1;
-}
-
-/**
- * pseudo_print_boot_sec - virtual function to print boot sector
- * @info:      structure to be printed device_info
- * @boot:      boot sector pointer
- *
- * return:     0  (succeeded in print)
- *             -1 (failed)
- */
-static int pseudo_print_boot_sec(struct device_info *info, struct pseudo_bootsec *boot)
-{
-	size_t count = 0;
-
-	count = pread(info->fd, boot, SECSIZE, 0);
-	if(count < 0){
-		pr_err("can't read %s.", info->name);
-		return -1;
-	}
-	switch (info->fstype) {
-		case EXFAT_FILESYSTEM:
-			exfat_print_boot_sec(info, (struct exfat_bootsec*)boot);
-			break;
-		case FAT12_FILESYSTEM:
-			/* FALLTHROUGH */
-		case FAT16_FILESYSTEM:
-			/* FALLTHROUGH */
-		case FAT32_FILESYSTEM:
-			fat_print_boot_sec(info, (struct fat_bootsec*)boot);
-			break;
-		default:
-			pr_err("invalid filesystem image.");
-			return -1;
-	}
-	return 0;
-}
-
-/**
- * pseudo_get_cluster_chain - virtual function to get cluster chain
- * @info:      structure to be get device_info
- *
- * TODO: implement function in FAT12/16/32
- */
-static int pseudo_get_cluster_chain(struct device_info *info)
-{
-	switch (info->fstype) {
-		case EXFAT_FILESYSTEM:
-			exfat_traverse_directories(info, info->root_offset);
-			break;
-		case FAT12_FILESYSTEM:
-			/* FALLTHROUGH */
-		case FAT16_FILESYSTEM:
-			/* FIXME: Unimplemented*/
-			break;
-		case FAT32_FILESYSTEM:
-			/* FIXME: Unimplemented*/
-			break;
-		default:
-			pr_err("invalid filesystem image.");
-			return -1;
-	}
-
-	return 0;
-}
-
-/**
- * pseudo_convert_char - convert character for each filesystem
- * @info:      structure to be get device_info
- * @character: target character
- */
-static int pseudo_convert_character(struct device_info *info, const char *character)
-{
-	char out[MAX_NAME_LENGTH + 1] = {};
-	switch (info->fstype) {
-		case EXFAT_FILESYSTEM:
-			exfat_convert_character(info, character, strlen(character), out);
-			pr_msg("Convert: %s -> %s\n", character, out);
-			break;
-		case FAT12_FILESYSTEM:
-			/* FALLTHROUGH */
-		case FAT16_FILESYSTEM:
-			/* FALLTHROUGH */
-		case FAT32_FILESYSTEM:
-			/* TODO: implement function */
-			break;
-		default:
-			pr_err("invalid filesystem image.");
-			return -1;
-	}
-
-	return 0;
-}
-
-/**
- * pseudo_print_cluster - virtual function to print any cluster
- * @info:      structure to be get device_info
- * @cluster:   cluster index to display
- */
-static int pseudo_print_cluster(struct device_info *info, uint32_t cluster)
-{
-	switch (info->fstype) {
-		case EXFAT_FILESYSTEM:
-			exfat_print_cluster(info, cluster);
-			break;
-		case FAT12_FILESYSTEM:
-			/* FALLTHROUGH */
-		case FAT16_FILESYSTEM:
-			/* FALLTHROUGH */
-		case FAT32_FILESYSTEM:
-			fat_print_cluster(info, cluster);
-			break;
-		default:
-			pr_err("invalid filesystem image.");
-			return -1;
-	}
-
-	return 0;
 }
 
 /**
@@ -401,6 +285,7 @@ int main(int argc, char *argv[])
 	bool outflag = false;
 	char *outfile = NULL;
 	char *input = NULL;
+	char out[MAX_NAME_LENGTH + 1] = {};
 	struct device_info info;
 	struct pseudo_bootsec bootsec;
 
@@ -471,18 +356,19 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		goto out;
 
-	ret = pseudo_print_boot_sec(&info, &bootsec);
+	ret = ops.statfs(&info, &bootsec);
 	if (ret < 0)
 		goto out;
 
-	ret = pseudo_get_cluster_chain(&info);
+	ret = ops.readdir(&info, info.root_offset);
 	if (ret < 0)
 		goto file_err;
 
 	if (uflag) {
-		ret = pseudo_convert_character(&info, input);
+		ret = ops.convert(&info, input, strlen(input), out);
 		if(ret < 0)
 			goto file_err;
+		pr_msg("Convert: %s -> %s\n", input, out);
 	}
 
 	if (sflag) {
@@ -492,7 +378,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (cflag) {
-		ret = pseudo_print_cluster(&info, cluster);
+		ret = ops.print_cluster(&info, cluster);
 		if (ret < 0)
 			goto file_err;
 	}

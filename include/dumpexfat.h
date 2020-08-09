@@ -302,6 +302,13 @@ struct exfat_dentry {
 	} __attribute__((packed)) dentry;
 } __attribute__ ((packed));
 
+struct operations {
+	int (*statfs)(struct device_info *, void*);
+	int (*readdir)(struct device_info *, uint32_t);
+	int (*convert)(struct device_info *, const char *, size_t, char *);
+	int (*print_cluster)(struct device_info *, uint32_t);
+};
+
 /* FAT dentry type */
 #define ATTR_READ_ONLY		0x01
 #define ATTR_HIDDEN			0x02
@@ -341,7 +348,7 @@ void hexdump(FILE *, void *, size_t);
 /* FAT function*/
 int fat_print_boot_sec(struct device_info *, struct fat_bootsec *);
 int fat_print_cluster(struct device_info *, uint32_t);
-int fat_check_filesystem(struct device_info *, struct pseudo_bootsec *);
+int fat_check_filesystem(struct device_info *, struct pseudo_bootsec *, struct operations *);
 
 /* exFAT function */
 int exfat_print_boot_sec(struct device_info *, struct exfat_bootsec *);
@@ -349,7 +356,7 @@ int exfat_print_cluster(struct device_info *, uint32_t);
 int exfat_traverse_directories(struct device_info *, uint32_t);
 int exfat_traverse_one_directory(struct device_info *, uint32_t);
 int exfat_convert_character(struct device_info *, const char *, size_t, char *);
-int exfat_check_filesystem(struct device_info *, struct pseudo_bootsec *);
+int exfat_check_filesystem(struct device_info *, struct pseudo_bootsec *, struct operations *);
 
 /* nls function */
 int utf16_to_utf8(uint16_t *, uint16_t, unsigned char*);
