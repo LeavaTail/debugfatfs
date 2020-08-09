@@ -39,7 +39,7 @@ int utf8_to_utf32(unsigned char *u, uint32_t *d)
 		*d |= (*(u + 3) & 0x3F);
 		len = 4;
 	} else {
-		fprintf(stderr, "can't convert to U+%04x.\n", u);
+		fprintf(stderr, "Unexpected sequences %02x.\n", c);
 	}
 	return len;
 }
