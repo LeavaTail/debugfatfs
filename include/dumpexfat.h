@@ -133,7 +133,7 @@ struct exfat_fileinfo {
 	uint16_t hash;
 };
 
-struct pseudo_bootsector {
+struct pseudo_bootsec {
 	unsigned char JumpBoot[JMPBOOTSIZE];
 	unsigned char FileSystemName[ORMNAMESIZE];
 	unsigned char reserved1[SECSIZE - JMPBOOTSIZE - ORMNAMESIZE];

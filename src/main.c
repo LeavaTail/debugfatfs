@@ -228,7 +228,7 @@ static int free_dentry_list(struct device_info *info)
  *
  * TODO: implement function in FAT12/16/32
  */
-static int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsector *boot)
+static int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsec *boot)
 {
 	size_t count = 0;
 
@@ -368,7 +368,7 @@ int main(int argc, char *argv[])
 	char *outfile = NULL;
 	char *input = NULL;
 	struct device_info info;
-	struct pseudo_bootsector bootsec;
+	struct pseudo_bootsec bootsec;
 
 	while ((opt = getopt_long(argc, argv,
 					"c:fo:s:u:v",
