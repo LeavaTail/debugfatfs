@@ -2,6 +2,10 @@
 #include <stdbool.h>
 #include "dumpexfat.h"
 
+static int fat16_print_boot_sec(struct device_info *, struct fat_bootsec *);
+static int fat32_print_boot_sec(struct device_info *, struct fat_bootsec *);
+static int fat32_print_fsinfo(struct device_info *, struct fat32_fsinfo *);
+
 /**
  * fat_print_boot_sec - print boot sector in FAT12/16/32
  * @info:      structure to be printed device_info
@@ -50,7 +54,7 @@ int fat_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
  * @info:      structure to be printed device_info
  * @b:         boot sector pointer in FAT
  */
-int fat16_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
+static int fat16_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
 {
 	int i;
 	const char *type = (char *)b->reserved_info.fat16_reserved_info.BS_FilSysType;
@@ -81,7 +85,7 @@ int fat16_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
  * @info:      structure to be printed device_info
  * @b:         boot sector pointer in FAT
  */
-int fat32_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
+static int fat32_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
 {
 	int i;
 	const char *type = (char *)b->reserved_info.fat32_reserved_info.BS_FilSysType;
@@ -122,7 +126,7 @@ int fat32_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
  * @info:      structure to be printed device_info
  * @b:         boot sector pointer in FAT
  */
-int fat32_print_fsinfo(struct device_info *info, struct fat32_fsinfo *fsi)
+static int fat32_print_fsinfo(struct device_info *info, struct fat32_fsinfo *fsi)
 {
 	if((fsi->FSI_LeadSig != 0x41615252) ||
 			(fsi->FSI_StrucSig != 0x61417272) ||
