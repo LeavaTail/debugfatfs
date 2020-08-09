@@ -6,7 +6,7 @@ int fat_show_boot_sec(struct device_info *, struct fat_bootsec *);
 int fat16_show_boot_sec(struct device_info *, struct fat_bootsec *);
 int fat32_show_boot_sec(struct device_info *, struct fat_bootsec *);
 int fat32_show_fsinfo(struct device_info *, struct fat32_fsinfo *);
-int fat_determine_type(struct device_info *, struct fat_bootsec *);
+int fat_check_filesystem(struct device_info *, struct pseudo_bootsec *);
 
 /**
  * fat_show_boot_sec - show boot sector in FAT12/16/32
@@ -17,8 +17,6 @@ int fat_determine_type(struct device_info *, struct fat_bootsec *);
  */
 int fat_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 {
-	fat_determine_type(info, b);
-
 	pr_msg("%-28s\t: %8u (byte)\n", "Bytes per Sector", b->BPB_BytesPerSec);
 	pr_msg("%-28s\t: %8u (sector)\n", "Sectors per cluster", b->BPB_SecPerClus);
 	pr_msg("%-28s\t: %8u (sector)\n", "Reserved Sector", b->BPB_RevdSecCnt);
@@ -154,12 +152,16 @@ int fat_print_cluster(struct device_info *info, uint32_t index)
 }
 
 /**
- * fat_determine_type - Determination of FAT type
- * @info:      structure to be shown device_info
- * @b:         boot sector pointer in FAT
+ * fat_check_filesystem - Whether or not VFAT filesystem
+ * @info:          Target device information
+ * @index:         index of the cluster want to check
+ *
+ * return:     1 (Image is FAT12/16/32 filesystem)
+ *             0 (Image isn't FAT12/16/32 filesystem)
  */
-int fat_determine_type(struct device_info *info, struct fat_bootsec *b)
+int fat_check_filesystem(struct device_info *info, struct pseudo_bootsec *boot)
 {
+	struct fat_bootsec *b = (struct fat_bootsec*)boot;
 	uint16_t RootDirSectors = ((b->BPB_RootEntCnt * 32) +
 			(b->BPB_BytesPerSec -1)) / b->BPB_BytesPerSec;
 	uint32_t FATSz;

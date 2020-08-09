@@ -222,11 +222,38 @@ static int free_dentry_list(struct device_info *info)
 }
 
 /**
+ * pseudo_check_filesystem - virtual function to check filesystem
+ * @info:      structure to be shown device_info
+ * @boot:      boot sector pointer
+ *
+ * return:     0  (succeeded in obtaining filesystem)
+ *             -1 (failed)
+ */
+static int pseudo_check_filesystem(struct device_info *info, struct pseudo_bootsec *boot)
+{
+	size_t count = 0;
+
+	count = pread(info->fd, boot, SECSIZE, 0);
+	if(count < 0){
+		pr_err("can't read %s.", info->name);
+		return -1;
+	}
+
+	if (exfat_check_filesystem(info, boot))
+		return 0;
+	if (fat_check_filesystem(info, boot))
+		return 0;
+
+	return -1;
+}
+
+/**
  * pseudo_show_boot_sec - virtual function to show boot sector
  * @info:      structure to be shown device_info
  * @boot:      boot sector pointer
  *
- * TODO: implement function in FAT12/16/32
+ * return:     0  (succeeded in print)
+ *             -1 (failed)
  */
 static int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsec *boot)
 {
@@ -237,13 +264,20 @@ static int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsec 
 		pr_err("can't read %s.", info->name);
 		return -1;
 	}
-	if (!strncmp((char *)boot->FileSystemName, "EXFAT   ", 8)) {
-		/* exFAT */
-		info->fstype = EXFAT_FILESYSTEM;
-		exfat_show_boot_sec(info, (struct exfat_bootsec*)boot);
-	} else {
-		/* FAT or invalid */
-		fat_show_boot_sec(info, (struct fat_bootsec*)boot);
+	switch (info->fstype) {
+		case EXFAT_FILESYSTEM:
+			exfat_show_boot_sec(info, (struct exfat_bootsec*)boot);
+			break;
+		case FAT12_FILESYSTEM:
+			/* FALLTHROUGH */
+		case FAT16_FILESYSTEM:
+			/* FALLTHROUGH */
+		case FAT32_FILESYSTEM:
+			fat_show_boot_sec(info, (struct fat_bootsec*)boot);
+			break;
+		default:
+			pr_err("invalid filesystem image.");
+			return -1;
 	}
 	return 0;
 }
@@ -432,6 +466,10 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		goto out;
 	info.chain_head = init_node();
+
+	ret = pseudo_check_filesystem(&info, &bootsec);
+	if (ret < 0)
+		goto out;
 
 	ret = pseudo_show_boot_sec(&info, &bootsec);
 	if (ret < 0)

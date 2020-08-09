@@ -341,6 +341,7 @@ void hexdump(FILE *, void *, size_t);
 /* FAT function*/
 int fat_show_boot_sec(struct device_info *, struct fat_bootsec *);
 int fat_print_cluster(struct device_info *, uint32_t);
+int fat_check_filesystem(struct device_info *, struct pseudo_bootsec *);
 
 /* exFAT function */
 int exfat_show_boot_sec(struct device_info *, struct exfat_bootsec *);
@@ -348,6 +349,7 @@ int exfat_print_cluster(struct device_info *, uint32_t);
 int exfat_traverse_directories(struct device_info *, uint32_t);
 int exfat_traverse_one_directory(struct device_info *, uint32_t);
 int exfat_convert_character(struct device_info *, const char *, size_t, char *);
+int exfat_check_filesystem(struct device_info *, struct pseudo_bootsec *);
 
 /* nls function */
 int utf16_to_utf8(uint16_t *, uint16_t, unsigned char*);

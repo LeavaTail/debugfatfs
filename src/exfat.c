@@ -343,6 +343,26 @@ out:
 }
 
 /**
+ * exfat_check_filesystem - Whether or not exFAT filesystem
+ * @info:          Target device information
+ * @index:         index of the cluster want to check
+ *
+ * return:     1 (Image is exFAT filesystem)
+ *             0 (Image isn't exFAT filesystem)
+ */
+int exfat_check_filesystem(struct device_info *info, struct pseudo_bootsec *boot)
+{
+	int ret = 0;
+
+	if (!strncmp((char *)boot->FileSystemName, "EXFAT   ", 8)) {
+		info->fstype = EXFAT_FILESYSTEM;
+		ret = 1;
+	}
+
+	return ret;
+}
+
+/**
  * exfat_check_allocation_cluster - Whether or not cluster is allocated
  * @info:          Target device information
  * @index:         index of the cluster want to check
