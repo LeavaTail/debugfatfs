@@ -13,7 +13,7 @@
 
 #include "dumpexfat.h"
 FILE *output = NULL;
-unsigned int print_level = DUMP_NOTICE;
+unsigned int print_level = PRINT_WARNING;
 /**
  * Special Option(no short option)
  */
@@ -85,9 +85,9 @@ int get_sector(struct device_info *info, void *data, off_t index, size_t count)
 {
 	size_t sector_size = info->sector_size;
 
-	dump_debug("Get: Sector from %lx to %lx\n", index , index + (count * sector_size) - 1);
+	pr_debug("Get: Sector from %lx to %lx\n", index , index + (count * sector_size) - 1);
 	if ((pread(info->fd, data, count * sector_size, index)) < 0) {
-		dump_err("can't read %s.", info->name);
+		pr_err("can't read %s.", info->name);
 		return -1;
 	}
 	return 0;
@@ -115,7 +115,7 @@ int get_clusters(struct device_info *info, void *data, off_t index, size_t num)
 	off_t heap_start = info->heap_offset * info->sector_size;
 
 	if (index < 2 || index + num > info->cluster_count) {
-		dump_err("invalid cluster index %lu.", index);
+		pr_err("invalid cluster index %lu.", index);
 		return -1;
 	}
 
@@ -137,16 +137,16 @@ void hexdump(FILE *out, void *data, size_t size)
 	size_t count = size / 0x10;
 
 	for (line = 0; line < count; line++) {
-		dump_notice("%08lX:  ", line * 0x10);
+		pr_msg("%08lX:  ", line * 0x10);
 		for (byte = 0; byte < 0x10; byte++) {
-			dump_notice("%02X ", ((unsigned char *)data)[line * 0x10 + byte]);
+			pr_msg("%02X ", ((unsigned char *)data)[line * 0x10 + byte]);
 		}
 		putchar(' ');
 		for (byte = 0; byte < 0x10; byte++) {
 			char ch = ((unsigned char *)data)[line * 0x10 + byte];
-			dump_notice("%c", isprint(ch)? ch: '.');
+			pr_msg("%c", isprint(ch)? ch: '.');
 		}
-		dump_notice("\n");
+		pr_msg("\n");
 	}
 }
 
@@ -186,12 +186,12 @@ static int get_device_info(struct device_info *info)
 	struct stat s;
 
 	if ((fd = open(info->name, O_RDONLY)) < 0) {
-		dump_err("can't open %s.", info->name);
+		pr_err("can't open %s.", info->name);
 		return -1;
 	}
 
 	if (fstat(fd, &s) < 0) {
-		dump_err("can't get stat %s.", info->name);
+		pr_err("can't get stat %s.", info->name);
 		close(fd);
 		return -1;
 	}
@@ -232,7 +232,7 @@ static int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsect
 
 	count = pread(info->fd, boot, SECSIZE, 0);
 	if(count < 0){
-		dump_err("can't read %s.", info->name);
+		pr_err("can't read %s.", info->name);
 		return -1;
 	}
 	if (!strncmp((char *)boot->FileSystemName, "EXFAT   ", 8)) {
@@ -267,7 +267,7 @@ static int pseudo_get_cluster_chain(struct device_info *info)
 			/* FIXME: Unimplemented*/
 			break;
 		default:
-			dump_err("invalid filesystem image.");
+			pr_err("invalid filesystem image.");
 			return -1;
 	}
 
@@ -293,7 +293,7 @@ static int pseudo_print_cluster(struct device_info *info, uint32_t cluster)
 			fat_print_cluster(info, cluster);
 			break;
 		default:
-			dump_err("invalid filesystem image.");
+			pr_err("invalid filesystem image.");
 			return -1;
 	}
 
@@ -311,7 +311,7 @@ static int pseudo_print_sector(struct device_info *info, uint32_t sector)
 
 	data = (char *)malloc(info->sector_size);
 	if (get_sector(info, data, sector, 1)) {
-		dump_notice("Sector #%u:\n", sector);
+		pr_msg("Sector #%u:\n", sector);
 		hexdump(output, data, info->sector_size);
 	}
 	free(data);
@@ -358,7 +358,7 @@ int main(int argc, char *argv[])
 				sector = strtoul(optarg, NULL, 0);
 				break;
 			case 'v':
-				print_level = DUMP_INFO;
+				print_level = PRINT_INFO;
 				break;
 			case GETOPT_HELP_CHAR:
 				usage(EXIT_SUCCESS);
@@ -373,7 +373,7 @@ int main(int argc, char *argv[])
 	}
 
 #ifdef DUMPEXFAT_DEBUG
-	print_level = DUMP_DEBUG;
+	print_level = PRINT_DEBUG;
 #endif
 
 	if (optind != argc - 1) {
@@ -385,7 +385,7 @@ int main(int argc, char *argv[])
 	output = stdout;
 	if(outflag) {
 		if ((output = fopen(outfile, "w")) == NULL) {
-			dump_err("can't open %s.", optarg);
+			pr_err("can't open %s.", optarg);
 			exit(EXIT_FAILURE);
 		}
 	}

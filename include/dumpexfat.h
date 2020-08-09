@@ -23,33 +23,27 @@
  */
 extern unsigned int print_level;
 extern FILE *output;
-#define DUMP_EMERG    0
-#define DUMP_ALERT    1
-#define DUMP_CRIT     2
-#define DUMP_ERR      3
-#define DUMP_WARNING  4
-#define DUMP_NOTICE   5
-#define DUMP_INFO     6
-#define DUMP_DEBUG    7 
+#define PRINT_ERR      1
+#define PRINT_WARNING  2
+#define PRINT_INFO     3
+#define PRINT_DEBUG    4
 
-#define dump_msg(level, fmt, ...)							\
+#define print(level, fmt, ...)								\
 	do {													\
 		if (print_level >= level) {							\
-			if (level <= DUMP_ERR)							\
-			fprintf( stderr, "" fmt, ##__VA_ARGS__);		\
-			else if(level <= DUMP_INFO)						\
-			fprintf( output, "" fmt, ##__VA_ARGS__); 		\
-			else if(level <= DUMP_DEBUG)					\
+			if (level == PRINT_DEBUG)						\
 			fprintf( output, "(%s:%u): " fmt,				\
 					__func__, __LINE__, ##__VA_ARGS__);		\
+			else 											\
+			fprintf( output, "" fmt, ##__VA_ARGS__); 		\
 		}													\
 	} while (0) \
 
-#define dump_err(fmt, ...)  dump_msg(DUMP_ERR, fmt, ##__VA_ARGS__)
-#define dump_warn(fmt, ...)  dump_msg(DUMP_WARNING, fmt, ##__VA_ARGS__)
-#define dump_notice(fmt, ...)  dump_msg(DUMP_NOTICE, fmt, ##__VA_ARGS__)
-#define dump_info(fmt, ...)  dump_msg(DUMP_INFO, fmt, ##__VA_ARGS__)
-#define dump_debug(fmt, ...)  dump_msg(DUMP_DEBUG, fmt, ##__VA_ARGS__)
+#define pr_err(fmt, ...)  print(PRINT_ERR, fmt, ##__VA_ARGS__)
+#define pr_warn(fmt, ...)  print(PRINT_WARNING, fmt, ##__VA_ARGS__)
+#define pr_info(fmt, ...)  print(PRINT_INFO, fmt, ##__VA_ARGS__)
+#define pr_debug(fmt, ...)  print(PRINT_DEBUG, fmt, ##__VA_ARGS__)
+#define pr_msg(fmt, ...)  fprintf(output, fmt, ##__VA_ARGS__)
 
 #define SECSIZE 512
 #define DENTRY_LISTSIZE 32

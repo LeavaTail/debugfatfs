@@ -37,17 +37,17 @@ static void exfat_create_fileinfo(struct device_info *, node2_t *, struct exfat_
  */
 int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 {
-	dump_info("%-28s\t: %8lx (sector)\n", "media-relative sector offset",
+	pr_msg("%-28s\t: %8lx (sector)\n", "media-relative sector offset",
 			b->PartitionOffset);
-	dump_info("%-28s\t: %8x (sector)\n", "Offset of the First FAT",
+	pr_msg("%-28s\t: %8x (sector)\n", "Offset of the First FAT",
 			b->FatOffset);
-	dump_info("%-28s\t: %8u (sector)\n", "Length of FAT table",
+	pr_msg("%-28s\t: %8u (sector)\n", "Length of FAT table",
 			b->FatLength);
-	dump_info("%-28s\t: %8x (sector)\n", "Offset of the Cluster Heap",
+	pr_msg("%-28s\t: %8x (sector)\n", "Offset of the Cluster Heap",
 			b->ClusterHeapOffset);
-	dump_info("%-28s\t: %8u (cluster)\n", "The number of clusters",
+	pr_msg("%-28s\t: %8u (cluster)\n", "The number of clusters",
 			b->ClusterCount);
-	dump_info("%-28s\t: %8u (cluster)\n", "The first cluster of the root",
+	pr_msg("%-28s\t: %8u (cluster)\n", "The first cluster of the root",
 			b->FirstClusterOfRootDirectory);
 
 	info->fat_offset = b->FatOffset;
@@ -58,18 +58,18 @@ int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 	info->cluster_count = b->ClusterCount;
 	info->fat_length = b->NumberOfFats * b->FatLength * info->sector_size;
 
-	dump_notice("%-28s\t: %8lu (sector)\n", "Size of exFAT volumes",
+	pr_msg("%-28s\t: %8lu (sector)\n", "Size of exFAT volumes",
 			b->VolumeLength);
-	dump_notice("%-28s\t: %8lu (byte)\n", "Bytes per sector",
+	pr_msg("%-28s\t: %8lu (byte)\n", "Bytes per sector",
 			info->sector_size);
-	dump_notice("%-28s\t: %8lu (byte)\n", "Bytes per cluster",
+	pr_msg("%-28s\t: %8lu (byte)\n", "Bytes per cluster",
 			info->cluster_size);
 
-	dump_notice("%-28s\t: %8u\n", "The number of FATs",
+	pr_msg("%-28s\t: %8u\n", "The number of FATs",
 			b->NumberOfFats);
-	dump_notice("%-28s\t: %8u (%%)\n", "The percentage of clusters",
+	pr_msg("%-28s\t: %8u (%%)\n", "The percentage of clusters",
 			b->PercentInUse);
-	dump_notice("\n");
+	pr_msg("\n");
 
 	return 0;
 }
@@ -83,9 +83,9 @@ static void exfat_print_allocation_bitmap(struct device_info *info)
 	node_t *node = info->chain_head;
 	while (node->next != NULL) {
 		node = node->next;
-		dump_notice("%u ", node->x);
+		pr_info("%u ", node->x);
 	}
-	dump_notice("\n");
+	pr_info("\n");
 }
 
 /**
@@ -99,24 +99,24 @@ static void exfat_print_upcase_table(struct device_info *info)
 	size_t length = info->upcase_size;
 
 	/* Usually, we don't want to display raw upcase table */
-	if (print_level < DUMP_INFO) {
-		dump_notice("Upcase-table was skipped.\n");
+	if (print_level < PRINT_INFO) {
+		pr_msg("Upcase-table was skipped.\n");
 		return;
 	}
 
 	/* Output table header */
-	dump_info("Offset  ");
+	pr_info("Offset  ");
 	for(byte = 0; byte < uni_count; byte++)
-		dump_info("  +%u ",byte);
-	dump_info("\n");
+		pr_info("  +%u ",byte);
+	pr_info("\n");
 
 	/* Output Table contents */
 	for(offset = 0; offset < length / uni_count; offset++) {
-		dump_info("%04lxh:  ", offset * 0x10 / sizeof(uint16_t));
+		pr_info("%04lxh:  ", offset * 0x10 / sizeof(uint16_t));
 		for(byte = 0; byte < uni_count; byte++) {
-			dump_info("%04x ", info->upcase_table[offset * uni_count + byte]);
+			pr_info("%04x ", info->upcase_table[offset * uni_count + byte]);
 		}
-		dump_info("\n");
+		pr_info("\n");
 	}
 }
 
@@ -144,7 +144,7 @@ static void exfat_print_volume_label(struct device_info *info, uint16_t *src, in
  */
 static void exfat_print_file_entry(struct device_info *info, struct exfat_fileinfo *f)
 {
-	dump_notice("%s\n", f->name);
+	pr_msg("%s\n", f->name);
 }
 
 /**
@@ -157,14 +157,14 @@ static void exfat_print_file_entry(struct device_info *info, struct exfat_filein
 int exfat_print_cluster(struct device_info *info, uint32_t index)
 {
 	if (!exfat_check_allocation_cluster(info, index) && !info->force) {
-		dump_err("cluster %u is not allocated.\n", index);
+		pr_err("cluster %u is not allocated.\n", index);
 		return -1;
 	}
 
 	void *data;
 	data = malloc(info->cluster_size);
 	get_cluster(info, data, index);
-	dump_notice("Cluster #%u:\n", index);
+	pr_msg("Cluster #%u:\n", index);
 	hexdump(output, data, info->cluster_size);
 	free(data);
 	return 0;
@@ -272,10 +272,9 @@ int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 
 			switch (d.EntryType) {
 				case DENTRY_UNUSED:
-					dump_debug("End of cluster#%u\n", index);
 					goto out;
 				case DENTRY_BITMAP:
-					dump_debug("Get: allocation table: cluster %x, size: %lx\n",
+					pr_debug("Get: allocation table: cluster %x, size: %lx\n",
 							d.dentry.bitmap.FirstCluster,
 							d.dentry.bitmap.DataLength);
 					info->chain_head = init_node();
@@ -284,23 +283,21 @@ int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 					exfat_create_allocation_chain(info, clu_tmp);
 					free(clu_tmp);
 
-					dump_notice("Allocation Bitmap (#%u):\n", d.dentry.bitmap.FirstCluster);
+					pr_info("Allocation Bitmap (#%u):\n", d.dentry.bitmap.FirstCluster);
 					exfat_print_allocation_bitmap(info);
 					break;
 				case DENTRY_UPCASE:
 					info->upcase_size = d.dentry.upcase.DataLength;
 					len = (info->cluster_size / info->upcase_size) + 1;
 					info->upcase_table = (uint16_t*)malloc(info->cluster_size * len);
-					dump_debug("Get: Up-case table: cluster %x, size: %x\n",
+					pr_debug("Get: Up-case table: cluster %x, size: %x\n",
 							d.dentry.upcase.FirstCluster,
 							d.dentry.upcase.DataLength);
 					get_clusters(info,
 							info->upcase_table, d.dentry.upcase.FirstCluster, len);
-					dump_notice("Upcase table (#%u):\n", d.dentry.upcase.FirstCluster);
-					exfat_print_upcase_table(info);
 					break;
 				case DENTRY_VOLUME:
-					dump_notice("volume Label: ");
+					pr_info("volume Label: ");
 					name_len = d.dentry.vol.CharacterCount;
 					memcpy(uniname, d.dentry.vol.VolumeLabel, sizeof(uint16_t) * name_len);
 					exfat_print_volume_label(info, uniname, name_len);
@@ -316,7 +313,7 @@ int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 					next = ((struct exfat_dentry *)clu)[i + 1];
 					name = ((struct exfat_dentry *)clu)[i + 2];
 					if (next.EntryType != DENTRY_STREAM || name.EntryType != DENTRY_NAME) {
-						dump_warn("File should have stream/name entry, but This don't have.\n");
+						pr_warn("File should have stream/name entry, but This don't have.\n");
 						return -1;
 					} 
 					name_len = next.dentry.stream.NameLength;
@@ -329,7 +326,7 @@ int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 					i += scount;
 					break;
 				case DENTRY_STREAM:
-					dump_warn("Stream needs be File entry, but This is not.\n");
+					pr_warn("Stream needs be File entry, but This is not.\n");
 					break;
 			}
 		}
@@ -379,16 +376,16 @@ static uint32_t exfat_check_fatentry(struct device_info *info, uint32_t index)
 	/* validate index */
 	if (index == EXFAT_BADCLUSTER) {
 		ret = 0;
-		dump_err("cluster: %u is bad cluster.\n", index);
+		pr_err("cluster: %u is bad cluster.\n", index);
 	} else if (index == EXFAT_LASTCLUSTER) {
 		ret = 0;
-		dump_debug("cluster: %u is the last cluster of cluster chain.\n", index);
+		pr_debug("cluster: %u is the last cluster of cluster chain.\n", index);
 	} else if (index < EXFAT_FIRST_CLUSTER || index > info->cluster_count + 1) {
 		ret = 0;
-		dump_debug("cluster: %u is invalid.\n", index);
+		pr_debug("cluster: %u is invalid.\n", index);
 	} else {
 		ret = fat[index];
-		dump_debug("cluster: %u has chain. next is %u.\n", ret, fat[index]);
+		pr_debug("cluster: %u has chain. next is %u.\n", ret, fat[index]);
 	}
 
 	free(fat);
@@ -416,10 +413,10 @@ static uint32_t exfat_concat_cluster(struct device_info *info, uint32_t index, v
 		if (clu_tmp) {
 			data = clu_tmp;
 			get_cluster(info, data + size, ret);
-			dump_notice("Concatenate cluster #%u with #%u\n.\n", index, ret);
+			pr_msg("Concatenate cluster #%u with #%u\n.\n", index, ret);
 			free(clu_tmp);
 		} else {
-			dump_err("Failed to Get new memory.\n");
+			pr_err("Failed to Get new memory.\n");
 			ret = 0;
 		}
 	}
