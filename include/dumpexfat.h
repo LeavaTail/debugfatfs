@@ -101,7 +101,7 @@ enum FStype
 struct device_info {
 	char name[255];
 	int fd;
-	bool force;
+	uint8_t attr;
 	size_t total_size;
 	size_t sector_size;
 	size_t cluster_size;
@@ -119,6 +119,8 @@ struct device_info {
 	size_t root_size;
 	size_t root_maxsize;
 };
+
+#define FORCE_ATTR		(1 << 0)
 
 struct exfat_fileinfo {
 	unsigned char *name;

@@ -157,7 +157,7 @@ static void exfat_print_file_entry(struct device_info *info, struct exfat_filein
  */
 int exfat_print_cluster(struct device_info *info, uint32_t index)
 {
-	if (!exfat_check_allocation_cluster(info, index) && !info->force) {
+	if (!exfat_check_allocation_cluster(info, index) && !(info->attr & FORCE_ATTR)) {
 		pr_err("cluster %u is not allocated.\n", index);
 		return -1;
 	}

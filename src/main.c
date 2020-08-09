@@ -159,7 +159,7 @@ void hexdump(FILE *out, void *data, size_t size)
 static void init_device_info(struct device_info *info)
 {
 	info->fd = -1;
-	info->force = false;
+	info->attr = 0;
 	info->total_size = 0;
 	info->sector_size = 0;
 	info->cluster_size = 0;
@@ -358,9 +358,9 @@ int main(int argc, char *argv[])
 	int opt;
 	int longindex;
 	int ret = 0;
+	uint8_t attr = 0;
 	bool cflag = false;
 	uint32_t cluster = 0;
-	bool fflag = false;
 	bool uflag = false;
 	bool sflag = false;
 	uint32_t sector = 0;
@@ -379,7 +379,7 @@ int main(int argc, char *argv[])
 				cluster = strtoul(optarg, NULL, 0);
 				break;
 			case 'f':
-				fflag = true;
+				attr |= FORCE_ATTR;
 				break;
 			case 'o':
 				outflag = true;
@@ -425,7 +425,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	}
-	info.force = fflag;
+	info.attr = attr;
 
 	memcpy(info.name, argv[optind], 255);
 	ret = get_device_info(&info);
