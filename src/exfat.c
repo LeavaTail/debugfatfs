@@ -245,12 +245,10 @@ int exfat_traverse_directories(struct device_info *info, uint32_t index)
  */
 int exfat_traverse_one_directory(struct device_info *info, uint32_t index)
 {
-	int i, j, byte, name_len;
+	int i, j, name_len;
 	uint8_t scount;
-	uint16_t attr = 0;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
-	uint32_t next_index;
-	uint64_t c, len;
+	uint64_t len;
 	size_t size = info->cluster_size;
 	size_t entries = size / sizeof(struct exfat_dentry);
 	void *clu, *clu_tmp;
@@ -461,7 +459,7 @@ int exfat_convert_character(struct device_info *info, const char *src, size_t le
 
 	free(utf16_upper);
 	free(utf16_src);
-	return 0;
+	return utf8_len;
 }
 
 /**
