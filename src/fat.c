@@ -2,12 +2,6 @@
 #include <stdbool.h>
 #include "dumpexfat.h"
 
-int fat_show_boot_sec(struct device_info *, struct fat_bootsec *);
-int fat16_show_boot_sec(struct device_info *, struct fat_bootsec *);
-int fat32_show_boot_sec(struct device_info *, struct fat_bootsec *);
-int fat32_show_fsinfo(struct device_info *, struct fat32_fsinfo *);
-int fat_check_filesystem(struct device_info *, struct pseudo_bootsec *);
-
 /**
  * fat_show_boot_sec - show boot sector in FAT12/16/32
  * @info:      structure to be shown device_info

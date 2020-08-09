@@ -5,20 +5,16 @@
 #include "dumpexfat.h"
 
 /* Print function prototype */
-int exfat_show_boot_sec(struct device_info *, struct exfat_bootsec *);
 static void exfat_print_allocation_bitmap(struct device_info *);
 static void exfat_print_upcase_table(struct device_info *);
 static void exfat_print_volume_label(struct device_info *, uint16_t *, int);
 static void exfat_print_file_entry(struct device_info *, struct exfat_fileinfo*);
-int exfat_print_cluster(struct device_info *, uint32_t);
 
 /* Load function prototype */
 static int exfat_create_allocation_chain(struct device_info *, void *);
 static void exfat_load_filename(uint16_t*, uint64_t, unsigned char*);
 static void exfat_load_timestamp(struct tm *, char *,
 		uint32_t, uint8_t, uint8_t);
-int exfat_traverse_directories(struct device_info *, uint32_t);
-int exfat_traverse_one_directory(struct device_info *, uint32_t);
 
 /* Check function prototype */
 static bool exfat_check_allocation_cluster(struct device_info *, uint32_t);
@@ -26,7 +22,6 @@ static uint32_t exfat_check_fatentry(struct device_info *, uint32_t);
 
 /* Create function prototype */
 static uint32_t exfat_concat_cluster(struct device_info *, uint32_t, void *, size_t);
-int exfat_convert_character(struct device_info *, const char *, size_t, char *);
 static void exfat_create_fileinfo(struct device_info *, node2_t *, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 
 /**
