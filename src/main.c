@@ -248,14 +248,14 @@ static int pseudo_check_filesystem(struct device_info *info, struct pseudo_boots
 }
 
 /**
- * pseudo_show_boot_sec - virtual function to show boot sector
- * @info:      structure to be shown device_info
+ * pseudo_print_boot_sec - virtual function to print boot sector
+ * @info:      structure to be printed device_info
  * @boot:      boot sector pointer
  *
  * return:     0  (succeeded in print)
  *             -1 (failed)
  */
-static int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsec *boot)
+static int pseudo_print_boot_sec(struct device_info *info, struct pseudo_bootsec *boot)
 {
 	size_t count = 0;
 
@@ -266,14 +266,14 @@ static int pseudo_show_boot_sec(struct device_info *info, struct pseudo_bootsec 
 	}
 	switch (info->fstype) {
 		case EXFAT_FILESYSTEM:
-			exfat_show_boot_sec(info, (struct exfat_bootsec*)boot);
+			exfat_print_boot_sec(info, (struct exfat_bootsec*)boot);
 			break;
 		case FAT12_FILESYSTEM:
 			/* FALLTHROUGH */
 		case FAT16_FILESYSTEM:
 			/* FALLTHROUGH */
 		case FAT32_FILESYSTEM:
-			fat_show_boot_sec(info, (struct fat_bootsec*)boot);
+			fat_print_boot_sec(info, (struct fat_bootsec*)boot);
 			break;
 		default:
 			pr_err("invalid filesystem image.");
@@ -471,7 +471,7 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		goto out;
 
-	ret = pseudo_show_boot_sec(&info, &bootsec);
+	ret = pseudo_print_boot_sec(&info, &bootsec);
 	if (ret < 0)
 		goto out;
 

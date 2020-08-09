@@ -25,13 +25,11 @@ static uint32_t exfat_concat_cluster(struct device_info *, uint32_t, void *, siz
 static void exfat_create_fileinfo(struct device_info *, node2_t *, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 
 /**
- * exfat_show_boot_sec - show boot sector in exFAT
+ * exfat_print_boot_sec - print boot sector in exFAT
  * @info:       Target device information
  * @b:          boot sector pointer in exFAT
- *
- * TODO: Unify the words (show? print? display?)
  */
-int exfat_show_boot_sec(struct device_info *info, struct exfat_bootsec *b)
+int exfat_print_boot_sec(struct device_info *info, struct exfat_bootsec *b)
 {
 	pr_msg("%-28s\t: %8lx (sector)\n", "media-relative sector offset",
 			b->PartitionOffset);

@@ -3,13 +3,13 @@
 #include "dumpexfat.h"
 
 /**
- * fat_show_boot_sec - show boot sector in FAT12/16/32
- * @info:      structure to be shown device_info
+ * fat_print_boot_sec - print boot sector in FAT12/16/32
+ * @info:      structure to be printed device_info
  * @b:         boot sector pointer in FAT
  *
  * TODO: implement function in FAT12/16/32
  */
-int fat_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
+int fat_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
 {
 	pr_msg("%-28s\t: %8u (byte)\n", "Bytes per Sector", b->BPB_BytesPerSec);
 	pr_msg("%-28s\t: %8u (sector)\n", "Sectors per cluster", b->BPB_SecPerClus);
@@ -25,16 +25,16 @@ int fat_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 		case FAT12_FILESYSTEM:
 			/* FALLTHROUGH */
 		case FAT16_FILESYSTEM:
-			fat16_show_boot_sec(info, b);
+			fat16_print_boot_sec(info, b);
 			break;
 		case FAT32_FILESYSTEM:
 			{
 				void *fsinfo;
 				fsinfo = malloc(info->sector_size);
-				fat32_show_boot_sec(info, b);
+				fat32_print_boot_sec(info, b);
 				get_sector(info, fsinfo,
 						b->reserved_info.fat32_reserved_info.BPB_FSInfo * info->sector_size, 1);
-				fat32_show_fsinfo(info, fsinfo);
+				fat32_print_fsinfo(info, fsinfo);
 				free(fsinfo);
 				break;
 			}
@@ -46,11 +46,11 @@ int fat_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 }
 
 /**
- * fat16_show_boot_sec - show boot sector in FAT12/16
- * @info:      structure to be shown device_info
+ * fat16_print_boot_sec - print boot sector in FAT12/16
+ * @info:      structure to be printed device_info
  * @b:         boot sector pointer in FAT
  */
-int fat16_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
+int fat16_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
 {
 	int i;
 	const char *type = (char *)b->reserved_info.fat16_reserved_info.BS_FilSysType;
@@ -77,11 +77,11 @@ int fat16_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 }
 
 /**
- * fat32_show_boot_sec - show boot sector in FAT32
- * @info:      structure to be shown device_info
+ * fat32_print_boot_sec - print boot sector in FAT32
+ * @info:      structure to be printed device_info
  * @b:         boot sector pointer in FAT
  */
-int fat32_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
+int fat32_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
 {
 	int i;
 	const char *type = (char *)b->reserved_info.fat32_reserved_info.BS_FilSysType;
@@ -118,11 +118,11 @@ int fat32_show_boot_sec(struct device_info *info, struct fat_bootsec *b)
 }
 
 /**
- * fat32_show_fsinfo - show FSinfo Structure in FAT32
- * @info:      structure to be shown device_info
+ * fat32_print_fsinfo - print FSinfo Structure in FAT32
+ * @info:      structure to be printed device_info
  * @b:         boot sector pointer in FAT
  */
-int fat32_show_fsinfo(struct device_info *info, struct fat32_fsinfo *fsi)
+int fat32_print_fsinfo(struct device_info *info, struct fat32_fsinfo *fsi)
 {
 	if((fsi->FSI_LeadSig != 0x41615252) ||
 			(fsi->FSI_StrucSig != 0x61417272) ||
