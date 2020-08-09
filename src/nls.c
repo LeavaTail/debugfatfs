@@ -90,7 +90,7 @@ int utf32_to_utf8(uint32_t u, unsigned char *d)
  */
 int utf8s_to_utf16s(unsigned char *src, uint16_t namelen, uint16_t* dist)
 {
-	int size = 0, len = 0;
+	int size = 0, len = 0, out_len = 0;
 	unsigned char *u = src;
 	uint32_t w;
 	while (len < namelen) {
@@ -98,17 +98,18 @@ int utf8s_to_utf16s(unsigned char *src, uint16_t namelen, uint16_t* dist)
 		w = (uint32_t)*u;
 		size = utf8_to_utf32(u, &w);
 		if (w <= 0xFFFF) {
-			*(dist + len) = w;
+			*(dist + out_len) = w;
 			len += size;
+			out_len ++;
 		} else if (w <= UNICODE_MAX) {
 			/* TODO: Implement surrogate pair */
-			return -1;
+			return 0;
 		} else {
 			fprintf(stderr, "Unicode doesn't support. (%0x)\n", w);
-			return -1;
+			return 0;
 		}
 	}
-	return 0;
+	return out_len;
 }
 
 /**
@@ -147,5 +148,5 @@ int utf16s_to_utf8s(uint16_t *src, uint16_t namelen, unsigned char* dist)
 			}
 		}
 	}
-	return 0;
+	return len;
 }
