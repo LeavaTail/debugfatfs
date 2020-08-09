@@ -455,7 +455,7 @@ int exfat_convert_character(struct device_info *info, const char *src, size_t le
 	}
 
 	/* convert UTF-16 to convert UTF-8 */
-	utf8_len = utf16s_to_utf8s(utf16_upper, utf16_len, dist);
+	utf8_len = utf16s_to_utf8s(utf16_upper, utf16_len, (unsigned char*)dist);
 
 	free(utf16_upper);
 	free(utf16_src);
