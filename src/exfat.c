@@ -26,6 +26,7 @@ static uint32_t exfat_check_fatentry(struct device_info *, uint32_t);
 
 /* Create function prototype */
 static uint32_t exfat_concat_cluster(struct device_info *, uint32_t, void *, size_t);
+int exfat_convert_character(struct device_info *, const char *, size_t, char *);
 static void exfat_create_fileinfo(struct device_info *, node2_t *, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 
 /**
@@ -421,6 +422,46 @@ static uint32_t exfat_concat_cluster(struct device_info *info, uint32_t index, v
 		}
 	}
 	return ret;
+}
+
+/**
+ * exfat_convert_character - Convert character by upcase-table
+ * @info:          Target device information
+ * @src:           Target characters (UTF-8)
+ * @len:           Target characters length
+ * @dist:          convert result (UTF-8)
+ */
+int exfat_convert_character(struct device_info *info, const char *src, size_t len, char *dist)
+{
+	int i, utf16_len, utf8_len;
+
+	uint16_t *utf16_src;
+	uint16_t *utf16_upper;
+
+	if (!info->upcase_table || (info->upcase_size == 0)) {
+		pr_err("This exFAT filesystem doesn't have upcase-table.\n");
+		return -1;
+	}
+	
+	/* convert UTF-8 to UTF16 */
+	utf16_src = (uint16_t*)malloc(sizeof(char) * len * UTF8_MAX_CHARSIZE);
+	utf16_len = utf8s_to_utf16s((unsigned char*)src, len, utf16_src);
+
+	/* convert UTF-16 char to UTF-16 only upper letter char */
+	utf16_upper = (uint16_t*)malloc(sizeof(uint16_t) * utf16_len);
+	for (i = 0; i < utf16_len; i++) {
+		if(utf16_src[i] > info->upcase_size)
+			utf16_upper[i] = utf16_src[i];
+		else
+			utf16_upper[i] = info->upcase_table[utf16_src[i]];
+	}
+
+	/* convert UTF-16 to convert UTF-8 */
+	utf8_len = utf16s_to_utf8s(utf16_upper, utf16_len, dist);
+
+	free(utf16_upper);
+	free(utf16_src);
+	return 0;
 }
 
 /**

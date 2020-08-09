@@ -30,6 +30,7 @@ static struct option const longopts[] =
 	{"force",no_argument, NULL, 'f'},
 	{"output",required_argument, NULL, 'o'},
 	{"sector",required_argument, NULL, 's'},
+	{"upper",required_argument, NULL, 'u'},
 	{"verbose",no_argument, NULL, 'v'},
 	{"help",no_argument, NULL, GETOPT_HELP_CHAR},
 	{"version",no_argument, NULL, GETOPT_VERSION_CHAR},
@@ -50,6 +51,7 @@ static void usage()
 	fprintf(stderr, "  -f, --force\tdump the cluster forcibly in spite of the non-allocated.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
 	fprintf(stderr, "  -s, --sector=index\tdump the sector index after dump filesystem information.\n");
+	fprintf(stderr, "  -u, --upper\tconvert into uppercase latter by up-case Table.\n");
 	fprintf(stderr, "  -v, --verbose\tVersion mode.\n");
 	fprintf(stderr, "  --help\tdisplay this help and exit.\n");
 	fprintf(stderr, "  --version\toutput version information and exit.\n");
@@ -275,6 +277,34 @@ static int pseudo_get_cluster_chain(struct device_info *info)
 }
 
 /**
+ * pseudo_convert_char - convert character for each filesystem
+ * @info:      structure to be get device_info
+ * @character: target character
+ */
+static int pseudo_convert_character(struct device_info *info, const char *character)
+{
+	char out[MAX_NAME_LENGTH + 1] = {};
+	switch (info->fstype) {
+		case EXFAT_FILESYSTEM:
+			exfat_convert_character(info, character, strlen(character), out);
+			pr_msg("Convert: %s -> %s\n", character, out);
+			break;
+		case FAT12_FILESYSTEM:
+			/* FALLTHROUGH */
+		case FAT16_FILESYSTEM:
+			/* FALLTHROUGH */
+		case FAT32_FILESYSTEM:
+			/* TODO: implement function */
+			break;
+		default:
+			pr_err("invalid filesystem image.");
+			return -1;
+	}
+
+	return 0;
+}
+
+/**
  * pseudo_print_cluster - virtual function to print any cluster
  * @info:      structure to be get device_info
  * @cluster:   cluster index to display
@@ -331,15 +361,17 @@ int main(int argc, char *argv[])
 	bool cflag = false;
 	uint32_t cluster = 0;
 	bool fflag = false;
+	bool uflag = false;
 	bool sflag = false;
 	uint32_t sector = 0;
 	bool outflag = false;
 	char *outfile = NULL;
+	char *input = NULL;
 	struct device_info info;
 	struct pseudo_bootsector bootsec;
 
 	while ((opt = getopt_long(argc, argv,
-					"c:fo:s:v",
+					"c:fo:s:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'c':
@@ -356,6 +388,10 @@ int main(int argc, char *argv[])
 			case 's':
 				sflag = true;
 				sector = strtoul(optarg, NULL, 0);
+				break;
+			case 'u':
+				uflag = true;
+				input = optarg;
 				break;
 			case 'v':
 				print_level = PRINT_INFO;
@@ -404,6 +440,12 @@ int main(int argc, char *argv[])
 	ret = pseudo_get_cluster_chain(&info);
 	if (ret < 0)
 		goto file_err;
+
+	if (uflag) {
+		ret = pseudo_convert_character(&info, input);
+		if(ret < 0)
+			goto file_err;
+	}
 
 	if (sflag) {
 		ret = pseudo_print_sector(&info, sector);

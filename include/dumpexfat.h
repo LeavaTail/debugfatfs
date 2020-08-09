@@ -345,6 +345,7 @@ int exfat_show_boot_sec(struct device_info *, struct exfat_bootsec *);
 int exfat_print_cluster(struct device_info *, uint32_t);
 int exfat_traverse_directories(struct device_info *, uint32_t);
 int exfat_traverse_one_directory(struct device_info *, uint32_t);
+int exfat_convert_character(struct device_info *, const char *, size_t, char *);
 
 /* nls function */
 int utf16_to_utf8(uint16_t *, uint16_t, unsigned char*);
