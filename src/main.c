@@ -172,9 +172,9 @@ static void init_device_info(void)
 	info.chain_head = NULL;
 	info.upcase_table = NULL;
 	info.upcase_size = 0;
+	info.root_maxsize = DENTRY_LISTSIZE;
 	info.root = (node2_t **)malloc(sizeof(node2_t *) * info.root_maxsize);
 	info.root_size = 0;
-	info.root_maxsize = DENTRY_LISTSIZE;
 }
 
 /**
