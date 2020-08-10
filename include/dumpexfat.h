@@ -304,10 +304,10 @@ struct exfat_dentry {
 } __attribute__ ((packed));
 
 struct operations {
-	int (*statfs)(struct device_info *, void*);
-	int (*readdir)(struct device_info *, uint32_t);
-	int (*convert)(struct device_info *, const char *, size_t, char *);
-	int (*print_cluster)(struct device_info *, uint32_t);
+	int (*statfs)(void*);
+	int (*readdir)(uint32_t);
+	int (*convert)(const char *, size_t, char *);
+	int (*print_cluster)(uint32_t);
 };
 
 /* FAT dentry type */
@@ -340,24 +340,26 @@ struct operations {
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
+extern struct device_info info;
+
 /* General function */
-int get_sector(struct device_info *, void *, off_t, size_t);
-int get_cluster(struct device_info *, void *, off_t);
-int get_clusters(struct device_info *, void *, off_t, size_t);
+int get_sector(void *, off_t, size_t);
+int get_cluster(void *, off_t);
+int get_clusters(void *, off_t, size_t);
 void hexdump(FILE *, void *, size_t);
 
 /* FAT function*/
-int fat_print_boot_sec(struct device_info *, struct fat_bootsec *);
-int fat_print_cluster(struct device_info *, uint32_t);
-int fat_check_filesystem(struct device_info *, struct pseudo_bootsec *, struct operations *);
+int fat_print_boot_sec(struct fat_bootsec *);
+int fat_print_cluster(uint32_t);
+int fat_check_filesystem(struct pseudo_bootsec *, struct operations *);
 
 /* exFAT function */
-int exfat_print_boot_sec(struct device_info *, struct exfat_bootsec *);
-int exfat_print_cluster(struct device_info *, uint32_t);
-int exfat_traverse_directories(struct device_info *, uint32_t);
-int exfat_traverse_one_directory(struct device_info *, uint32_t);
-int exfat_convert_character(struct device_info *, const char *, size_t, char *);
-int exfat_check_filesystem(struct device_info *, struct pseudo_bootsec *, struct operations *);
+int exfat_print_boot_sec(struct exfat_bootsec *);
+int exfat_print_cluster(uint32_t);
+int exfat_traverse_directories(uint32_t);
+int exfat_traverse_one_directory(uint32_t);
+int exfat_convert_character(const char *, size_t, char *);
+int exfat_check_filesystem(struct pseudo_bootsec *, struct operations *);
 
 /* nls function */
 int utf16_to_utf8(uint16_t *, uint16_t, unsigned char*);

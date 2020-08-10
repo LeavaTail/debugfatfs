@@ -14,6 +14,7 @@
 #include "dumpexfat.h"
 FILE *output = NULL;
 unsigned int print_level = PRINT_WARNING;
+struct device_info info;
 struct operations ops;
 /**
  * Special Option(no short option)
@@ -82,17 +83,16 @@ static void version(const char *command_name, const char *version,
 
 /**
  * get_sector - Get Raw-Data from any sector.
- * @info:       Target device information
  * @index:      Start bytes
  * @count:      The number of sectors
  */
-int get_sector(struct device_info *info, void *data, off_t index, size_t count)
+int get_sector(void *data, off_t index, size_t count)
 {
-	size_t sector_size = info->sector_size;
+	size_t sector_size = info.sector_size;
 
 	pr_debug("Get: Sector from %lx to %lx\n", index , index + (count * sector_size) - 1);
-	if ((pread(info->fd, data, count * sector_size, index)) < 0) {
-		pr_err("can't read %s.", info->name);
+	if ((pread(info.fd, data, count * sector_size, index)) < 0) {
+		pr_err("can't read %s.", info.name);
 		return -1;
 	}
 	return 0;
@@ -100,33 +100,30 @@ int get_sector(struct device_info *info, void *data, off_t index, size_t count)
 
 /**
  * get_cluster - Get Raw-Data from any cluster.
- * @info:       Target device information
  * @index:      Start cluster index
  */
-int get_cluster(struct device_info *info, void *data, off_t index)
+int get_cluster(void *data, off_t index)
 {
-	return get_clusters(info, data,index, 1);
+	return get_clusters(data,index, 1);
 }
 
 /**
  * get_clusters - Get Raw-Data from any cluster.
- * @info:       Target device information
  * @index:      Start cluster index
  * @num:        The number of clusters
  */
-int get_clusters(struct device_info *info, void *data, off_t index, size_t num)
+int get_clusters(void *data, off_t index, size_t num)
 {
-	size_t clu_per_sec = info->cluster_size / info->sector_size;
-	off_t heap_start = info->heap_offset * info->sector_size;
+	size_t clu_per_sec = info.cluster_size / info.sector_size;
+	off_t heap_start = info.heap_offset * info.sector_size;
 
-	if (index < 2 || index + num > info->cluster_count) {
+	if (index < 2 || index + num > info.cluster_count) {
 		pr_err("invalid cluster index %lu.", index);
 		return -1;
 	}
 
-	return get_sector(info,
-			data,
-			heap_start + ((index - 2) * info->cluster_size),
+	return get_sector(data,
+			heap_start + ((index - 2) * info.cluster_size),
 			clu_per_sec * num);
 }
 
@@ -157,94 +154,90 @@ void hexdump(FILE *out, void *data, size_t size)
 
 /**
  * init_device_info - Initialize member in struct device_info
- * @info:      structure to be Initialized
  */
-static void init_device_info(struct device_info *info)
+static void init_device_info(void)
 {
-	info->fd = -1;
-	info->attr = 0;
-	info->total_size = 0;
-	info->sector_size = 0;
-	info->cluster_size = 0;
-	info->cluster_count = 0;
-	info->fstype = 0;
-	info->flags = 0;
-	info->fat_offset = 0;
-	info->fat_length = 0;
-	info->heap_offset = 0;
-	info->root_offset = 0;
-	info->chain_head = NULL;
-	info->upcase_table = NULL;
-	info->upcase_size = 0;
-	info->root = (node2_t **)malloc(sizeof(node2_t *) * info->root_maxsize);
-	info->root_size = 0;
-	info->root_maxsize = DENTRY_LISTSIZE;
+	info.fd = -1;
+	info.attr = 0;
+	info.total_size = 0;
+	info.sector_size = 0;
+	info.cluster_size = 0;
+	info.cluster_count = 0;
+	info.fstype = 0;
+	info.flags = 0;
+	info.fat_offset = 0;
+	info.fat_length = 0;
+	info.heap_offset = 0;
+	info.root_offset = 0;
+	info.chain_head = NULL;
+	info.upcase_table = NULL;
+	info.upcase_size = 0;
+	info.root = (node2_t **)malloc(sizeof(node2_t *) * info.root_maxsize);
+	info.root_size = 0;
+	info.root_maxsize = DENTRY_LISTSIZE;
 }
 
 /**
  * get_device_info - get device name and store in device_info
- * @info:      structure to be stored device name
  */
-static int get_device_info(struct device_info *info)
+static int get_device_info(void)
 {
 	int fd;
 	struct stat s;
 
-	if ((fd = open(info->name, O_RDONLY)) < 0) {
-		pr_err("can't open %s.", info->name);
+	if ((fd = open(info.name, O_RDONLY)) < 0) {
+		pr_err("can't open %s.", info.name);
 		return -1;
 	}
 
 	if (fstat(fd, &s) < 0) {
-		pr_err("can't get stat %s.", info->name);
+		pr_err("can't get stat %s.", info.name);
 		close(fd);
 		return -1;
 	}
 
-	info->fd = fd;
-	info->total_size = s.st_size;
+	info.fd = fd;
+	info.total_size = s.st_size;
 	return 0;
 }
 
 /**
  * free_dentry_list - release list2_t
- * @info:      free to be stored device name
  *
  * TODO: Check for memory leaks
  */
-static int free_dentry_list(struct device_info *info)
+static int free_dentry_list(void)
 {
 	int i;
-	for(i = 0; i < info->root_size; i++) {
+	for(i = 0; i < info.root_size; i++) {
 		/* FIXME: There may be areas that have not been released. */
-		free_list2(info->root[i]);
+		free_list2(info.root[i]);
 	}
-	free(info->root);
+	free(info.root);
 
 	return 0;
 }
 
 /**
  * pseudo_check_filesystem - virtual function to check filesystem
- * @info:      structure to be shown device_info
  * @boot:      boot sector pointer
  *
  * return:     0  (succeeded in obtaining filesystem)
  *             -1 (failed)
  */
-static int pseudo_check_filesystem(struct device_info *info, struct pseudo_bootsec *boot)
+static int pseudo_check_filesystem(struct pseudo_bootsec *boot)
 {
 	size_t count = 0;
 
-	count = pread(info->fd, boot, SECSIZE, 0);
+	count = pread(info.fd, boot, SECSIZE, 0);
 	if(count < 0){
-		pr_err("can't read %s.", info->name);
+		pr_err("can't read %s.", info.name);
 		return -1;
 	}
 
-	if (exfat_check_filesystem(info, boot, &ops))
+	if (exfat_check_filesystem(boot, &ops))
 		return 0;
-	if (fat_check_filesystem(info, boot, &ops))
+	if (fat_check_filesystem(boot, &ops))
 		return 0;
 
 	return -1;
@@ -252,17 +245,16 @@ static int pseudo_check_filesystem(struct device_info *info, struct pseudo_boots
 
 /**
  * pseudo_print_sector - virtual function to print any sector
- * @info:      structure to be get device_info
  * @sector:    sector index to display
  */
-static int pseudo_print_sector(struct device_info *info, uint32_t sector)
+static int pseudo_print_sector(uint32_t sector)
 {
 	void *data;
 
-	data = (char *)malloc(info->sector_size);
-	if (get_sector(info, data, sector, 1)) {
+	data = (char *)malloc(info.sector_size);
+	if (get_sector(data, sector, 1)) {
 		pr_msg("Sector #%u:\n", sector);
-		hexdump(output, data, info->sector_size);
+		hexdump(output, data, info.sector_size);
 	}
 	free(data);
 	return 0;
@@ -289,7 +281,6 @@ int main(int argc, char *argv[])
 	char *outfile = NULL;
 	char *input = NULL;
 	char out[MAX_NAME_LENGTH + 1] = {};
-	struct device_info info;
 	struct pseudo_bootsec bootsec;
 
 	while ((opt = getopt_long(argc, argv,
@@ -342,7 +333,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	init_device_info(&info);
+	init_device_info();
 	output = stdout;
 	if(outflag) {
 		if ((output = fopen(outfile, "w")) == NULL) {
@@ -353,12 +344,12 @@ int main(int argc, char *argv[])
 	info.attr = attr;
 
 	memcpy(info.name, argv[optind], 255);
-	ret = get_device_info(&info);
+	ret = get_device_info();
 	if (ret < 0)
 		goto out;
 	info.chain_head = init_node();
 
-	ret = pseudo_check_filesystem(&info, &bootsec);
+	ret = pseudo_check_filesystem(&bootsec);
 	if (ret < 0)
 		goto out;
 
@@ -367,29 +358,29 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	ret = ops.statfs(&info, &bootsec);
+	ret = ops.statfs(&bootsec);
 	if (ret < 0)
 		goto out;
 
-	ret = ops.readdir(&info, info.root_offset);
+	ret = ops.readdir(info.root_offset);
 	if (ret < 0)
 		goto file_err;
 
 	if (uflag) {
-		ret = ops.convert(&info, input, strlen(input), out);
+		ret = ops.convert(input, strlen(input), out);
 		if(ret < 0)
 			goto file_err;
 		pr_msg("Convert: %s -> %s\n", input, out);
 	}
 
 	if (sflag) {
-		ret = pseudo_print_sector(&info, sector);
+		ret = pseudo_print_sector(sector);
 		if (ret < 0)
 			goto file_err;
 	}
 
 	if (cflag) {
-		ret = ops.print_cluster(&info, cluster);
+		ret = ops.print_cluster(cluster);
 		if (ret < 0)
 			goto file_err;
 	}
@@ -400,7 +391,7 @@ file_err:
 out:
 	free_list(info.chain_head);
 	free(info.upcase_table);
-	free_dentry_list(&info);
+	free_dentry_list();
 	if(outflag)
 		fclose(output);
 

@@ -2,18 +2,17 @@
 #include <stdbool.h>
 #include "dumpexfat.h"
 
-static int fat16_print_boot_sec(struct device_info *, struct fat_bootsec *);
-static int fat32_print_boot_sec(struct device_info *, struct fat_bootsec *);
-static int fat32_print_fsinfo(struct device_info *, struct fat32_fsinfo *);
+static int fat16_print_boot_sec(struct fat_bootsec *);
+static int fat32_print_boot_sec(struct fat_bootsec *);
+static int fat32_print_fsinfo(struct fat32_fsinfo *);
 
 /**
  * fat_print_boot_sec - print boot sector in FAT12/16/32
- * @info:      structure to be printed device_info
  * @b:         boot sector pointer in FAT
  *
  * TODO: implement function in FAT12/16/32
  */
-int fat_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
+int fat_print_boot_sec(struct fat_bootsec *b)
 {
 	pr_msg("%-28s\t: %8u (byte)\n", "Bytes per Sector", b->BPB_BytesPerSec);
 	pr_msg("%-28s\t: %8u (sector)\n", "Sectors per cluster", b->BPB_SecPerClus);
@@ -22,20 +21,20 @@ int fat_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
 	pr_msg("%-28s\t: %8u\n", "Root Directory entry count", b->BPB_RootEntCnt);
 	pr_msg("%-28s\t: %8u (sector)\n", "Sector count in Volume", b->BPB_TotSec16);
 
-	switch (info->fstype) {
+	switch (info.fstype) {
 		case FAT12_FILESYSTEM:
 			/* FALLTHROUGH */
 		case FAT16_FILESYSTEM:
-			fat16_print_boot_sec(info, b);
+			fat16_print_boot_sec(b);
 			break;
 		case FAT32_FILESYSTEM:
 			{
 				void *fsinfo;
-				fsinfo = malloc(info->sector_size);
-				fat32_print_boot_sec(info, b);
-				get_sector(info, fsinfo,
-						b->reserved_info.fat32_reserved_info.BPB_FSInfo * info->sector_size, 1);
-				fat32_print_fsinfo(info, fsinfo);
+				fsinfo = malloc(info.sector_size);
+				fat32_print_boot_sec(b);
+				get_sector(fsinfo,
+						b->reserved_info.fat32_reserved_info.BPB_FSInfo * info.sector_size, 1);
+				fat32_print_fsinfo(fsinfo);
 				free(fsinfo);
 				break;
 			}
@@ -48,10 +47,9 @@ int fat_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
 
 /**
  * fat16_print_boot_sec - print boot sector in FAT12/16
- * @info:      structure to be printed device_info
  * @b:         boot sector pointer in FAT
  */
-static int fat16_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
+static int fat16_print_boot_sec(struct fat_bootsec *b)
 {
 	int i;
 	const char *type = (char *)b->reserved_info.fat16_reserved_info.BS_FilSysType;
@@ -59,10 +57,10 @@ static int fat16_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
 	if(strncmp(type, "FAT", 3))
 		pr_warn("BS_FilSysType is expected \"FAT     \", But this is %s\n", type);
 
-	info->fat_offset = b->BPB_RevdSecCnt;
-	info->fat_length = b->BPB_NumFATs * b->BPB_FATSz16;
-	info->root_offset = info->fat_offset + info->fat_length;
-	info->heap_offset = info->root_offset +
+	info.fat_offset = b->BPB_RevdSecCnt;
+	info.fat_length = b->BPB_NumFATs * b->BPB_FATSz16;
+	info.root_offset = info.fat_offset + info.fat_length;
+	info.heap_offset = info.root_offset +
 		(b->BPB_RootEntCnt * 32 + b->BPB_BytesPerSec - 1) / b->BPB_BytesPerSec;
 
 	pr_msg("%-28s\t: ", "Volume ID");
@@ -79,10 +77,9 @@ static int fat16_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
 
 /**
  * fat32_print_boot_sec - print boot sector in FAT32
- * @info:      structure to be printed device_info
  * @b:         boot sector pointer in FAT
  */
-static int fat32_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
+static int fat32_print_boot_sec(struct fat_bootsec *b)
 {
 	int i;
 	const char *type = (char *)b->reserved_info.fat32_reserved_info.BS_FilSysType;
@@ -90,10 +87,10 @@ static int fat32_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
 	if(strncmp(type, "FAT32", 5))
 		pr_warn("BS_FilSysType is expected \"FAT32   \", But this is %s\n", type);
 
-	info->fat_offset = b->BPB_RevdSecCnt;
-	info->fat_length = b->BPB_NumFATs * b->reserved_info.fat32_reserved_info.BPB_FATSz32;
-	info->heap_offset = info->fat_offset + info->fat_length;
-	info->root_offset = info->heap_offset +
+	info.fat_offset = b->BPB_RevdSecCnt;
+	info.fat_length = b->BPB_NumFATs * b->reserved_info.fat32_reserved_info.BPB_FATSz32;
+	info.heap_offset = info.fat_offset + info.fat_length;
+	info.root_offset = info.heap_offset +
 		(b->reserved_info.fat32_reserved_info.BPB_RootClus - 2) *
 		b->BPB_SecPerClus * b->BPB_BytesPerSec;
 
@@ -120,10 +117,9 @@ static int fat32_print_boot_sec(struct device_info *info, struct fat_bootsec *b)
 
 /**
  * fat32_print_fsinfo - print FSinfo Structure in FAT32
- * @info:      structure to be printed device_info
  * @b:         boot sector pointer in FAT
  */
-static int fat32_print_fsinfo(struct device_info *info, struct fat32_fsinfo *fsi)
+static int fat32_print_fsinfo(struct fat32_fsinfo *fsi)
 {
 	if((fsi->FSI_LeadSig != 0x41615252) ||
 			(fsi->FSI_StrucSig != 0x61417272) ||
@@ -135,26 +131,25 @@ static int fat32_print_fsinfo(struct device_info *info, struct fat32_fsinfo *fsi
 	return 0;
 }
 
-int fat_print_cluster(struct device_info *info, uint32_t index)
+int fat_print_cluster(uint32_t index)
 {
 	void *data;
-	data = malloc(info->cluster_size);
-	get_cluster(info, data, index);
+	data = malloc(info.cluster_size);
+	get_cluster(data, index);
 	pr_msg("Cluster #%u:\n", index);
-	hexdump(output, data, info->cluster_size);
+	hexdump(output, data, info.cluster_size);
 	free(data);
 	return 0;
 }
 
 /**
  * fat_check_filesystem - Whether or not VFAT filesystem
- * @info:          Target device information
  * @index:         index of the cluster want to check
  *
  * return:     1 (Image is FAT12/16/32 filesystem)
  *             0 (Image isn't FAT12/16/32 filesystem)
  */
-int fat_check_filesystem(struct device_info *info, struct pseudo_bootsec *boot, struct operations *ops)
+int fat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 {
 	struct fat_bootsec *b = (struct fat_bootsec*)boot;
 	uint16_t RootDirSectors = ((b->BPB_RootEntCnt * 32) +
@@ -176,15 +171,15 @@ int fat_check_filesystem(struct device_info *info, struct pseudo_bootsec *boot, 
 	CountofClusters = DataSec / b->BPB_SecPerClus;
 
 	if (CountofClusters < FAT16_CLUSTERS - 1) {
-		info->fstype = FAT12_FILESYSTEM;
+		info.fstype = FAT12_FILESYSTEM;
 	} else if (CountofClusters < FAT32_CLUSTERS - 1) {
-		info->fstype = FAT16_FILESYSTEM;
+		info.fstype = FAT16_FILESYSTEM;
 	} else {
-		info->fstype = FAT32_FILESYSTEM;
+		info.fstype = FAT32_FILESYSTEM;
 	}
 
-	info->sector_size = b->BPB_BytesPerSec;
-	info->cluster_size = b->BPB_SecPerClus * b->BPB_BytesPerSec;
+	info.sector_size = b->BPB_BytesPerSec;
+	info.cluster_size = b->BPB_SecPerClus * b->BPB_BytesPerSec;
 
 	ops->statfs = fat_print_boot_sec;
 	ops->readdir = NULL;
