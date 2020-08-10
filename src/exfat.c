@@ -22,7 +22,7 @@ static uint32_t exfat_check_fatentry(uint32_t);
 
 /* Create function prototype */
 static uint32_t exfat_concat_cluster(uint32_t, void *, size_t);
-static void exfat_create_fileinfo(node2_t *, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
+static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 
 /**
  * exfat_print_boot_sec - print boot sector in exFAT
@@ -285,7 +285,7 @@ int exfat_traverse_one_directory(uint32_t index)
 						name_len = MIN(ENTRY_NAME_MAX, next.dentry.stream.NameLength - j * ENTRY_NAME_MAX);
 						memcpy(uniname + j * ENTRY_NAME_MAX, (((struct exfat_dentry *)clu)[i + 2 + j]).dentry.name.FileName, name_len * sizeof(uint16_t));
 					}
-					exfat_create_fileinfo(info.root[dindex],
+					exfat_create_fileinfo(info.root[dindex], index,
 							&d, &next, uniname);
 					i += scount;
 					break;
@@ -318,6 +318,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 {
 	int ret = 0;
 	struct exfat_bootsec *b = (struct exfat_bootset *)boot;
+	struct exfat_dirinfo *dinfo;
 
 	if (!strncmp((char *)boot->FileSystemName, "EXFAT   ", 8)) {
 		info.fstype = EXFAT_FILESYSTEM;
@@ -329,7 +330,12 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 		info.cluster_size = (1 << b->SectorsPerClusterShift) * info.sector_size;
 		info.cluster_count = b->ClusterCount;
 		info.fat_length = b->NumberOfFats * b->FatLength * info.sector_size;
-		info.root[info.root_size] = init_node2(info.root_offset, info.root[info.root_size]);
+		dinfo = (struct exfat_dirinfo*)malloc(sizeof(struct exfat_dirinfo));
+		dinfo->name = "/";
+		dinfo->pindex = info.root_offset;
+		dinfo->entries = 0;
+		dinfo->hash = 0;
+		info.root[info.root_size] = init_node2(info.root_offset, dinfo);
 
 		ops->statfs = exfat_print_boot_sec;
 		ops->readdir = exfat_traverse_one_directory;
@@ -460,11 +466,12 @@ int exfat_convert_character(const char *src, size_t len, char *dist)
 /**
  * exfat_create_file_entry - Create file infomarion
  * @dir:        Directory chain head
+ * @index:      parent Directory cluster index
  * @file:       file dentry
  * @stream:     stream Extension dentry
  * @uniname:    File Name dentry
  */
-static void exfat_create_fileinfo(node2_t *dir,
+static void exfat_create_fileinfo(node2_t *dir, uint32_t index,
 		struct exfat_dentry *file, struct exfat_dentry *stream, uint16_t *uniname)
 {
 	struct exfat_fileinfo *finfo;
@@ -493,17 +500,24 @@ static void exfat_create_fileinfo(node2_t *dir,
 
 	/* If this entry is Directory, prepare to create next chain */
 	if (finfo->attr & ATTR_DIRECTORY) {
+		struct exfat_dirinfo *dinfo = (struct exfat_dirinfo*)malloc(sizeof(struct exfat_dirinfo));
+		dinfo->name = finfo->name;
+		dinfo->pindex = index;
+		dinfo->entries = 0;
+		dinfo->hash = finfo->hash;
+
 		if (info.root_size + 1 >= info.root_maxsize) {
 			info.root_maxsize += DENTRY_LISTSIZE;
 			node2_t **tmp = (node2_t **)realloc(info.root, sizeof(node2_t *) * info.root_maxsize);
 			if (tmp) {
 				info.root = tmp;
-				info.root_size++;
 			} else {
 				pr_warn("Can't expand directory chain.\n");
 				info.root_size = 0;
 			}
 		}
-		info.root[info.root_size] = init_node2(stream->dentry.stream.FirstCluster, dir);
+
+		info.root_size++;
+		info.root[info.root_size] = init_node2(stream->dentry.stream.FirstCluster, dinfo);
 	}
 }
