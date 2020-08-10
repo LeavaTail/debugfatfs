@@ -9,6 +9,7 @@
 #include "list.h"
 #include "list2.h"
 #include "nls.h"
+#include "shell.h"
 /**
  * Program Name, version, author.
  * displayed when 'usage' and 'version'

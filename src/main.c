@@ -29,6 +29,7 @@ static struct option const longopts[] =
 {
 	{"cluster",required_argument, NULL, 'c'},
 	{"force",no_argument, NULL, 'f'},
+	{"interactive",no_argument, NULL, 'i'},
 	{"output",required_argument, NULL, 'o'},
 	{"sector",required_argument, NULL, 's'},
 	{"upper",required_argument, NULL, 'u'},
@@ -50,6 +51,7 @@ static void usage()
 
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
 	fprintf(stderr, "  -f, --force\tdump the cluster forcibly in spite of the non-allocated.\n");
+	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
 	fprintf(stderr, "  -s, --sector=index\tdump the sector index after dump filesystem information.\n");
 	fprintf(stderr, "  -u, --upper\tconvert into uppercase latter by up-case Table.\n");
@@ -279,6 +281,7 @@ int main(int argc, char *argv[])
 	uint8_t attr = 0;
 	bool cflag = false;
 	uint32_t cluster = 0;
+	bool iflag = false;
 	bool uflag = false;
 	bool sflag = false;
 	uint32_t sector = 0;
@@ -290,7 +293,7 @@ int main(int argc, char *argv[])
 	struct pseudo_bootsec bootsec;
 
 	while ((opt = getopt_long(argc, argv,
-					"c:fo:s:u:v",
+					"c:fio:s:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'c':
@@ -299,6 +302,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'f':
 				attr |= FORCE_ATTR;
+				break;
+			case 'i':
+				iflag = true;
 				break;
 			case 'o':
 				outflag = true;
@@ -355,6 +361,11 @@ int main(int argc, char *argv[])
 	ret = pseudo_check_filesystem(&info, &bootsec);
 	if (ret < 0)
 		goto out;
+
+	if (iflag) {
+		shell();
+		goto out;
+	}
 
 	ret = ops.statfs(&info, &bootsec);
 	if (ret < 0)
