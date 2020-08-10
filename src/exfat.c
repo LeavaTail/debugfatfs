@@ -222,6 +222,7 @@ int exfat_traverse_one_directory(uint32_t index)
 	uint8_t scount;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint64_t len;
+	size_t dindex = info.root_size;
 	size_t size = info.cluster_size;
 	size_t entries = size / sizeof(struct exfat_dentry);
 	void *clu, *clu_tmp;
@@ -229,15 +230,7 @@ int exfat_traverse_one_directory(uint32_t index)
 
 	clu = malloc(size);
 	get_cluster(clu, index);
-	if (info.root_size >= info.root_maxsize) {
-		info.root_maxsize += DENTRY_LISTSIZE;
-		node2_t **tmp = (node2_t **)realloc(info.root, sizeof(node2_t *) * info.root_maxsize);
-		if (!tmp)
-			/* Failed to expand area */
-			return -1;
-		info.root = tmp;
-	}
-	info.root[info.root_size] = init_node2(index, 0);
+
 	do {
 		for(i = 0; i < entries; i++){
 			d = ((struct exfat_dentry *)clu)[i];
@@ -292,7 +285,7 @@ int exfat_traverse_one_directory(uint32_t index)
 						name_len = MIN(ENTRY_NAME_MAX, next.dentry.stream.NameLength - j * ENTRY_NAME_MAX);
 						memcpy(uniname + j * ENTRY_NAME_MAX, (((struct exfat_dentry *)clu)[i + 2 + j]).dentry.name.FileName, name_len * sizeof(uint16_t));
 					}
-					exfat_create_fileinfo(info.root[info.root_size],
+					exfat_create_fileinfo(info.root[dindex],
 							&d, &next, uniname);
 					i += scount;
 					break;
@@ -336,6 +329,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 		info.cluster_size = (1 << b->SectorsPerClusterShift) * info.sector_size;
 		info.cluster_count = b->ClusterCount;
 		info.fat_length = b->NumberOfFats * b->FatLength * info.sector_size;
+		info.root[info.root_size] = init_node2(info.root_offset, info.root[info.root_size]);
 
 		ops->statfs = exfat_print_boot_sec;
 		ops->readdir = exfat_traverse_one_directory;
@@ -496,4 +490,20 @@ static void exfat_create_fileinfo(node2_t *dir,
 			0,
 			file->dentry.file.LastAccessdUtcOffset);
 	append_node2(dir, stream->dentry.stream.FirstCluster, finfo);
+
+	/* If this entry is Directory, prepare to create next chain */
+	if (finfo->attr & ATTR_DIRECTORY) {
+		if (info.root_size + 1 >= info.root_maxsize) {
+			info.root_maxsize += DENTRY_LISTSIZE;
+			node2_t **tmp = (node2_t **)realloc(info.root, sizeof(node2_t *) * info.root_maxsize);
+			if (tmp) {
+				info.root = tmp;
+				info.root_size++;
+			} else {
+				pr_warn("Can't expand directory chain.\n");
+				info.root_size = 0;
+			}
+		}
+		info.root[info.root_size] = init_node2(stream->dentry.stream.FirstCluster, dir);
+	}
 }
