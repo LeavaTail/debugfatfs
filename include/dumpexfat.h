@@ -364,7 +364,7 @@ int fat_check_filesystem(struct pseudo_bootsec *, struct operations *);
 /* exFAT function */
 int exfat_print_boot_sec(void);
 int exfat_print_cluster(uint32_t);
-int exfat_traverse_directories(uint32_t);
+int exfat_readdir(char *);
 int exfat_traverse_one_directory(uint32_t);
 int exfat_convert_character(const char *, size_t, char *);
 int exfat_check_filesystem(struct pseudo_bootsec *, struct operations *);

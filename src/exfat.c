@@ -294,12 +294,16 @@ static int exfat_lookup_file(node2_t *dir, char *name)
 }
 
 /**
- * exfat_traverse_directories - function interface to traverse all cluster
- * @index:         index of the cluster want to check
+ * exfat_readdir - function interface to read a directory
+ * @name:          directory name
  */
-int exfat_traverse_directories(uint32_t index)
+int exfat_readdir(char *name)
 {
-	return exfat_traverse_one_directory(index);
+	node2_t *head = exfat_lookup_dir(name);
+	if (!head)
+		return -1;
+
+	return 0;
 }
 
 /**
