@@ -118,7 +118,6 @@ struct device_info {
 	size_t upcase_size;
 	node2_t **root;
 	size_t root_size;
-	size_t root_maxsize;
 };
 
 #define FORCE_ATTR		(1 << 0)

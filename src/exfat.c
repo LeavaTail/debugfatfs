@@ -20,6 +20,7 @@ static void exfat_load_timestamp(struct tm *, char *,
 /* Search function prototype */
 static node2_t *exfat_lookup_dir(char *);
 static int exfat_lookup_file(node2_t *, char *);
+static int exfat_get_dirindex(uint32_t);
 
 /* Check function prototype */
 static bool exfat_check_allocation_cluster(uint32_t);
@@ -136,7 +137,7 @@ static void exfat_print_directory_chain(void)
 	struct exfat_fileinfo *f;
 	struct exfat_dirinfo *d;
 
-	for (i = 0; i < info.root_size; i++) {
+	for (i = 0; i < info.root_size && info.root[i]; i++) {
 		tmp = info.root[i];
 		d = (struct exfat_dirinfo*)info.root[i]->data;
 		pr_msg("%-16s(%u) | ", d->name, tmp->index);
@@ -262,7 +263,7 @@ static node2_t *exfat_lookup_dir(char *name)
 	int i;
 	struct exfat_fileinfo *file;
 
-	for (i = 0 ; i < info.root_size; i++) {
+	for (i = 0 ; i < info.root_size && info.root[i]; i++) {
 		file = (struct exfat_fileinfo*)info.root[i]->data;
 		if (!strcmp(name, (char *)file->name))
 			return info.root[i];
@@ -294,6 +295,34 @@ static int exfat_lookup_file(node2_t *dir, char *name)
 }
 
 /**
+ * exfat_get_dirindex - get directory chain index by argument
+ * @index:              index of the cluster
+ *
+ * return:              index
+ *                      Start of unused area (if doesn't lookup directory cache)
+ */
+static int exfat_get_dirindex(uint32_t index)
+{
+	int i;
+	for (i = 0; i < info.root_size && info.root[i]; i++) {
+		if(info.root[i]->index == index)
+			return i;
+	}
+
+	info.root_size += DENTRY_LISTSIZE;
+	node2_t **tmp = (node2_t **)realloc(info.root, sizeof(node2_t *) * info.root_size);
+	if (tmp) {
+		info.root = tmp;
+		info.root[i] = NULL;
+	} else {
+		pr_warn("Can't expand directory chain.\n");
+		delete_node2(info.root[--i]);
+	}
+
+	return i;
+}
+
+/**
  * exfat_readdir - function interface to read a directory
  * @name:          directory name
  */
@@ -317,7 +346,7 @@ int exfat_traverse_one_directory(uint32_t index)
 	uint8_t scount;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint64_t len;
-	size_t dindex = info.root_size;
+	size_t dindex = exfat_get_dirindex(index);
 	size_t size = info.cluster_size;
 	size_t entries = size / sizeof(struct exfat_dentry);
 	void *clu, *clu_tmp;
@@ -397,7 +426,6 @@ int exfat_traverse_one_directory(uint32_t index)
 		entries = size / sizeof(struct exfat_dentry);
 	} while(1);
 out:
-	info.root_size++;
 	free(clu);
 	return 0;
 }
@@ -432,7 +460,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 		dinfo->pindex = info.root_offset;
 		dinfo->entries = 0;
 		dinfo->hash = 0;
-		info.root[info.root_size] = init_node2(info.root_offset, dinfo);
+		info.root[0] = init_node2(info.root_offset, dinfo);
 
 		ops->statfs = exfat_print_boot_sec;
 		ops->lookup =  exfat_lookup;
@@ -572,6 +600,7 @@ int exfat_convert_character(const char *src, size_t len, char *dist)
 static void exfat_create_fileinfo(node2_t *dir, uint32_t index,
 		struct exfat_dentry *file, struct exfat_dentry *stream, uint16_t *uniname)
 {
+	int i, next_index = stream->dentry.stream.FirstCluster;
 	struct exfat_fileinfo *finfo;
 	size_t namelen = stream->dentry.stream.NameLength;
 
@@ -594,28 +623,17 @@ static void exfat_create_fileinfo(node2_t *dir, uint32_t index,
 	exfat_load_timestamp(&finfo->atime, "Access", file->dentry.file.LastAccessedTimestamp,
 			0,
 			file->dentry.file.LastAccessdUtcOffset);
-	append_node2(dir, stream->dentry.stream.FirstCluster, finfo);
+	append_node2(dir, next_index, finfo);
 
 	/* If this entry is Directory, prepare to create next chain */
-	if (finfo->attr & ATTR_DIRECTORY) {
+	if ((finfo->attr & ATTR_DIRECTORY) && (!exfat_lookup_dir((char *)finfo->name))) {
 		struct exfat_dirinfo *dinfo = (struct exfat_dirinfo*)malloc(sizeof(struct exfat_dirinfo));
 		dinfo->name = finfo->name;
 		dinfo->pindex = index;
 		dinfo->entries = 0;
 		dinfo->hash = finfo->hash;
 
-		if (info.root_size + 1 >= info.root_maxsize) {
-			info.root_maxsize += DENTRY_LISTSIZE;
-			node2_t **tmp = (node2_t **)realloc(info.root, sizeof(node2_t *) * info.root_maxsize);
-			if (tmp) {
-				info.root = tmp;
-			} else {
-				pr_warn("Can't expand directory chain.\n");
-				info.root_size = 0;
-			}
-		}
-
-		info.root_size++;
-		info.root[info.root_size] = init_node2(stream->dentry.stream.FirstCluster, dinfo);
+		i = exfat_get_dirindex(next_index);
+		info.root[i] = init_node2(next_index, dinfo);
 	}
 }

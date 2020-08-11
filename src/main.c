@@ -172,9 +172,8 @@ static void init_device_info(void)
 	info.chain_head = NULL;
 	info.upcase_table = NULL;
 	info.upcase_size = 0;
-	info.root_maxsize = DENTRY_LISTSIZE;
-	info.root = (node2_t **)malloc(sizeof(node2_t *) * info.root_maxsize);
-	info.root_size = 0;
+	info.root_size = DENTRY_LISTSIZE;
+	info.root = (node2_t **)malloc(sizeof(node2_t *) * info.root_size);
 }
 
 /**
@@ -209,7 +208,7 @@ static int get_device_info(void)
 static int free_dentry_list(void)
 {
 	int i;
-	for(i = 0; i < info.root_size; i++) {
+	for(i = 0; i < info.root_size && info.root[i]; i++) {
 		/* FIXME: There may be areas that have not been released. */
 		free_list2(info.root[i]);
 	}
