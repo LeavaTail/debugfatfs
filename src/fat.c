@@ -5,6 +5,7 @@
 static int fat16_print_boot_sec(struct fat_bootsec *);
 static int fat32_print_boot_sec(struct fat_bootsec *);
 static int fat32_print_fsinfo(struct fat32_fsinfo *);
+static int fat_load_boot_sec(struct fat_bootsec *);
 
 /**
  * fat_print_boot_sec - print boot sector in FAT12/16/32
@@ -12,8 +13,12 @@ static int fat32_print_fsinfo(struct fat32_fsinfo *);
  *
  * TODO: implement function in FAT12/16/32
  */
-int fat_print_boot_sec(struct fat_bootsec *b)
+int fat_print_boot_sec(void)
 {
+	int ret = 0;
+	struct fat_bootsec *b = (struct fat_bootsec *)malloc(sizeof(struct fat_bootsec));
+
+	fat_load_boot_sec(b);
 	pr_msg("%-28s\t: %8u (byte)\n", "Bytes per Sector", b->BPB_BytesPerSec);
 	pr_msg("%-28s\t: %8u (sector)\n", "Sectors per cluster", b->BPB_SecPerClus);
 	pr_msg("%-28s\t: %8u (sector)\n", "Reserved Sector", b->BPB_RevdSecCnt);
@@ -40,9 +45,10 @@ int fat_print_boot_sec(struct fat_bootsec *b)
 			}
 		default:
 			pr_err("Expected FAT filesystem, But this is not FAT filesystem.\n");
-			return -1;
+			ret = -1;
 	}
-	return 0;
+	free(b);
+	return ret;
 }
 
 /**
@@ -140,6 +146,15 @@ int fat_print_cluster(uint32_t index)
 	hexdump(output, data, info.cluster_size);
 	free(data);
 	return 0;
+}
+
+/**
+ * fat_load_boot_sec - load boot sector in FAT
+ * @b:         boot sector pointer in FAT
+ */
+static int fat_load_boot_sec(struct fat_bootsec *b)
+{
+	return get_sector(b, 0, 1);
 }
 
 /**

@@ -11,6 +11,7 @@ static void exfat_print_volume_label(uint16_t *, int);
 static void exfat_print_file_entry(struct exfat_fileinfo*);
 
 /* Load function prototype */
+static int exfat_load_boot_sec(struct exfat_bootsec *);
 static int exfat_create_allocation_chain(void *);
 static void exfat_load_filename(uint16_t*, uint64_t, unsigned char*);
 static void exfat_load_timestamp(struct tm *, char *,
@@ -32,8 +33,11 @@ static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, st
  * exfat_print_boot_sec - print boot sector in exFAT
  * @b:          boot sector pointer in exFAT
  */
-int exfat_print_boot_sec(struct exfat_bootsec *b)
+int exfat_print_boot_sec(void)
 {
+	struct exfat_bootsec *b = (struct exfat_bootsec *)malloc(sizeof(struct exfat_bootsec));
+
+	exfat_load_boot_sec(b);
 	pr_msg("%-28s\t: %8lx (sector)\n", "media-relative sector offset",
 			b->PartitionOffset);
 	pr_msg("%-28s\t: %8x (sector)\n", "Offset of the First FAT",
@@ -58,6 +62,7 @@ int exfat_print_boot_sec(struct exfat_bootsec *b)
 			b->PercentInUse);
 	pr_msg("\n");
 
+	free(b);
 	return 0;
 }
 
@@ -150,6 +155,15 @@ int exfat_print_cluster(uint32_t index)
 	hexdump(output, data, info.cluster_size);
 	free(data);
 	return 0;
+}
+
+/**
+ * exfat_load_boot_sec - load boot sector
+ * @b:          boot sector pointer in exFAT
+ */
+static int exfat_load_boot_sec(struct exfat_bootsec *b)
+{
+	return get_sector(b, 0, 1);
 }
 
 /**
@@ -379,9 +393,10 @@ out:
 int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 {
 	int ret = 0;
-	struct exfat_bootsec *b = (struct exfat_bootset *)boot;
+	struct exfat_bootsec *b;
 	struct exfat_dirinfo *dinfo;
 
+	b = (struct exfat_bootsec *)boot;
 	if (!strncmp((char *)boot->FileSystemName, "EXFAT   ", 8)) {
 		info.fstype = EXFAT_FILESYSTEM;
 

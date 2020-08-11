@@ -358,7 +358,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	ret = ops.statfs(&bootsec);
+	ret = ops.statfs();
 	if (ret < 0)
 		goto out;
 

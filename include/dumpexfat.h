@@ -311,7 +311,7 @@ struct exfat_dentry {
 } __attribute__ ((packed));
 
 struct operations {
-	int (*statfs)(void*);
+	int (*statfs)(void);
 	int (*lookup)(char*, char*);
 	int (*readdir)(uint32_t);
 	int (*convert)(const char *, size_t, char *);
@@ -357,12 +357,12 @@ int get_clusters(void *, off_t, size_t);
 void hexdump(FILE *, void *, size_t);
 
 /* FAT function*/
-int fat_print_boot_sec(struct fat_bootsec *);
+int fat_print_boot_sec(void);
 int fat_print_cluster(uint32_t);
 int fat_check_filesystem(struct pseudo_bootsec *, struct operations *);
 
 /* exFAT function */
-int exfat_print_boot_sec(struct exfat_bootsec *);
+int exfat_print_boot_sec(void);
 int exfat_print_cluster(uint32_t);
 int exfat_traverse_directories(uint32_t);
 int exfat_traverse_one_directory(uint32_t);
