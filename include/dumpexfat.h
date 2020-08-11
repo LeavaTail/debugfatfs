@@ -47,7 +47,7 @@ extern FILE *output;
 #define pr_msg(fmt, ...)  fprintf(output, fmt, ##__VA_ARGS__)
 
 #define SECSIZE 512
-#define DENTRY_LISTSIZE 32
+#define DENTRY_LISTSIZE 1024
 
 /*
  * FAT definition
