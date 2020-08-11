@@ -249,7 +249,7 @@ static node2_t *exfat_lookup_dir(char *name)
 
 	for (i = 0 ; i < info.root_size; i++) {
 		file = (struct exfat_fileinfo*)info.root[i]->data;
-		if (!strcmp(name, file->name))
+		if (!strcmp(name, (char *)file->name))
 			return info.root[i];
 	}
 	return NULL;
@@ -272,7 +272,7 @@ static int exfat_lookup_file(node2_t *dir, char *name)
 	while (tmp->next != NULL) {
 		tmp = tmp->next;
 		file = (struct exfat_fileinfo*)tmp->data;
-		if (!strcmp(name, file->name))
+		if (!strcmp(name, (char *)file->name))
 			return tmp->index;
 	}
 	return 0;
@@ -408,7 +408,8 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 		info.cluster_count = b->ClusterCount;
 		info.fat_length = b->NumberOfFats * b->FatLength * info.sector_size;
 		dinfo = (struct exfat_dirinfo*)malloc(sizeof(struct exfat_dirinfo));
-		dinfo->name = "/";
+		dinfo->name = (unsigned char *)malloc(sizeof(unsigned char*) * (strlen("/") + 1));
+		strncpy((char *)dinfo->name, "/", strlen("/") + 1);
 		dinfo->pindex = info.root_offset;
 		dinfo->entries = 0;
 		dinfo->hash = 0;
