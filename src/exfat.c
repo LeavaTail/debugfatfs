@@ -8,7 +8,7 @@
 static void exfat_print_allocation_bitmap(void);
 static void exfat_print_upcase_table(void);
 static void exfat_print_volume_label(uint16_t *, int);
-static void exfat_print_file_entry(struct exfat_fileinfo*);
+static void exfat_print_directory_chain(void);
 
 /* Load function prototype */
 static int exfat_load_boot_sec(struct exfat_bootsec *);
@@ -127,12 +127,27 @@ static void exfat_print_volume_label(uint16_t *src, int len)
 }
 
 /**
- * exfat_print_file_entry - print file metadata
- * @f:          file information
+ * exfat_print_directory_chain - print directory chain
  */
-static void exfat_print_file_entry(struct exfat_fileinfo *f)
+static void exfat_print_directory_chain(void)
 {
-	pr_msg("%s\n", f->name);
+	int i;
+	node2_t *tmp;
+	struct exfat_fileinfo *f;
+	struct exfat_dirinfo *d;
+
+	for (i = 0; i < info.root_size; i++) {
+		tmp = info.root[i];
+		d = (struct exfat_dirinfo*)info.root[i]->data;
+		pr_msg("%-16s(%u) | ", d->name, tmp->index);
+		while (tmp->next != NULL) {
+			tmp = tmp->next;
+			f = (struct exfat_fileinfo*)tmp->data;
+			pr_msg("%s(%u) ", f->name, tmp->index);
+		}
+		pr_msg("\n");
+	}
+	pr_msg("\n");
 }
 
 /**
