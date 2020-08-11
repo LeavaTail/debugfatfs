@@ -53,9 +53,11 @@ static int get_env(char **envp, char *env, char *value)
 {
 	int i;
 	char *tp;
+	char str[CMD_MAXLEN + 1] = {};
 
 	for (i = 0; envp[i]; i++) {
-		tp = strtok(envp[i], "=");
+		strncpy(str, envp[i], CMD_MAXLEN);
+		tp = strtok(str, "=");
 		if (!strcmp(tp, env)) {
 			tp = strtok(NULL, "=");
 			strncpy(value, tp, CMD_MAXLEN);
