@@ -16,6 +16,10 @@ static void exfat_load_filename(uint16_t*, uint64_t, unsigned char*);
 static void exfat_load_timestamp(struct tm *, char *,
 		uint32_t, uint8_t, uint8_t);
 
+/* Search function prototype */
+static node2_t *exfat_lookup_dir(char *);
+static int exfat_lookup_file(node2_t *, char *);
+
 /* Check function prototype */
 static bool exfat_check_allocation_cluster(uint32_t);
 static uint32_t exfat_check_fatentry(uint32_t);
@@ -203,6 +207,64 @@ static void exfat_load_timestamp(struct tm *t, char *str,
 }
 
 /**
+ * exfat_lookup       - function interface to lookup pathname
+ * @dir:                directory name
+ * @file:               file name
+ */
+int exfat_lookup(char *dir, char *name)
+{
+	int index;
+	node2_t *head;
+
+	head = exfat_lookup_dir(dir);
+	index = head ? head->index : 0;
+	if (name) {
+		index = exfat_lookup_file(head, name);
+	}
+	return index;
+}
+
+/**
+ * exfat_lookup_dir   - function interface to lookup directory name
+ * @name:               directory name
+ */
+static node2_t *exfat_lookup_dir(char *name)
+{
+	int i;
+	struct exfat_fileinfo *file;
+
+	for (i = 0 ; i < info.root_size; i++) {
+		file = (struct exfat_fileinfo*)info.root[i]->data;
+		if (!strcmp(name, file->name))
+			return info.root[i];
+	}
+	return NULL;
+}
+
+/**
+ * exfat_lookup_file - function interface to lookup path name
+ * @dir:               current directory
+ * @name:              file name
+ */
+static int exfat_lookup_file(node2_t *dir, char *name)
+{
+	struct exfat_fileinfo *file;
+	node2_t *tmp = dir;
+	if (!dir) {
+		pr_warn("directory is nothing.\n");
+		return 0;
+	}
+
+	while (tmp->next != NULL) {
+		tmp = tmp->next;
+		file = (struct exfat_fileinfo*)tmp->data;
+		if (!strcmp(name, file->name))
+			return tmp->index;
+	}
+	return 0;
+}
+
+/**
  * exfat_traverse_directories - function interface to traverse all cluster
  * @index:         index of the cluster want to check
  */
@@ -338,6 +400,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 		info.root[info.root_size] = init_node2(info.root_offset, dinfo);
 
 		ops->statfs = exfat_print_boot_sec;
+		ops->lookup =  exfat_lookup;
 		ops->readdir = exfat_traverse_one_directory;
 		ops->convert = exfat_convert_character;
 		ops->print_cluster = exfat_print_cluster;

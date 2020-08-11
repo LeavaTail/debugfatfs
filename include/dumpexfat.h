@@ -312,6 +312,7 @@ struct exfat_dentry {
 
 struct operations {
 	int (*statfs)(void*);
+	int (*lookup)(char*, char*);
 	int (*readdir)(uint32_t);
 	int (*convert)(const char *, size_t, char *);
 	int (*print_cluster)(uint32_t);
@@ -367,6 +368,7 @@ int exfat_traverse_directories(uint32_t);
 int exfat_traverse_one_directory(uint32_t);
 int exfat_convert_character(const char *, size_t, char *);
 int exfat_check_filesystem(struct pseudo_bootsec *, struct operations *);
+int exfat_lookup(char *, char *);
 
 /* nls function */
 int utf16_to_utf8(uint16_t *, uint16_t, unsigned char*);
