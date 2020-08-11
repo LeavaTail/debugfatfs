@@ -426,6 +426,7 @@ int exfat_traverse_one_directory(uint32_t index)
 		entries = size / sizeof(struct exfat_dentry);
 	} while(1);
 out:
+	((struct exfat_dirinfo*)(info.root[dindex]->data))->attr &= ~EXFAT_DIR_NEW;
 	free(clu);
 	return 0;
 }
@@ -459,6 +460,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 		strncpy((char *)dinfo->name, "/", strlen("/") + 1);
 		dinfo->pindex = info.root_offset;
 		dinfo->entries = 0;
+		dinfo->attr = EXFAT_DIR_NEW;
 		dinfo->hash = 0;
 		info.root[0] = init_node2(info.root_offset, dinfo);
 
@@ -631,6 +633,7 @@ static void exfat_create_fileinfo(node2_t *dir, uint32_t index,
 		dinfo->name = finfo->name;
 		dinfo->pindex = index;
 		dinfo->entries = 0;
+		dinfo->attr = EXFAT_DIR_NEW;
 		dinfo->hash = finfo->hash;
 
 		i = exfat_get_dirindex(next_index);
