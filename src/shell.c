@@ -19,7 +19,7 @@ static int decode_cmd(char *str, char **argv, char **envp)
 	while (token != NULL) {
 		len = strlen(token);
 		copy = (char*)malloc(sizeof(char) * (len + 1));
-		strncpy(copy, token, len);
+		strcpy(copy, token);
 		argv[argc++] = copy;
 		token = strtok(NULL, CMD_DELIM);
 	}
