@@ -357,10 +357,16 @@ int exfat_traverse_one_directory(uint32_t index)
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint64_t len;
 	size_t dindex = exfat_get_dirindex(index);
+	struct exfat_dirinfo *dinfo = (struct exfat_dirinfo*)info.root[dindex]->data;
 	size_t size = info.cluster_size;
 	size_t entries = size / sizeof(struct exfat_dentry);
 	void *clu, *clu_tmp;
 	struct exfat_dentry d, next, name;
+
+	if (!(dinfo->attr & EXFAT_DIR_NEW)) {
+		pr_debug("Directory %s was already traversed.\n", dinfo->name);
+		return 0;
+	}
 
 	clu = malloc(size);
 	get_cluster(clu, index);
