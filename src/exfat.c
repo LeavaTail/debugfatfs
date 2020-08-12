@@ -37,7 +37,7 @@ static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, st
  */
 int exfat_print_boot_sec(void)
 {
-	struct exfat_bootsec *b = (struct exfat_bootsec *)malloc(sizeof(struct exfat_bootsec));
+	struct exfat_bootsec *b = malloc(sizeof(struct exfat_bootsec));
 
 	exfat_load_boot_sec(b);
 	pr_msg("%-28s\t: %8lx (sector)\n", "media-relative sector offset",
@@ -121,7 +121,7 @@ static void exfat_print_volume_label(uint16_t *src, int len)
 {
 	unsigned char *name;
 
-	name = (unsigned char *)malloc(len * sizeof(uint16_t)  + 1);
+	name = malloc(len * sizeof(uint16_t)  + 1);
 	memset(name, '\0', len * sizeof(uint16_t) + 1);
 	utf16s_to_utf8s(src, len, name);
 	printf("%s\n", name);
@@ -327,7 +327,7 @@ static int exfat_get_dirindex(uint32_t index)
 	}
 
 	info.root_size += DENTRY_LISTSIZE;
-	node2_t **tmp = (node2_t **)realloc(info.root, sizeof(node2_t *) * info.root_size);
+	node2_t **tmp = realloc(info.root, sizeof(node2_t *) * info.root_size);
 	if (tmp) {
 		info.root = tmp;
 		info.root[i] = NULL;
@@ -361,7 +361,7 @@ int exfat_readdir(struct directory *dir, size_t count, uint32_t clu)
 	for (i = 0; i < count && tmp->next != NULL; i++) {
 		tmp = tmp->next;
 		finfo = (struct exfat_fileinfo*)(tmp->data);
-		dir[i].name = (unsigned char*)malloc(sizeof(unsigned char*) * (finfo->namelen + 1));
+		dir[i].name = malloc(sizeof(unsigned char*) * (finfo->namelen + 1));
 		strncpy((char*)dir[i].name, (char *)finfo->name, finfo->namelen + 1);
 		dir[i].namelen = finfo->namelen;
 		dir[i].datalen = finfo->datalen;
@@ -440,7 +440,7 @@ int exfat_traverse_one_directory(uint32_t index)
 				case DENTRY_UPCASE:
 					info.upcase_size = d.dentry.upcase.DataLength;
 					len = (info.cluster_size / info.upcase_size) + 1;
-					info.upcase_table = (uint16_t*)malloc(info.cluster_size * len);
+					info.upcase_table = malloc(info.cluster_size * len);
 					pr_debug("Get: Up-case table: cluster %x, size: %x\n",
 							d.dentry.upcase.FirstCluster,
 							d.dentry.upcase.DataLength);
@@ -537,8 +537,8 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 		info.cluster_size = (1 << b->SectorsPerClusterShift) * info.sector_size;
 		info.cluster_count = b->ClusterCount;
 		info.fat_length = b->NumberOfFats * b->FatLength * info.sector_size;
-		dinfo = (struct exfat_dirinfo*)malloc(sizeof(struct exfat_dirinfo));
-		dinfo->name = (unsigned char *)malloc(sizeof(unsigned char*) * (strlen("/") + 1));
+		dinfo = malloc(sizeof(struct exfat_dirinfo));
+		dinfo->name = malloc(sizeof(unsigned char*) * (strlen("/") + 1));
 		strncpy((char *)dinfo->name, "/", strlen("/") + 1);
 		dinfo->pindex = info.root_offset;
 		dinfo->entries = 0;
@@ -588,7 +588,7 @@ static uint32_t exfat_check_fatentry(uint32_t index)
 	uint32_t fat_index = (info.fat_offset +  index / entry_per_sector) * info.sector_size;
 	uint32_t *fat;
 
-	fat = (uint32_t *)malloc(info.sector_size);
+	fat = malloc(info.sector_size);
 	get_sector(fat, fat_index, 1);
 	/* validate index */
 	if (index == EXFAT_BADCLUSTER) {
@@ -678,11 +678,11 @@ int exfat_convert_character(const char *src, size_t len, char *dist)
 	}
 
 	/* convert UTF-8 to UTF16 */
-	utf16_src = (uint16_t*)malloc(sizeof(char) * len * UTF8_MAX_CHARSIZE);
+	utf16_src = malloc(sizeof(char) * len * UTF8_MAX_CHARSIZE);
 	utf16_len = utf8s_to_utf16s((unsigned char*)src, len, utf16_src);
 
 	/* convert UTF-16 char to UTF-16 only upper letter char */
-	utf16_upper = (uint16_t*)malloc(sizeof(uint16_t) * utf16_len);
+	utf16_upper = malloc(sizeof(uint16_t) * utf16_len);
 	for (i = 0; i < utf16_len; i++) {
 		if(utf16_src[i] > info.upcase_size)
 			utf16_upper[i] = utf16_src[i];
@@ -713,8 +713,8 @@ static void exfat_create_fileinfo(node2_t *dir, uint32_t index,
 	struct exfat_fileinfo *finfo;
 	size_t namelen = stream->dentry.stream.NameLength;
 
-	finfo = (struct exfat_fileinfo*)malloc(sizeof(struct exfat_fileinfo));
-	finfo->name = (unsigned char *)malloc(namelen * UTF8_MAX_CHARSIZE + 1);
+	finfo = malloc(sizeof(struct exfat_fileinfo));
+	finfo->name = malloc(namelen * UTF8_MAX_CHARSIZE + 1);
 	memset(finfo->name, '\0', namelen * UTF8_MAX_CHARSIZE + 1);
 
 	exfat_load_filename(uniname, namelen, finfo->name);
@@ -737,8 +737,8 @@ static void exfat_create_fileinfo(node2_t *dir, uint32_t index,
 
 	/* If this entry is Directory, prepare to create next chain */
 	if ((finfo->attr & ATTR_DIRECTORY) && (!exfat_check_exist_directory(next_index))) {
-		struct exfat_dirinfo *dinfo = (struct exfat_dirinfo*)malloc(sizeof(struct exfat_dirinfo));
-		dinfo->name = (unsigned char *)malloc(finfo->namelen + 1);
+		struct exfat_dirinfo *dinfo = malloc(sizeof(struct exfat_dirinfo));
+		dinfo->name = malloc(finfo->namelen + 1);
 		strncpy((char*)dinfo->name, (char *)finfo->name, finfo->namelen + 1);
 		dinfo->pindex = index;
 		dinfo->entries = 0;

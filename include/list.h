@@ -21,7 +21,7 @@ static inline void insert_node(node_t *head, uint32_t data)
 {
 	node_t *node;
 
-	node = (node_t *)malloc(sizeof(node_t));
+	node = malloc(sizeof(node_t));
 	node->x = data;
 	node->next = head->next;
 	head->next = node;
@@ -46,7 +46,7 @@ static inline node_t *init_node(void)
 {
 	node_t *new_node;
 
-	new_node = (node_t *)malloc(sizeof(node_t));
+	new_node = malloc(sizeof(node_t));
 	new_node->next = NULL;
 	return new_node;
 }

@@ -18,7 +18,7 @@ static int decode_cmd(char *str, char **argv, char **envp)
 	token = strtok(str, CMD_DELIM);
 	while (token != NULL) {
 		len = strlen(token);
-		copy = (char*)malloc(sizeof(char) * (len + 1));
+		copy = malloc(sizeof(char) * (len + 1));
 		strcpy(copy, token);
 		argv[argc++] = copy;
 		token = strtok(NULL, CMD_DELIM);
@@ -37,7 +37,7 @@ static int read_cmd(char *buf)
 static int set_env(char **envp, char *env, char *value)
 {
 	int i;
-	char *str = (char*)malloc(sizeof(char) * (CMD_MAXLEN + 1));
+	char *str = malloc(sizeof(char) * (CMD_MAXLEN + 1));
 
 	for (i = 0; envp[i]; i++) {
 		if (!strcmp(strtok(envp[i], "="), env))
@@ -77,8 +77,8 @@ int shell(void)
 {
 	int argc = 0;
 	char buf[CMD_MAXLEN + 1] = {};
-	char **argv = (char**)malloc(sizeof(char*) * (CMD_MAXLEN + 1));
-	char **envp = (char**)malloc(sizeof(char*) * 16);
+	char **argv = malloc(sizeof(char*) * (CMD_MAXLEN + 1));
+	char **envp = malloc(sizeof(char*) * 16);
 
 	init_env(envp);
 	while (1) {

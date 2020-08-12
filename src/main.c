@@ -193,7 +193,7 @@ static void init_device_info(void)
 	info.upcase_table = NULL;
 	info.upcase_size = 0;
 	info.root_size = DENTRY_LISTSIZE;
-	info.root = (node2_t **)malloc(sizeof(node2_t *) * info.root_size);
+	info.root = malloc(sizeof(node2_t *) * info.root_size);
 }
 
 /**
@@ -277,7 +277,7 @@ static int pseudo_print_sector(uint32_t sector)
 {
 	void *data;
 
-	data = (char *)malloc(info.sector_size);
+	data = malloc(info.sector_size);
 	if (get_sector(data, sector, 1)) {
 		pr_msg("Sector #%u:\n", sector);
 		hexdump(output, data, info.sector_size);
@@ -390,7 +390,7 @@ int main(int argc, char *argv[])
 	if (attr & OPTION_ALL)
 		ops.reload(0, INT_MAX);
 
-	dirs = (struct directory*)malloc(sizeof(struct directory) * DIRECTORY_FILES);
+	dirs = malloc(sizeof(struct directory) * DIRECTORY_FILES);
 	ret = ops.readdir(dirs, DIRECTORY_FILES, info.root_offset);
 
 	if (ret < 0)

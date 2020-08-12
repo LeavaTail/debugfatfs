@@ -16,7 +16,7 @@ static int fat_load_boot_sec(struct fat_bootsec *);
 int fat_print_boot_sec(void)
 {
 	int ret = 0;
-	struct fat_bootsec *b = (struct fat_bootsec *)malloc(sizeof(struct fat_bootsec));
+	struct fat_bootsec *b = malloc(sizeof(struct fat_bootsec));
 
 	fat_load_boot_sec(b);
 	pr_msg("%-28s\t: %8u (byte)\n", "Bytes per Sector", b->BPB_BytesPerSec);
