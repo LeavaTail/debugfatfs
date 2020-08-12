@@ -199,7 +199,7 @@ int fat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 	ops->statfs = fat_print_boot_sec;
 	ops->lookup = NULL;
 	ops->readdir = NULL;
-	ops->readdirs = NULL;
+	ops->reload = NULL;
 	ops->convert = NULL;
 	ops->print_cluster = fat_print_cluster;
 

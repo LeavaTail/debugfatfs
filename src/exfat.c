@@ -320,11 +320,13 @@ int exfat_readdir(char *name)
 }
 
 /**
- * exfat_readdirs - function interface to read directories
+ * exfat_reload_directory - function interface to read directories
  * @from            cluster index to start search
  * @to              cluster index to end search
+ *
+ * TODO: Delete chain once if chain is exist
  */
-int exfat_readdirs(uint32_t from, uint32_t to)
+int exfat_reload_directory(uint32_t from, uint32_t to)
 {
 	return exfat_traverse_directories(from, to);
 }
@@ -489,7 +491,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 		ops->statfs = exfat_print_boot_sec;
 		ops->lookup =  exfat_lookup;
 		ops->readdir = exfat_traverse_one_directory;
-		ops->readdirs = exfat_readdirs;
+		ops->reload = exfat_reload_directory;
 		ops->convert = exfat_convert_character;
 		ops->print_cluster = exfat_print_cluster;
 		ret = 1;

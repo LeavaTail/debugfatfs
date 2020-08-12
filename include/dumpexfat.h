@@ -316,7 +316,7 @@ struct operations {
 	int (*statfs)(void);
 	int (*readdir)(uint32_t);
 	int (*lookup)(uint32_t, char*);
-	int (*readdirs)(uint32_t, uint32_t);
+	int (*reload)(uint32_t, uint32_t);
 	int (*convert)(const char *, size_t, char *);
 	int (*print_cluster)(uint32_t);
 };

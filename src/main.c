@@ -393,9 +393,9 @@ int main(int argc, char *argv[])
 		goto out;
 
 	if (aflag)
-		ret = ops.readdirs(0, INT_MAX);
-	else
-		ret = ops.readdir(info.root_offset);
+		ops.reload(0, INT_MAX);
+
+	ret = ops.readdir(info.root_offset);
 
 	if (ret < 0)
 		goto file_err;
