@@ -26,7 +26,7 @@ static uint32_t exfat_check_fatentry(uint32_t);
 static int exfat_check_exist_directory(uint32_t);
 
 /* Create function prototype */
-static uint32_t exfat_concat_cluster(uint32_t, void *, size_t);
+static uint32_t exfat_concat_cluster(uint32_t, void **, size_t);
 static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 
 /**
@@ -454,8 +454,8 @@ int exfat_traverse_one_directory(uint32_t index)
 					break;
 				case DENTRY_FILE:
 					scount = d.dentry.file.SecondaryCount;
-					if (i + scount > entries) {
-						index = exfat_concat_cluster(index, clu, size);
+					if (i + scount >= entries) {
+						index = exfat_concat_cluster(index, &clu, size);
 						size += info.cluster_size;
 						entries = size / sizeof(struct exfat_dentry);
 					}
@@ -480,7 +480,7 @@ int exfat_traverse_one_directory(uint32_t index)
 					break;
 			}
 		}
-		index = exfat_concat_cluster(index, clu, size);
+		index = exfat_concat_cluster(index, &clu, size);
 		if (!index)
 			break;
 
@@ -587,6 +587,7 @@ static uint32_t exfat_check_fatentry(uint32_t index)
 	size_t entry_per_sector = info.sector_size / sizeof(uint32_t);
 	uint32_t fat_index = (info.fat_offset +  index / entry_per_sector) * info.sector_size;
 	uint32_t *fat;
+	uint32_t entry_off = (index) % entry_per_sector;
 
 	fat = malloc(info.sector_size);
 	get_sector(fat, fat_index, 1);
@@ -601,8 +602,8 @@ static uint32_t exfat_check_fatentry(uint32_t index)
 		ret = 0;
 		pr_debug("cluster: %u is invalid.\n", index);
 	} else {
-		ret = fat[index];
-		pr_debug("cluster: %u has chain. next is %u.\n", ret, fat[index]);
+		ret = fat[entry_off];
+		pr_debug("cluster: %u has chain. next is %u.\n", index, fat[entry_off]);
 	}
 
 	free(fat);
@@ -635,19 +636,19 @@ static int exfat_check_exist_directory(uint32_t index)
  * @retrun:        next cluster (@index has next cluster)
  *                 0            (@index doesn't have next cluster, or failed to realloc)
  */
-static uint32_t exfat_concat_cluster(uint32_t index, void *data, size_t size)
+static uint32_t exfat_concat_cluster(uint32_t index, void **data, size_t size)
 {
+	int i;
 	uint32_t ret;
 	void *clu_tmp;
 	ret = exfat_check_fatentry(index);
 
 	if (ret) {
-		clu_tmp = realloc(data, size + info.cluster_size);
+		clu_tmp = realloc(*data, size + info.cluster_size);
 		if (clu_tmp) {
-			data = clu_tmp;
-			get_cluster(data + size, ret);
-			pr_msg("Concatenate cluster #%u with #%u\n.\n", index, ret);
-			free(clu_tmp);
+			*data = clu_tmp;
+			get_cluster(clu_tmp + size, ret);
+			pr_msg("Concatenate cluster #%u with #%u\n", index, ret);
 		} else {
 			pr_err("Failed to Get new memory.\n");
 			ret = 0;
