@@ -102,7 +102,7 @@ enum FStype
 struct device_info {
 	char name[255];
 	int fd;
-	uint8_t attr;
+	uint32_t attr;
 	size_t total_size;
 	size_t sector_size;
 	size_t cluster_size;
@@ -120,7 +120,14 @@ struct device_info {
 	size_t root_size;
 };
 
-#define FORCE_ATTR		(1 << 0)
+#define OPTION_ALL			(1 << 0)
+#define OPTION_FORCE		(1 << 1)
+#define OPTION_CLUSTER		(1 << 2)
+#define OPTION_INTERACTIVE	(1 << 3)
+#define OPTION_OUTPUT		(1 << 4)
+#define OPTION_SECTOR		(1 << 5)
+#define OPTION_UPPER		(1 << 6)
+
 
 struct directory {
 	unsigned char *name;

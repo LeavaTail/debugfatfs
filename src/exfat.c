@@ -161,7 +161,7 @@ static void exfat_print_directory_chain(void)
  */
 int exfat_print_cluster(uint32_t index)
 {
-	if (!exfat_check_allocation_cluster(index) && !(info.attr & FORCE_ATTR)) {
+	if (!exfat_check_allocation_cluster(index) && !(info.attr & OPTION_FORCE)) {
 		pr_err("cluster %u is not allocated.\n", index);
 		return -1;
 	}

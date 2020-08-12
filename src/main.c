@@ -296,15 +296,9 @@ int main(int argc, char *argv[])
 	int opt;
 	int longindex;
 	int ret = 0;
-	uint8_t attr = 0;
-	bool aflag = false;
-	bool cflag = false;
+	uint32_t attr = 0;
 	uint32_t cluster = 0;
-	bool iflag = false;
-	bool uflag = false;
-	bool sflag = false;
 	uint32_t sector = 0;
-	bool outflag = false;
 	char *outfile = NULL;
 	char *input = NULL;
 	char out[MAX_NAME_LENGTH + 1] = {};
@@ -316,28 +310,28 @@ int main(int argc, char *argv[])
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
-				aflag = true;
+				attr |= OPTION_ALL;
 				break;
 			case 'c':
-				cflag = true;
+				attr |= OPTION_CLUSTER;
 				cluster = strtoul(optarg, NULL, 0);
 				break;
 			case 'f':
-				attr |= FORCE_ATTR;
+				attr |= OPTION_FORCE;
 				break;
 			case 'i':
-				iflag = true;
+				attr |= OPTION_INTERACTIVE;
 				break;
 			case 'o':
-				outflag = true;
+				attr |= OPTION_OUTPUT;
 				outfile = optarg;
 				break;
 			case 's':
-				sflag = true;
+				attr |= OPTION_SECTOR;
 				sector = strtoul(optarg, NULL, 0);
 				break;
 			case 'u':
-				uflag = true;
+				attr |= OPTION_UPPER;
 				input = optarg;
 				break;
 			case 'v':
@@ -366,7 +360,7 @@ int main(int argc, char *argv[])
 
 	init_device_info();
 	output = stdout;
-	if(outflag) {
+	if (attr & OPTION_OUTPUT) {
 		if ((output = fopen(outfile, "w")) == NULL) {
 			pr_err("can't open %s.", optarg);
 			exit(EXIT_FAILURE);
@@ -384,7 +378,7 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		goto out;
 
-	if (iflag) {
+	if (attr & OPTION_INTERACTIVE) {
 		shell();
 		goto out;
 	}
@@ -393,7 +387,7 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		goto out;
 
-	if (aflag)
+	if (attr & OPTION_ALL)
 		ops.reload(0, INT_MAX);
 
 	dirs = (struct directory*)malloc(sizeof(struct directory) * DIRECTORY_FILES);
@@ -402,20 +396,20 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		goto file_err;
 
-	if (uflag) {
+	if (attr & OPTION_UPPER) {
 		ret = ops.convert(input, strlen(input), out);
 		if(ret < 0)
 			goto file_err;
 		pr_msg("Convert: %s -> %s\n", input, out);
 	}
 
-	if (sflag) {
+	if (attr & OPTION_SECTOR) {
 		ret = pseudo_print_sector(sector);
 		if (ret < 0)
 			goto file_err;
 	}
 
-	if (cflag) {
+	if (attr & OPTION_CLUSTER) {
 		ret = ops.print_cluster(cluster);
 		if (ret < 0)
 			goto file_err;
@@ -429,7 +423,7 @@ out:
 	free_list(info.chain_head);
 	free(info.upcase_table);
 	free_dentry_list();
-	if(outflag)
+	if (attr & OPTION_OUTPUT)
 		fclose(output);
 
 	return ret;
