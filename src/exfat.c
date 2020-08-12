@@ -308,15 +308,40 @@ static int exfat_get_dirindex(uint32_t index)
 
 /**
  * exfat_readdir - function interface to read a directory
- * @name:          directory name
+ * @dir:           directory entry list (Output)
+ * @count:         Allocated space in @dir
+ * @clu:           Directory cluster index
+ *
+ * @return         >= 0 (Number of entry)
+ *                  < 0 (Number of entry can't read)
  */
-int exfat_readdir(char *name)
+int exfat_readdir(struct directory *dir, size_t count, uint32_t clu)
 {
-	node2_t *head = exfat_lookup_dir(name);
-	if (!head)
-		return -1;
+	int i;
+	node2_t *tmp;
+	struct exfat_fileinfo *finfo;
 
-	return 0;
+	exfat_traverse_one_directory(clu);
+	i = exfat_get_dirindex(clu);
+	tmp = info.root[i];
+
+	for (i = 0; i < count && tmp->next != NULL; i++) {
+		tmp = tmp->next;
+		finfo = (struct exfat_fileinfo*)(tmp->data);
+		dir[i].name = (unsigned char*)malloc(sizeof(unsigned char*) * (finfo->namelen + 1));
+		strncpy((char*)dir[i].name, (char *)finfo->name, finfo->namelen + 1);
+		dir[i].namelen = finfo->namelen;
+		dir[i].datalen = finfo->datalen;
+		dir[i].ctime = finfo->ctime;
+		dir[i].atime = finfo->atime;
+		dir[i].mtime = finfo->mtime;
+	}
+	/* If Dentry remains, Return error */
+	if (tmp->next != NULL) {
+		for (i = 0; tmp->next != NULL; i--, tmp = tmp->next);
+	}
+
+	return i;
 }
 
 /**
@@ -490,7 +515,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 
 		ops->statfs = exfat_print_boot_sec;
 		ops->lookup =  exfat_lookup;
-		ops->readdir = exfat_traverse_one_directory;
+		ops->readdir = exfat_readdir;
 		ops->reload = exfat_reload_directory;
 		ops->convert = exfat_convert_character;
 		ops->print_cluster = exfat_print_cluster;

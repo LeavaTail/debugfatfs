@@ -309,6 +309,7 @@ int main(int argc, char *argv[])
 	char *input = NULL;
 	char out[MAX_NAME_LENGTH + 1] = {};
 	struct pseudo_bootsec bootsec;
+	struct directory *dirs;
 
 	while ((opt = getopt_long(argc, argv,
 					"ac:fio:s:u:v",
@@ -395,7 +396,8 @@ int main(int argc, char *argv[])
 	if (aflag)
 		ops.reload(0, INT_MAX);
 
-	ret = ops.readdir(info.root_offset);
+	dirs = (struct directory*)malloc(sizeof(struct directory) * DIRECTORY_FILES);
+	ret = ops.readdir(dirs, DIRECTORY_FILES, info.root_offset);
 
 	if (ret < 0)
 		goto file_err;
@@ -423,6 +425,7 @@ file_err:
 	close(info.fd);
 
 out:
+	free(dirs);
 	free_list(info.chain_head);
 	free(info.upcase_table);
 	free_dentry_list();

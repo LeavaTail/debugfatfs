@@ -122,6 +122,18 @@ struct device_info {
 
 #define FORCE_ATTR		(1 << 0)
 
+struct directory {
+	unsigned char *name;
+	size_t namelen;
+	size_t datalen;
+	struct tm ctime;
+	struct tm atime;
+	struct tm mtime;
+	uint16_t hash;
+};
+
+#define DIRECTORY_FILES		1024
+
 struct exfat_fileinfo {
 	unsigned char *name;
 	size_t namelen;
@@ -314,8 +326,8 @@ struct exfat_dentry {
 
 struct operations {
 	int (*statfs)(void);
-	int (*readdir)(uint32_t);
 	int (*lookup)(uint32_t, char*);
+	int (*readdir)(struct directory *, size_t, uint32_t);
 	int (*reload)(uint32_t, uint32_t);
 	int (*convert)(const char *, size_t, char *);
 	int (*print_cluster)(uint32_t);
@@ -367,7 +379,6 @@ int fat_check_filesystem(struct pseudo_bootsec *, struct operations *);
 /* exFAT function */
 int exfat_print_boot_sec(void);
 int exfat_print_cluster(uint32_t);
-int exfat_readdir(char *);
 int exfat_traverse_one_directory(uint32_t);
 int exfat_traverse_directories(uint32_t, uint32_t);
 int exfat_convert_character(const char *, size_t, char *);
