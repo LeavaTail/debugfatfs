@@ -738,7 +738,8 @@ static void exfat_create_fileinfo(node2_t *dir, uint32_t index,
 	/* If this entry is Directory, prepare to create next chain */
 	if ((finfo->attr & ATTR_DIRECTORY) && (!exfat_check_exist_directory(next_index))) {
 		struct exfat_dirinfo *dinfo = (struct exfat_dirinfo*)malloc(sizeof(struct exfat_dirinfo));
-		dinfo->name = finfo->name;
+		dinfo->name = (unsigned char *)malloc(finfo->namelen + 1);
+		strncpy((char*)dinfo->name, (char *)finfo->name, finfo->namelen + 1);
 		dinfo->pindex = index;
 		dinfo->entries = 0;
 		dinfo->attr = EXFAT_DIR_NEW;
