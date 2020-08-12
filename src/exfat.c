@@ -18,13 +18,12 @@ static void exfat_load_timestamp(struct tm *, char *,
 		uint32_t, uint8_t, uint8_t);
 
 /* Search function prototype */
-static node2_t *exfat_lookup_dir(char *);
-static int exfat_lookup_file(node2_t *, char *);
 static int exfat_get_dirindex(uint32_t);
 
 /* Check function prototype */
 static bool exfat_check_allocation_cluster(uint32_t);
 static uint32_t exfat_check_fatentry(uint32_t);
+static int exfat_check_exist_directory(uint32_t);
 
 /* Create function prototype */
 static uint32_t exfat_concat_cluster(uint32_t, void *, size_t);
@@ -246,65 +245,36 @@ static void exfat_load_timestamp(struct tm *t, char *str,
 
 /**
  * exfat_lookup       - function interface to lookup pathname
- * @dir:                directory name
+ * @dir:                directory cluster index
  * @name:               file name
  *
  * @return:              cluster index
  */
-int exfat_lookup(char *dir, char *name)
+int exfat_lookup(uint32_t dir, char *name)
 {
 	int index;
-	node2_t *head;
-
-	head = exfat_lookup_dir(dir);
-	index = head ? head->index : 0;
-	if (name) {
-		index = exfat_lookup_file(head, name);
-	}
-	return index;
-}
-
-/**
- * exfat_lookup_dir   - function interface to lookup directory name
- * @name:               directory name
- *
- * @return:              directory chain head
- */
-static node2_t *exfat_lookup_dir(char *name)
-{
-	int i;
+	node2_t *tmp;
 	struct exfat_fileinfo *file;
 
-	for (i = 0 ; i < info.root_size && info.root[i]; i++) {
-		file = (struct exfat_fileinfo*)info.root[i]->data;
-		if (!strcmp(name, (char *)file->name))
-			return info.root[i];
+	index = exfat_get_dirindex(dir);
+	if (!info.root[index]) {
+		pr_debug("Directory hasn't load yet, or This Directory doesn't exist in filesystem.\n");
+		exfat_traverse_directories(info.root_offset, INT_MAX);
+		index = exfat_get_dirindex(dir);
+			if (!info.root[index]) {
+				pr_warn("This Directory doesn't exist in filesystem.\n");
+				return 0;
+			}
 	}
-	return NULL;
-}
-
-/**
- * exfat_lookup_file - function interface to lookup path name
- * @dir:               current directory
- * @name:              file name
- *
- * @return:             cluster index
- */
-static int exfat_lookup_file(node2_t *dir, char *name)
-{
-	struct exfat_fileinfo *file;
-	node2_t *tmp = dir;
-	if (!dir) {
-		pr_warn("directory is nothing.\n");
-		return 0;
-	}
-
+	
+	tmp = info.root[index];
 	while (tmp->next != NULL) {
 		tmp = tmp->next;
 		file = (struct exfat_fileinfo*)tmp->data;
 		if (!strcmp(name, (char *)file->name))
 			return tmp->index;
 	}
+
 	return 0;
 }
 
@@ -579,6 +549,23 @@ static uint32_t exfat_check_fatentry(uint32_t index)
 }
 
 /**
+ * exfat_check_exist_directory - check whether @index has already loaded
+ * @index:         index of the cluster
+ *
+ * @retrun:        1 (@index has loaded)
+ *                 0 (@index hasn't loaded)
+ */
+static int exfat_check_exist_directory(uint32_t index)
+{
+	int i;
+	for (i = 0; info.root[i] && i < info.root_size; i++) {
+		if(info.root[i]->index == index)
+			return 1;
+	}
+	return 0;
+}
+
+/**
  * exfat_concat_cluster - Contatenate cluster @data with next_cluster
  * @index:         index of the cluster
  * @data:          The cluster
@@ -687,7 +674,7 @@ static void exfat_create_fileinfo(node2_t *dir, uint32_t index,
 	append_node2(dir, next_index, finfo);
 
 	/* If this entry is Directory, prepare to create next chain */
-	if ((finfo->attr & ATTR_DIRECTORY) && (!exfat_lookup_dir((char *)finfo->name))) {
+	if ((finfo->attr & ATTR_DIRECTORY) && (!exfat_check_exist_directory(next_index))) {
 		struct exfat_dirinfo *dinfo = (struct exfat_dirinfo*)malloc(sizeof(struct exfat_dirinfo));
 		dinfo->name = finfo->name;
 		dinfo->pindex = index;
