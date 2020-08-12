@@ -77,8 +77,8 @@ int shell(void)
 {
 	int argc = 0;
 	char buf[CMD_MAXLEN + 1] = {};
-	char **argv = malloc(sizeof(char*) * (CMD_MAXLEN + 1));
-	char **envp = malloc(sizeof(char*) * 16);
+	char **argv = malloc(sizeof(char *) * (CMD_MAXLEN + 1));
+	char **envp = malloc(sizeof(char *) * 16);
 
 	init_env(envp);
 	while (1) {

@@ -60,7 +60,7 @@ static int fat16_print_boot_sec(struct fat_bootsec *b)
 	int i;
 	const char *type = (char *)b->reserved_info.fat16_reserved_info.BS_FilSysType;
 
-	if(strncmp(type, "FAT", 3))
+	if (strncmp(type, "FAT", 3))
 		pr_warn("BS_FilSysType is expected \"FAT     \", But this is %s\n", type);
 
 	info.fat_offset = b->BPB_RevdSecCnt;
@@ -70,12 +70,12 @@ static int fat16_print_boot_sec(struct fat_bootsec *b)
 		(b->BPB_RootEntCnt * 32 + b->BPB_BytesPerSec - 1) / b->BPB_BytesPerSec;
 
 	pr_msg("%-28s\t: ", "Volume ID");
-	for(i = 0; i < VOLIDSIZE; i++)
+	for (i = 0; i < VOLIDSIZE; i++)
 		pr_msg("%x", b->reserved_info.fat16_reserved_info.BS_VolID[i]);
 	pr_msg("\n");
 
 	pr_msg("%-28s\t: ", "Volume Label");
-	for(i = 0; i < VOLLABSIZE; i++)
+	for (i = 0; i < VOLLABSIZE; i++)
 		pr_msg("%c", b->reserved_info.fat16_reserved_info.BS_VolLab[i]);
 	pr_msg("\n");
 	return 0;
@@ -90,7 +90,7 @@ static int fat32_print_boot_sec(struct fat_bootsec *b)
 	int i;
 	const char *type = (char *)b->reserved_info.fat32_reserved_info.BS_FilSysType;
 
-	if(strncmp(type, "FAT32", 5))
+	if (strncmp(type, "FAT32", 5))
 		pr_warn("BS_FilSysType is expected \"FAT32   \", But this is %s\n", type);
 
 	info.fat_offset = b->BPB_RevdSecCnt;
@@ -101,12 +101,12 @@ static int fat32_print_boot_sec(struct fat_bootsec *b)
 		b->BPB_SecPerClus * b->BPB_BytesPerSec;
 
 	pr_msg("%-28s\t: ", "Volume ID");
-	for(i = 0; i < VOLIDSIZE; i++)
+	for (i = 0; i < VOLIDSIZE; i++)
 		pr_msg("%x", b->reserved_info.fat32_reserved_info.BS_VolID[i]);
 	pr_msg("\n");
 
 	pr_msg("%-28s\t: ", "Volume Label");
-	for(i = 0; i < VOLLABSIZE; i++)
+	for (i = 0; i < VOLLABSIZE; i++)
 		pr_msg("%c", b->reserved_info.fat32_reserved_info.BS_VolLab[i]);
 	pr_msg("\n");
 
@@ -127,7 +127,7 @@ static int fat32_print_boot_sec(struct fat_bootsec *b)
  */
 static int fat32_print_fsinfo(struct fat32_fsinfo *fsi)
 {
-	if((fsi->FSI_LeadSig != 0x41615252) ||
+	if ((fsi->FSI_LeadSig != 0x41615252) ||
 			(fsi->FSI_StrucSig != 0x61417272) ||
 			(fsi->FSI_TrailSig != 0xAA550000))
 		pr_warn("FSinfo is expected specific sigunature, But this is difference.\n");
@@ -166,9 +166,9 @@ static int fat_load_boot_sec(struct fat_bootsec *b)
  */
 int fat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 {
-	struct fat_bootsec *b = (struct fat_bootsec*)boot;
+	struct fat_bootsec *b = (struct fat_bootsec *)boot;
 	uint16_t RootDirSectors = ((b->BPB_RootEntCnt * 32) +
-			(b->BPB_BytesPerSec -1)) / b->BPB_BytesPerSec;
+			(b->BPB_BytesPerSec - 1)) / b->BPB_BytesPerSec;
 	uint32_t FATSz;
 	uint32_t TotSec;
 	uint32_t DataSec;

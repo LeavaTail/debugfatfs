@@ -11,7 +11,7 @@ typedef struct node2 {
 	struct node2 *next;
 } node2_t;
 
-static inline node2_t* last_node2(node2_t *node)
+static inline node2_t *last_node2(node2_t *node)
 {
 	while (node->next != NULL)
 		node = node->next;
@@ -66,7 +66,7 @@ static inline node2_t *search_node2(node2_t *node, uint32_t i)
 {
 	while (node->next != NULL) {
 		node = node->next;
-		if(i == node->index)
+		if (i == node->index)
 			return node;
 	}
 	return NULL;

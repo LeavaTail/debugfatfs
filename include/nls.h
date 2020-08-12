@@ -10,7 +10,7 @@
 
 #define UTF8_MAX_CHARSIZE		4
 
-int utf8s_to_utf16s(unsigned char *src, uint16_t namelen, uint16_t* dist);
-int utf16s_to_utf8s(uint16_t *, uint16_t, unsigned char*);
+int utf8s_to_utf16s(unsigned char *src, uint16_t namelen, uint16_t *dist);
+int utf16s_to_utf8s(uint16_t *, uint16_t, unsigned char *);
 
 #endif /*_NLS_H */

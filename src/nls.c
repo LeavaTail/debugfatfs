@@ -135,7 +135,7 @@ int utf16s_to_utf8s(uint16_t *src, uint16_t namelen, unsigned char* dist)
 			len++;
 		} else {
 			/* mult bytes character */
-			switch (*u & SURROGATE_PAIR_MASK){
+			switch (*u & SURROGATE_PAIR_MASK) {
 				case SURROGATE_PAIR_UPPER:
 					/* FALLTHROUGH */
 				case SURROGATE_PAIR_LOWER:

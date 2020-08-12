@@ -28,16 +28,16 @@ enum
 /* option data {"long name", needs argument, flags, "short name"} */
 static struct option const longopts[] =
 {
-	{"all",no_argument, NULL, 'a'},
-	{"cluster",required_argument, NULL, 'c'},
-	{"force",no_argument, NULL, 'f'},
-	{"interactive",no_argument, NULL, 'i'},
-	{"output",required_argument, NULL, 'o'},
-	{"sector",required_argument, NULL, 's'},
-	{"upper",required_argument, NULL, 'u'},
-	{"verbose",no_argument, NULL, 'v'},
-	{"help",no_argument, NULL, GETOPT_HELP_CHAR},
-	{"version",no_argument, NULL, GETOPT_VERSION_CHAR},
+	{"all", no_argument, NULL, 'a'},
+	{"cluster", required_argument, NULL, 'c'},
+	{"force", no_argument, NULL, 'f'},
+	{"interactive", no_argument, NULL, 'i'},
+	{"output", required_argument, NULL, 'o'},
+	{"sector", required_argument, NULL, 's'},
+	{"upper", required_argument, NULL, 'u'},
+	{"verbose", no_argument, NULL, 'v'},
+	{"help", no_argument, NULL, GETOPT_HELP_CHAR},
+	{"version", no_argument, NULL, GETOPT_VERSION_CHAR},
 	{0,0,0,0}
 };
 
@@ -118,7 +118,7 @@ int get_sector(void *data, off_t index, size_t count)
  */
 int get_cluster(void *data, off_t index)
 {
-	return get_clusters(data,index, 1);
+	return get_clusters(data, index, 1);
 }
 
 /**
@@ -254,7 +254,7 @@ static int pseudo_check_filesystem(struct pseudo_bootsec *boot)
 	size_t count = 0;
 
 	count = pread(info.fd, boot, SECSIZE, 0);
-	if(count < 0){
+	if (count < 0){
 		pr_err("can't read %s.", info.name);
 		return -1;
 	}
@@ -398,7 +398,7 @@ int main(int argc, char *argv[])
 
 	if (attr & OPTION_UPPER) {
 		ret = ops.convert(input, strlen(input), out);
-		if(ret < 0)
+		if (ret < 0)
 			goto file_err;
 		pr_msg("Convert: %s -> %s\n", input, out);
 	}
