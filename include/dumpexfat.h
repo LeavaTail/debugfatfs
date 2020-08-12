@@ -330,6 +330,7 @@ struct operations {
 	int (*readdir)(struct directory *, size_t, uint32_t);
 	int (*reload)(uint32_t, uint32_t);
 	int (*convert)(const char *, size_t, char *);
+	int (*clean)(uint32_t);
 	int (*print_cluster)(uint32_t);
 };
 

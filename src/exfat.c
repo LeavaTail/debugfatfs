@@ -213,6 +213,39 @@ static int exfat_create_allocation_chain(void *bitmap)
 }
 
 /**
+ * exfat_clean_directory_chain - function to clean opeartions
+ * @index:                       directory chain index
+ *
+ * @return        0 (success)
+ *               -1 (already released)
+ */
+int exfat_clean_directory_chain(uint32_t index)
+{
+	node2_t *tmp;
+	struct exfat_dirinfo *d;
+	struct exfat_fileinfo *f;
+
+	if ((!info.root[index])) {
+		pr_warn("index %d was already released.\n", index);
+		return -1;
+	}
+
+	tmp = info.root[index];
+	d = (struct exfat_dirinfo*)tmp->data;
+	free(d->name);
+	d->name = NULL;
+
+	while (tmp->next != NULL) {
+		tmp = tmp->next;
+		f = (struct exfat_fileinfo*)tmp->data;
+		free(f->name);
+		f->name = NULL;
+	}
+	free_list2(info.root[index]);
+	return 0;
+}
+
+/**
  * exfat_load_filename - function to get filename
  * @uniname:        filename dentry in UTF-16
  * @name_len:       filename length
@@ -518,6 +551,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 		ops->readdir = exfat_readdir;
 		ops->reload = exfat_reload_directory;
 		ops->convert = exfat_convert_character;
+		ops->clean = exfat_clean_directory_chain;
 		ops->print_cluster = exfat_print_cluster;
 		ret = 1;
 	}

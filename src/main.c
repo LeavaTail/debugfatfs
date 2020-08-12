@@ -235,7 +235,7 @@ static int free_dentry_list(void)
 	int i;
 	for(i = 0; i < info.root_size && info.root[i]; i++) {
 		/* FIXME: There may be areas that have not been released. */
-		free_list2(info.root[i]);
+		ops.clean(i);
 	}
 	free(info.root);
 
