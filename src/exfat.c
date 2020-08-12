@@ -435,7 +435,7 @@ int exfat_traverse_one_directory(uint32_t index)
 					if (next.EntryType != DENTRY_STREAM || name.EntryType != DENTRY_NAME) {
 						pr_warn("File should have stream/name entry, but This don't have.\n");
 						return -1;
-					} 
+					}
 					name_len = next.dentry.stream.NameLength;
 					for (j = 0; j < scount - 1; j++) {
 						name_len = MIN(ENTRY_NAME_MAX, next.dentry.stream.NameLength - j * ENTRY_NAME_MAX);
@@ -451,7 +451,7 @@ int exfat_traverse_one_directory(uint32_t index)
 			}
 		}
 		index = exfat_concat_cluster(index, clu, size);
-		if (!index) 
+		if (!index)
 			break;
 
 		size += info.cluster_size;
@@ -628,7 +628,7 @@ int exfat_convert_character(const char *src, size_t len, char *dist)
 		pr_err("This exFAT filesystem doesn't have upcase-table.\n");
 		return -1;
 	}
-	
+
 	/* convert UTF-8 to UTF16 */
 	utf16_src = (uint16_t*)malloc(sizeof(char) * len * UTF8_MAX_CHARSIZE);
 	utf16_len = utf8s_to_utf16s((unsigned char*)src, len, utf16_src);
