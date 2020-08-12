@@ -336,6 +336,16 @@ int exfat_readdir(char *name)
 }
 
 /**
+ * exfat_readdirs - function interface to read directories
+ * @from            cluster index to start search
+ * @to              cluster index to end search
+ */
+int exfat_readdirs(uint32_t from, uint32_t to)
+{
+	return exfat_traverse_directories(from, to);
+}
+
+/**
  * exfat_traverse_one_directory - function to traverse one directory
  * @index:         index of the cluster want to check
  * @count:         Directory depth count
@@ -432,6 +442,22 @@ out:
 }
 
 /**
+ * exfat_traverse_directories - function to traverse directories
+ * @from            cluster index to start search
+ * @to              cluster index to end search
+ */
+int exfat_traverse_directories(uint32_t from, uint32_t to)
+{
+	int i;
+
+	for (i = 0; info.root[i] && i < info.root_size; i++) {
+		if ((info.root[i]->index >= from) && (info.root[i]->index <= to))
+			exfat_traverse_one_directory(info.root[from++]->index);
+	}
+	return 0;
+}
+
+/**
  * exfat_check_filesystem - Whether or not exFAT filesystem
  * @index:         index of the cluster want to check
  *
@@ -467,6 +493,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 		ops->statfs = exfat_print_boot_sec;
 		ops->lookup =  exfat_lookup;
 		ops->readdir = exfat_traverse_one_directory;
+		ops->readdirs = exfat_readdirs;
 		ops->convert = exfat_convert_character;
 		ops->print_cluster = exfat_print_cluster;
 		ret = 1;

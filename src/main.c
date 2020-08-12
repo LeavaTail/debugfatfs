@@ -28,6 +28,7 @@ enum
 /* option data {"long name", needs argument, flags, "short name"} */
 static struct option const longopts[] =
 {
+	{"all",no_argument, NULL, 'a'},
 	{"cluster",required_argument, NULL, 'c'},
 	{"force",no_argument, NULL, 'f'},
 	{"interactive",no_argument, NULL, 'i'},
@@ -50,6 +51,7 @@ static void usage()
 	fprintf(stderr, "dump FAT/exFAT filesystem information.\n");
 	fprintf(stderr, "\n");
 
+	fprintf(stderr, "  -a, --all\tTrverse all directories.\n");
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
 	fprintf(stderr, "  -f, --force\tdump the cluster forcibly in spite of the non-allocated.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
@@ -270,6 +272,7 @@ int main(int argc, char *argv[])
 	int longindex;
 	int ret = 0;
 	uint8_t attr = 0;
+	bool aflag = false;
 	bool cflag = false;
 	uint32_t cluster = 0;
 	bool iflag = false;
@@ -283,9 +286,12 @@ int main(int argc, char *argv[])
 	struct pseudo_bootsec bootsec;
 
 	while ((opt = getopt_long(argc, argv,
-					"c:fio:s:u:v",
+					"ac:fio:s:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
+			case 'a':
+				aflag = true;
+				break;
 			case 'c':
 				cflag = true;
 				cluster = strtoul(optarg, NULL, 0);
@@ -361,7 +367,11 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		goto out;
 
-	ret = ops.readdir(info.root_offset);
+	if (aflag)
+		ret = ops.readdirs(0, INT_MAX);
+	else
+		ret = ops.readdir(info.root_offset);
+
 	if (ret < 0)
 		goto file_err;
 

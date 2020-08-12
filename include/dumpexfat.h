@@ -316,6 +316,7 @@ struct operations {
 	int (*statfs)(void);
 	int (*lookup)(char*, char*);
 	int (*readdir)(uint32_t);
+	int (*readdirs)(uint32_t, uint32_t);
 	int (*convert)(const char *, size_t, char *);
 	int (*print_cluster)(uint32_t);
 };
@@ -368,6 +369,7 @@ int exfat_print_boot_sec(void);
 int exfat_print_cluster(uint32_t);
 int exfat_readdir(char *);
 int exfat_traverse_one_directory(uint32_t);
+int exfat_traverse_directories(uint32_t, uint32_t);
 int exfat_convert_character(const char *, size_t, char *);
 int exfat_check_filesystem(struct pseudo_bootsec *, struct operations *);
 int exfat_lookup(char *, char *);
