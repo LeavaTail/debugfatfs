@@ -85,8 +85,14 @@ static void version(const char *command_name, const char *version,
 
 /**
  * get_sector - Get Raw-Data from any sector.
+ * @data:       Sector raw data (Output)
  * @index:      Start bytes
  * @count:      The number of sectors
+ *
+ * @return        0 (success)
+ *               -1 (failed to read)
+ *
+ * NOTE: Need to allocate @data before call it.
  */
 int get_sector(void *data, off_t index, size_t count)
 {
@@ -102,7 +108,13 @@ int get_sector(void *data, off_t index, size_t count)
 
 /**
  * get_cluster - Get Raw-Data from any cluster.
- * @index:      Start cluster index
+ * @data:        cluster raw data (Output)
+ * @index:       Start cluster index
+ *
+ * @return        0 (success)
+ *               -1 (failed to read)
+ *
+ * NOTE: Need to allocate @data before call it.
  */
 int get_cluster(void *data, off_t index)
 {
@@ -111,8 +123,14 @@ int get_cluster(void *data, off_t index)
 
 /**
  * get_clusters - Get Raw-Data from any cluster.
+ * @data:        cluster raw data (Output)
  * @index:      Start cluster index
  * @num:        The number of clusters
+ *
+ * @return        0 (success)
+ *               -1 (failed to read)
+ *
+ * NOTE: Need to allocate @data before call it.
  */
 int get_clusters(void *data, off_t index, size_t num)
 {
@@ -180,6 +198,9 @@ static void init_device_info(void)
 
 /**
  * get_device_info - get device name and store in device_info
+ *
+ * @return        0 (success)
+ *               -1 (failed to open)
  */
 static int get_device_info(void)
 {
@@ -205,6 +226,8 @@ static int get_device_info(void)
 /**
  * free_dentry_list - release list2_t
  *
+ * @return        Number of lists freed
+ *
  * TODO: Check for memory leaks
  */
 static int free_dentry_list(void)
@@ -216,7 +239,7 @@ static int free_dentry_list(void)
 	}
 	free(info.root);
 
-	return 0;
+	return i;
 }
 
 /**
@@ -247,6 +270,8 @@ static int pseudo_check_filesystem(struct pseudo_bootsec *boot)
 /**
  * pseudo_print_sector - virtual function to print any sector
  * @sector:    sector index to display
+ *
+ * return:     0  (succeeded in obtaining filesystem)
  */
 static int pseudo_print_sector(uint32_t sector)
 {

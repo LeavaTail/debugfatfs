@@ -33,6 +33,8 @@ static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, st
 /**
  * exfat_print_boot_sec - print boot sector in exFAT
  * @b:          boot sector pointer in exFAT
+ *
+ * @return        0 (success)
  */
 int exfat_print_boot_sec(void)
 {
@@ -155,7 +157,8 @@ static void exfat_print_directory_chain(void)
  * exfat_show_boot_sec - function to print any cluster
  * @index:      cluster index to display
  *
- * TODO: Guess the entry in cluster
+ * @return        0 (success)
+ *               -1 (cluster isn't allocated)
  */
 int exfat_print_cluster(uint32_t index)
 {
@@ -176,6 +179,9 @@ int exfat_print_cluster(uint32_t index)
 /**
  * exfat_load_boot_sec - load boot sector
  * @b:          boot sector pointer in exFAT
+ *
+ * @return        0 (success)
+ *               -1 (failed to read)
  */
 static int exfat_load_boot_sec(struct exfat_bootsec *b)
 {
@@ -184,7 +190,9 @@ static int exfat_load_boot_sec(struct exfat_bootsec *b)
 
 /**
  * exfat_create_allocation_chain - function to get cluster chain
- * @void:       pointer to Bitmap table
+ * @bitmap:       pointer to Bitmap table
+ *
+ * @return        0 (success)
  */
 static int exfat_create_allocation_chain(void *bitmap)
 {
@@ -207,9 +215,9 @@ static int exfat_create_allocation_chain(void *bitmap)
 
 /**
  * exfat_load_filename - function to get filename
- * @name:           filename dentry
+ * @uniname:        filename dentry in UTF-16
  * @name_len:       filename length
- * @count:          the number of filename dentries
+ * @name:           filename in UTF-8 (output)
  */
 static void exfat_load_filename(uint16_t *uniname, uint64_t name_len, unsigned char *name)
 {
@@ -218,7 +226,7 @@ static void exfat_load_filename(uint16_t *uniname, uint64_t name_len, unsigned c
 
 /**
  * exfat_load_timestamp - function to get timestamp in file
- * @tm:             output pointer
+ * @t:              output pointer
  * @str             additional any messages
  * @time:           Timestamp Field in File Directory Entry
  * @subsec:         10msincrement Field in File Directory Entry
@@ -239,7 +247,9 @@ static void exfat_load_timestamp(struct tm *t, char *str,
 /**
  * exfat_lookup       - function interface to lookup pathname
  * @dir:                directory name
- * @file:               file name
+ * @name:               file name
+ *
+ * @return:              cluster index
  */
 int exfat_lookup(char *dir, char *name)
 {
@@ -257,6 +267,8 @@ int exfat_lookup(char *dir, char *name)
 /**
  * exfat_lookup_dir   - function interface to lookup directory name
  * @name:               directory name
+ *
+ * @return:              directory chain head
  */
 static node2_t *exfat_lookup_dir(char *name)
 {
@@ -275,6 +287,8 @@ static node2_t *exfat_lookup_dir(char *name)
  * exfat_lookup_file - function interface to lookup path name
  * @dir:               current directory
  * @name:              file name
+ *
+ * @return:             cluster index
  */
 static int exfat_lookup_file(node2_t *dir, char *name)
 {
@@ -298,7 +312,7 @@ static int exfat_lookup_file(node2_t *dir, char *name)
  * exfat_get_dirindex - get directory chain index by argument
  * @index:              index of the cluster
  *
- * return:              index
+ * @return:              index
  *                      Start of unused area (if doesn't lookup directory cache)
  */
 static int exfat_get_dirindex(uint32_t index)
@@ -348,7 +362,9 @@ int exfat_readdirs(uint32_t from, uint32_t to)
 /**
  * exfat_traverse_one_directory - function to traverse one directory
  * @index:         index of the cluster want to check
- * @count:         Directory depth count
+ *
+ * @return        0 (success)
+ *               -1 (failed to read)
  */
 int exfat_traverse_one_directory(uint32_t index)
 {
@@ -451,6 +467,9 @@ out:
  * exfat_traverse_directories - function to traverse directories
  * @from            cluster index to start search
  * @to              cluster index to end search
+ *
+ * @return        0 (success)
+ *               -1 (failed to read)
  */
 int exfat_traverse_directories(uint32_t from, uint32_t to)
 {
@@ -465,10 +484,11 @@ int exfat_traverse_directories(uint32_t from, uint32_t to)
 
 /**
  * exfat_check_filesystem - Whether or not exFAT filesystem
- * @index:         index of the cluster want to check
+ * @boot:      boot sector pointer
+ * @ops:       filesystem operations
  *
- * return:     1 (Image is exFAT filesystem)
- *             0 (Image isn't exFAT filesystem)
+ * @return:     1 (Image is exFAT filesystem)
+ *              0 (Image isn't exFAT filesystem)
  */
 int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 {
@@ -511,6 +531,9 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 /**
  * exfat_check_allocation_cluster - Whether or not cluster is allocated
  * @index:         index of the cluster want to check
+ *
+ * @return         true  (allocated cluster)
+ *                 false (not allocated)
  */
 static bool exfat_check_allocation_cluster(uint32_t index)
 {
@@ -587,9 +610,12 @@ static uint32_t exfat_concat_cluster(uint32_t index, void *data, size_t size)
 
 /**
  * exfat_convert_character - Convert character by upcase-table
- * @src:           Target characters (UTF-8)
+ * @src:           Target characters in UTF-8
  * @len:           Target characters length
- * @dist:          convert result (UTF-8)
+ * @dist:          convert result in UTF-8 (Output)
+ *
+ * return:     0  (succeeded in obtaining filesystem)
+ *             -1 (failed)
  */
 int exfat_convert_character(const char *src, size_t len, char *dist)
 {
