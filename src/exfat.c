@@ -295,33 +295,74 @@ static void exfat_load_timestamp(struct tm *t, char *str,
  * @name:               file name
  *
  * @return:              cluster index
+ *                       0 (Not found)
  */
 int exfat_lookup(uint32_t dir, char *name)
 {
-	int index;
+	int index, i = 0, depth = 0;
+	bool found = false;
+	char *path[MAX_NAME_LENGTH] = {};
+	char pathname[PATHNAME_MAX + 1] = {};
 	node2_t *tmp;
-	struct exfat_fileinfo *file;
+	struct exfat_fileinfo *f;
+	struct exfat_dirinfo *d;
 
-	index = exfat_get_dirindex(dir);
-	if (!info.root[index]) {
-		pr_debug("Directory hasn't load yet, or This Directory doesn't exist in filesystem.\n");
-		exfat_traverse_directories(info.root_offset, INT_MAX);
+	if (!name) {
+		pr_err("invalid pathname.\n");
+		return -1;
+	}
+
+	/* Absolute path */
+	if (name[0] == '/') {
+		pr_debug("\"%s\" is Absolute path, so change current directory(%u) to root(%u)\n",
+				name, dir, info.root_offset);
+		dir = info.root_offset;
+	}
+
+	/* Separate pathname by slash */
+	strncpy(pathname, name, PATHNAME_MAX);
+	path[i] = strtok(pathname, "/");
+	while (path[i] != NULL) {
+		if (i >= MAX_NAME_LENGTH) {
+			pr_warn("Pathname is too depth. (> %d)\n", MAX_NAME_LENGTH);
+			return -1;
+		}
+		path[++i] = strtok(NULL, "/");
+	};
+
+	for (depth = 0; path[depth] && depth < i + 1; depth++) {
+		pr_debug("Lookup %s to %d\n", path[depth], dir);
+		found = false;
 		index = exfat_get_dirindex(dir);
+		d = (struct exfat_dirinfo *)info.root[index]->data;
+		if ((!info.root[index]) || (d->attr & EXFAT_DIR_NEW)) {
+			pr_debug("Directory hasn't load yet, or This Directory doesn't exist in filesystem.\n");
+			exfat_traverse_one_directory(dir);
+			index = exfat_get_dirindex(dir);
 			if (!info.root[index]) {
 				pr_warn("This Directory doesn't exist in filesystem.\n");
 				return 0;
 			}
-	}
-	
-	tmp = info.root[index];
-	while (tmp->next != NULL) {
-		tmp = tmp->next;
-		file = (struct exfat_fileinfo *)tmp->data;
-		if (!strcmp(name, (char *)file->name))
-			return tmp->index;
+		}
+
+		tmp = info.root[index];
+		while (tmp->next != NULL) {
+			tmp = tmp->next;
+			f = (struct exfat_fileinfo *)tmp->data;
+			if (!strcmp(path[depth], (char *)f->name)) {
+				dir = tmp->index;
+				found = true;
+				break;
+			}
+		}
+
+		if (!found) {
+			pr_warn("'%s': No such file or directory.\n", name);
+			return 0;
+		}
 	}
 
-	return 0;
+	return dir;
 }
 
 /**

@@ -48,6 +48,7 @@ extern FILE *output;
 
 #define SECSIZE 512
 #define DENTRY_LISTSIZE 1024
+#define PATHNAME_MAX 4096
 
 /*
  * FAT definition
