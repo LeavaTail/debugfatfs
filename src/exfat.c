@@ -38,6 +38,16 @@ static uint32_t exfat_concat_cluster(uint32_t, void **, size_t);
 int exfat_convert_character(const char *, size_t, char *);
 static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 
+static const struct operations exfat_ops = {
+	.statfs = exfat_print_boot_sec,
+	.lookup =  exfat_lookup,
+	.readdir = exfat_readdir,
+	.reload = exfat_reload_directory,
+	.convert = exfat_convert_character,
+	.clean = exfat_clean_directory_chain,
+	.print_cluster = exfat_print_cluster,
+};
+
 /**
  * exfat_print_boot_sec - print boot sector in exFAT
  * @b:          boot sector pointer in exFAT
@@ -529,7 +539,7 @@ static int exfat_traverse_directories(uint32_t from, uint32_t to)
  * @return:     1 (Image is exFAT filesystem)
  *              0 (Image isn't exFAT filesystem)
  */
-int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
+int exfat_check_filesystem(struct pseudo_bootsec *boot)
 {
 	int ret = 0;
 	struct exfat_bootsec *b;
@@ -555,13 +565,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 		dinfo->hash = 0;
 		info.root[0] = init_node2(info.root_offset, dinfo);
 
-		ops->statfs = exfat_print_boot_sec;
-		ops->lookup =  exfat_lookup;
-		ops->readdir = exfat_readdir;
-		ops->reload = exfat_reload_directory;
-		ops->convert = exfat_convert_character;
-		ops->clean = exfat_clean_directory_chain;
-		ops->print_cluster = exfat_print_cluster;
+		info.ops = &exfat_ops;
 		ret = 1;
 	}
 

@@ -15,7 +15,6 @@
 FILE *output = NULL;
 unsigned int print_level = PRINT_WARNING;
 struct device_info info;
-struct operations ops;
 /**
  * Special Option(no short option)
  */
@@ -235,7 +234,7 @@ static int free_dentry_list(void)
 	int i;
 	for(i = 0; i < info.root_size && info.root[i]; i++) {
 		/* FIXME: There may be areas that have not been released. */
-		ops.clean(i);
+		info.ops->clean(i);
 	}
 	free(info.root);
 
@@ -259,9 +258,9 @@ static int pseudo_check_filesystem(struct pseudo_bootsec *boot)
 		return -1;
 	}
 
-	if (exfat_check_filesystem(boot, &ops))
+	if (exfat_check_filesystem(boot))
 		return 0;
-	if (fat_check_filesystem(boot, &ops))
+	if (fat_check_filesystem(boot))
 		return 0;
 
 	return -1;
@@ -304,6 +303,7 @@ int main(int argc, char *argv[])
 	char *outfile = NULL;
 	char *input = NULL;
 	char out[MAX_NAME_LENGTH + 1] = {};
+	struct operations op;
 	struct pseudo_bootsec bootsec;
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
@@ -386,26 +386,26 @@ int main(int argc, char *argv[])
 		goto device_close;
 	}
 
-	ret = ops.statfs();
+	ret = info.ops->statfs();
 	if (ret < 0)
 		goto device_close;
 
 	/* Command line: -a option */
 	if (attr & OPTION_ALL) {
-		ret = ops.reload(0, INT_MAX);
+		ret = info.ops->reload(0, INT_MAX);
 		if (ret < 0)
 			goto device_close;
 	}
 
 	dirs = malloc(sizeof(struct directory) * DIRECTORY_FILES);
-	ret = ops.readdir(dirs, DIRECTORY_FILES, info.root_offset);
+	ret = info.ops->readdir(dirs, DIRECTORY_FILES, info.root_offset);
 	if (ret < 0) {
 		/* Only once, expand dirs structure and execute readdir */
 		ret = abs(ret) + 1;
 		dirs_tmp = realloc(dirs, sizeof(struct directory) * (DIRECTORY_FILES + ret));
 		if (dirs_tmp) {
 			dirs = dirs_tmp;
-			ret = ops.readdir(dirs, DIRECTORY_FILES + ret, info.root_offset);
+			ret = info.ops->readdir(dirs, DIRECTORY_FILES + ret, info.root_offset);
 			if (ret < 0)
 				goto out;
 		} else {
@@ -424,7 +424,7 @@ int main(int argc, char *argv[])
 
 	/* Command line: -u option */
 	if (attr & OPTION_UPPER) {
-		ret = ops.convert(input, strlen(input), out);
+		ret = info.ops->convert(input, strlen(input), out);
 		if(ret < 0)
 			goto out;
 		pr_msg("Convert: %s -> %s\n", input, out);
@@ -433,7 +433,7 @@ int main(int argc, char *argv[])
 	/* Command line: -c, -s option */
 	if ((attr & OPTION_SECTOR) || (attr & OPTION_CLUSTER)) {
 		if (attr & OPTION_CLUSTER)
-			ret = ops.print_cluster(cluster);
+			ret = info.ops->print_cluster(cluster);
 		else
 			ret = pseudo_print_sector(sector);
 

@@ -9,6 +9,16 @@ static int fat32_print_fsinfo(struct fat32_fsinfo *);
 static int fat_load_boot_sec(struct fat_bootsec *);
 int fat_print_cluster(uint32_t);
 
+static const struct operations fat_ops = {
+	.statfs = fat_print_boot_sec,
+	.lookup = NULL,
+	.readdir = NULL,
+	.reload = NULL,
+	.convert = NULL,
+	.clean = NULL,
+	.print_cluster = fat_print_cluster,
+};
+
 /**
  * fat_print_boot_sec - print boot sector in FAT12/16/32
  * @b:         boot sector pointer in FAT
@@ -166,7 +176,7 @@ static int fat_load_boot_sec(struct fat_bootsec *b)
  * return:     1 (Image is FAT12/16/32 filesystem)
  *             0 (Image isn't FAT12/16/32 filesystem)
  */
-int fat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
+int fat_check_filesystem(struct pseudo_bootsec *boot)
 {
 	struct fat_bootsec *b = (struct fat_bootsec *)boot;
 	uint16_t RootDirSectors = ((b->BPB_RootEntCnt * 32) +
@@ -198,12 +208,6 @@ int fat_check_filesystem(struct pseudo_bootsec *boot, struct operations *ops)
 	info.sector_size = b->BPB_BytesPerSec;
 	info.cluster_size = b->BPB_SecPerClus * b->BPB_BytesPerSec;
 
-	ops->statfs = fat_print_boot_sec;
-	ops->lookup = NULL;
-	ops->readdir = NULL;
-	ops->reload = NULL;
-	ops->convert = NULL;
-	ops->print_cluster = fat_print_cluster;
-
+	info.ops = &fat_ops;
 	return 0;
 }

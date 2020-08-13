@@ -118,6 +118,7 @@ struct device_info {
 	size_t upcase_size;
 	node2_t **root;
 	size_t root_size;
+	const struct operations *ops;
 };
 
 #define OPTION_ALL			(1 << 0)
