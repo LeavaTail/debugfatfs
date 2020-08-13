@@ -6,6 +6,9 @@
 
 static uint32_t cluster = 0;
 
+static int set_env(char **, char *, char *);
+static int get_env(char **, char *, char *);
+
 static int cmd_ls(int, char **, char **);
 static int cmd_cd(int, char **, char **);
 static int cmd_exit(int, char **, char **);
