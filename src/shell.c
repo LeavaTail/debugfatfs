@@ -7,10 +7,12 @@
 static uint32_t cluster = 0;
 
 static int cmd_ls(int, char **, char **);
+static int cmd_cd(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
 struct command cmd[] = {
 	{"ls", cmd_ls},
+	{"cd", cmd_cd},
 	{"exit", cmd_exit},
 };
 
@@ -38,6 +40,42 @@ static int cmd_ls(int argc, char **argv, char **envp)
 		fprintf(stdout, "%s ", dirs[i].name);
 
 	fprintf(stdout, "\n");
+	return 0;
+}
+
+/**
+ * cmd_cd     - Change the directory.
+ * @argc:       argument count
+ * @argv:       argument vetor
+ * @envp:       environment pointer
+ *
+ * @return        0 (success)
+ *
+ * TODO: Check whether pathname is a directory or file
+ */
+static int cmd_cd(int argc, char **argv, char **envp)
+{
+	int dir = 0;
+	char *path = "/";
+
+	switch (argc) {
+		case 1:
+			dir = info.root_offset;
+			break;
+		case 2:
+			dir = info.ops->lookup(cluster, argv[1]);
+			path = argv[1];
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+
+	if (dir) {
+		cluster = dir;
+		set_env(envp, "PWD", path);
+	}
+
 	return 0;
 }
 
