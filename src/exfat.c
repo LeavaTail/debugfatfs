@@ -646,7 +646,6 @@ static int exfat_check_exist_directory(uint32_t index)
  */
 static uint32_t exfat_concat_cluster(uint32_t index, void **data, size_t size)
 {
-	int i;
 	uint32_t ret;
 	void *clu_tmp;
 	ret = exfat_check_fatentry(index);

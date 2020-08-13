@@ -303,7 +303,6 @@ int main(int argc, char *argv[])
 	char *outfile = NULL;
 	char *input = NULL;
 	char out[MAX_NAME_LENGTH + 1] = {};
-	struct operations op;
 	struct pseudo_bootsec bootsec;
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
