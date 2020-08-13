@@ -53,6 +53,9 @@ static inline node_t *init_node(void)
 
 static inline void free_list(node_t *node)
 {
+	if (!node)
+		return;
+
 	while (node->next != NULL)
 		delete_node(node);
 	free(node);

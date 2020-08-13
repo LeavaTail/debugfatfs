@@ -58,6 +58,9 @@ static inline node2_t *init_node2(uint32_t i, void *d)
 
 static inline void free_list2(node2_t *node)
 {
+	if (!node)
+		return;
+
 	while (node->next != NULL)
 		delete_node2(node);
 	free(node->data);
