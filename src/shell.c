@@ -2,10 +2,33 @@
 #include <stdlib.h>
 #include <string.h>
 #include "shell.h"
+#include "dumpexfat.h"
+
+static int cmd_exit(int, char **, char **);
+
+struct command cmd[] = {
+	{"exit", cmd_exit},
+};
+
+static int cmd_exit(int argc, char **argv, char **envp)
+{
+	fprintf(stdout, "Goodbye!\n");
+	return 1;
+}
 
 static int execute_cmd(int argc, char **argv, char **envp)
 {
-	return 1;
+	int i, ret;
+	if (!argc)
+		return 0;
+
+	for (i = 0; i < (sizeof(cmd) / sizeof(struct command)); i++) {
+		if(!strcmp(argv[0], cmd[i].name))
+			return cmd[i].func(argc, argv, envp);
+	}
+
+	fprintf(stdout, "%s: command not found\n", argv[0]);
+	return 0;
 }
 
 static int decode_cmd(char *str, char **argv, char **envp)
@@ -80,6 +103,7 @@ int shell(void)
 	char **argv = malloc(sizeof(char *) * (CMD_MAXLEN + 1));
 	char **envp = malloc(sizeof(char *) * 16);
 
+	fprintf(stdout, "Welcome to %s %s (Interactive Mode)\n\n", PROGRAM_NAME, PROGRAM_VERSION);
 	init_env(envp);
 	while (1) {
 		get_env(envp, "PWD", buf);

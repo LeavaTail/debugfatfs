@@ -4,6 +4,11 @@
 #define CMD_MAXLEN 255
 #define CMD_DELIM " \t\r\n\a"
 
+struct command {
+	char *name;
+	int (*func)(int, char **, char **);
+};
+
 int shell(void);
 
 #endif /*_SHELL_H */
