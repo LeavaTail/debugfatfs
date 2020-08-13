@@ -55,6 +55,7 @@ static inline void free_list(node_t *node)
 {
 	while (node->next != NULL)
 		delete_node(node);
+	free(node);
 }
 
 static inline node_t *search_node(node_t *node, uint32_t data)

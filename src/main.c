@@ -303,7 +303,7 @@ int main(int argc, char *argv[])
 	char *input = NULL;
 	char out[MAX_NAME_LENGTH + 1] = {};
 	struct pseudo_bootsec bootsec;
-	struct directory *dirs;
+	struct directory *dirs = NULL;
 
 	while ((opt = getopt_long(argc, argv,
 					"ac:fio:s:u:v",
@@ -359,72 +359,81 @@ int main(int argc, char *argv[])
 	}
 
 	init_device_info();
+	info.attr = attr;
+
 	output = stdout;
 	if (attr & OPTION_OUTPUT) {
 		if ((output = fopen(outfile, "w")) == NULL) {
 			pr_err("can't open %s.", optarg);
-			exit(EXIT_FAILURE);
+			goto info_release;
 		}
 	}
-	info.attr = attr;
 
 	memcpy(info.name, argv[optind], 255);
 	ret = get_device_info();
 	if (ret < 0)
-		goto out;
-	info.chain_head = init_node();
+		goto output_close;
 
 	ret = pseudo_check_filesystem(&bootsec);
 	if (ret < 0)
-		goto out;
+		goto device_close;
 
+	/* Interactive Mode: -i option */
 	if (attr & OPTION_INTERACTIVE) {
 		shell();
-		goto out;
+		goto device_close;
 	}
 
 	ret = ops.statfs();
 	if (ret < 0)
-		goto out;
+		goto device_close;
 
-	if (attr & OPTION_ALL)
-		ops.reload(0, INT_MAX);
+	/* Command line: -a option */
+	if (attr & OPTION_ALL) {
+		ret = ops.reload(0, INT_MAX);
+		if (ret < 0)
+			goto device_close;
+	}
 
 	dirs = malloc(sizeof(struct directory) * DIRECTORY_FILES);
 	ret = ops.readdir(dirs, DIRECTORY_FILES, info.root_offset);
-
 	if (ret < 0)
-		goto file_err;
+		goto out;
 
+	/* Command line: -u option */
 	if (attr & OPTION_UPPER) {
 		ret = ops.convert(input, strlen(input), out);
-		if (ret < 0)
-			goto file_err;
+		if(ret < 0)
+			goto out;
 		pr_msg("Convert: %s -> %s\n", input, out);
 	}
 
 	if (attr & OPTION_SECTOR) {
 		ret = pseudo_print_sector(sector);
 		if (ret < 0)
-			goto file_err;
+			goto out;
 	}
 
 	if (attr & OPTION_CLUSTER) {
 		ret = ops.print_cluster(cluster);
 		if (ret < 0)
-			goto file_err;
+			goto out;
 	}
-
-file_err:
-	close(info.fd);
 
 out:
 	free(dirs);
-	free_list(info.chain_head);
 	free(info.upcase_table);
-	free_dentry_list();
+
+device_close:
+	close(info.fd);
+
+output_close:
 	if (attr & OPTION_OUTPUT)
 		fclose(output);
+
+info_release:
+	free_dentry_list();
+	free_list(info.chain_head);
 
 	return ret;
 }
