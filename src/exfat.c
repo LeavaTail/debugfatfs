@@ -109,12 +109,6 @@ static void exfat_print_upcase_table(void)
 	size_t uni_count = 0x10 / sizeof(uint16_t);
 	size_t length = info.upcase_size;
 
-	/* Usually, we don't want to display raw upcase table */
-	if (print_level < PRINT_INFO) {
-		pr_msg("Upcase-table was skipped.\n");
-		return;
-	}
-
 	/* Output table header */
 	pr_info("Offset  ");
 	for (byte = 0; byte < uni_count; byte++)
@@ -143,7 +137,7 @@ static void exfat_print_volume_label(uint16_t *src, int len)
 	name = malloc(len * sizeof(uint16_t) + 1);
 	memset(name, '\0', len * sizeof(uint16_t) + 1);
 	utf16s_to_utf8s(src, len, name);
-	printf("%s\n", name);
+	pr_info("%s\n", name);
 	free(name);
 }
 
@@ -464,6 +458,7 @@ static int exfat_traverse_one_directory(uint32_t index)
 							d.dentry.upcase.FirstCluster,
 							d.dentry.upcase.DataLength);
 					get_clusters(info.upcase_table, d.dentry.upcase.FirstCluster, len);
+					exfat_print_upcase_table();
 					break;
 				case DENTRY_VOLUME:
 					pr_info("volume Label: ");
@@ -661,7 +656,7 @@ static uint32_t exfat_concat_cluster(uint32_t index, void **data, size_t size)
 		if (clu_tmp) {
 			*data = clu_tmp;
 			get_cluster(clu_tmp + size, ret);
-			pr_msg("Concatenate cluster #%u with #%u\n", index, ret);
+			pr_debug("Concatenate cluster #%u with #%u\n", index, ret);
 		} else {
 			pr_err("Failed to Get new memory.\n");
 			ret = 0;
