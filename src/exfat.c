@@ -5,20 +5,28 @@
 #include "dumpexfat.h"
 
 /* Print function prototype */
+int exfat_print_boot_sec(void);
 static void exfat_print_allocation_bitmap(void);
 static void exfat_print_upcase_table(void);
 static void exfat_print_volume_label(uint16_t *, int);
 static void exfat_print_directory_chain(void);
+int exfat_print_cluster(uint32_t);
 
 /* Load function prototype */
 static int exfat_load_boot_sec(struct exfat_bootsec *);
 static int exfat_create_allocation_chain(void *);
+int exfat_clean_directory_chain(uint32_t);
 static void exfat_load_filename(uint16_t *, uint64_t, unsigned char *);
 static void exfat_load_timestamp(struct tm *, char *,
 		uint32_t, uint8_t, uint8_t);
 
 /* Search function prototype */
+int exfat_lookup(uint32_t, char *);
 static int exfat_get_dirindex(uint32_t);
+int exfat_readdir(struct directory *, size_t, uint32_t);
+int exfat_reload_directory(uint32_t, uint32_t);
+static int exfat_traverse_one_directory(uint32_t);
+static int exfat_traverse_directories(uint32_t, uint32_t);
 
 /* Check function prototype */
 static bool exfat_check_allocation_cluster(uint32_t);
@@ -27,6 +35,7 @@ static int exfat_check_exist_directory(uint32_t);
 
 /* Create function prototype */
 static uint32_t exfat_concat_cluster(uint32_t, void **, size_t);
+int exfat_convert_character(const char *, size_t, char *);
 static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 
 /**
@@ -396,7 +405,7 @@ int exfat_reload_directory(uint32_t from, uint32_t to)
  * @return        0 (success)
  *               -1 (failed to read)
  */
-int exfat_traverse_one_directory(uint32_t index)
+static int exfat_traverse_one_directory(uint32_t index)
 {
 	int i, j, name_len;
 	uint8_t scount;
@@ -501,7 +510,7 @@ out:
  * @return        0 (success)
  *               -1 (failed to read)
  */
-int exfat_traverse_directories(uint32_t from, uint32_t to)
+static int exfat_traverse_directories(uint32_t from, uint32_t to)
 {
 	int i;
 

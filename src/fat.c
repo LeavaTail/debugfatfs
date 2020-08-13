@@ -2,10 +2,12 @@
 #include <stdbool.h>
 #include "dumpexfat.h"
 
+int fat_print_boot_sec(void);
 static int fat16_print_boot_sec(struct fat_bootsec *);
 static int fat32_print_boot_sec(struct fat_bootsec *);
 static int fat32_print_fsinfo(struct fat32_fsinfo *);
 static int fat_load_boot_sec(struct fat_bootsec *);
+int fat_print_cluster(uint32_t);
 
 /**
  * fat_print_boot_sec - print boot sector in FAT12/16/32

@@ -379,19 +379,9 @@ int get_cluster(void *, off_t);
 int get_clusters(void *, off_t, size_t);
 void hexdump(FILE *, void *, size_t);
 
-/* FAT function*/
-int fat_print_boot_sec(void);
-int fat_print_cluster(uint32_t);
-int fat_check_filesystem(struct pseudo_bootsec *, struct operations *);
-
-/* exFAT function */
-int exfat_print_boot_sec(void);
-int exfat_print_cluster(uint32_t);
-int exfat_traverse_one_directory(uint32_t);
-int exfat_traverse_directories(uint32_t, uint32_t);
-int exfat_convert_character(const char *, size_t, char *);
-int exfat_check_filesystem(struct pseudo_bootsec *, struct operations *);
-int exfat_lookup(uint32_t, char *);
+/* exFAT/FAT check function */
+int exfat_check_filesystem(struct pseudo_bootsec *);
+int fat_check_filesystem(struct pseudo_bootsec *);
 
 /* nls function */
 int utf16_to_utf8(uint16_t *, uint16_t, unsigned char*);
