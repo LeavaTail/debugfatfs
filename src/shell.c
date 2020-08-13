@@ -4,11 +4,42 @@
 #include "shell.h"
 #include "dumpexfat.h"
 
+static uint32_t cluster = 0;
+
+static int cmd_ls(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
 struct command cmd[] = {
+	{"ls", cmd_ls},
 	{"exit", cmd_exit},
 };
+
+static int cmd_ls(int argc, char **argv, char **envp)
+{
+	int i = 0, ret = 0;
+	struct directory *dirs = NULL, *dirs_tmp = NULL;
+
+	dirs = malloc(sizeof(struct directory) * DIRECTORY_FILES);
+	ret = info.ops->readdir(dirs, DIRECTORY_FILES, cluster);
+	if (ret < 0) {
+		/* Only once, expand dirs structure and execute readdir */
+		ret = abs(ret) + 1;
+		dirs_tmp = realloc(dirs, sizeof(struct directory) * (DIRECTORY_FILES + ret));
+		if (dirs_tmp) {
+			dirs = dirs_tmp;
+			ret = info.ops->readdir(dirs, DIRECTORY_FILES + ret, cluster);
+		} else {
+			fprintf(stdout, "ls: failed to load firectory.\n");
+			return 1;
+		}
+	}
+
+	for (i = 0; i < ret; i++)
+		fprintf(stdout, "%s ", dirs[i].name);
+
+	fprintf(stdout, "\n");
+	return 0;
+}
 
 static int cmd_exit(int argc, char **argv, char **envp)
 {
@@ -92,6 +123,7 @@ static int get_env(char **envp, char *env, char *value)
 
 static int init_env(char **envp)
 {
+	cluster = info.root_offset;
 	set_env(envp, "PWD", "/");
 	return 0;
 }
