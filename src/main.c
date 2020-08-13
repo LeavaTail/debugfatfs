@@ -293,6 +293,7 @@ static int pseudo_print_sector(uint32_t sector)
  */
 int main(int argc, char *argv[])
 {
+	int i;
 	int opt;
 	int longindex;
 	int ret = 0;
@@ -303,7 +304,7 @@ int main(int argc, char *argv[])
 	char *input = NULL;
 	char out[MAX_NAME_LENGTH + 1] = {};
 	struct pseudo_bootsec bootsec;
-	struct directory *dirs = NULL;
+	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
 					"ac:fio:s:u:v",
@@ -397,8 +398,27 @@ int main(int argc, char *argv[])
 
 	dirs = malloc(sizeof(struct directory) * DIRECTORY_FILES);
 	ret = ops.readdir(dirs, DIRECTORY_FILES, info.root_offset);
-	if (ret < 0)
-		goto out;
+	if (ret < 0) {
+		/* Only once, expand dirs structure and execute readdir */
+		ret = abs(ret) + 1;
+		dirs_tmp = realloc(dirs, sizeof(struct directory) * (DIRECTORY_FILES + ret));
+		if (dirs_tmp) {
+			dirs = dirs_tmp;
+			ret = ops.readdir(dirs, DIRECTORY_FILES + ret, info.root_offset);
+			if (ret < 0)
+				goto out;
+		} else {
+			pr_err("Can't load Root directory because of failed to allocate space.\n");
+			goto out;
+		}
+	}
+
+	pr_msg("Read \"/\" Directory (%d entries).\n", ret);
+	for (i = 0; i < ret; i++)
+		pr_msg("%s ", dirs[i].name);
+
+	pr_msg("\n");
+	ret = 0;
 
 	/* Command line: -u option */
 	if (attr & OPTION_UPPER) {
