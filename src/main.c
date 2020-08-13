@@ -193,7 +193,7 @@ static void init_device_info(void)
 	info.upcase_table = NULL;
 	info.upcase_size = 0;
 	info.root_size = DENTRY_LISTSIZE;
-	info.root = malloc(sizeof(node2_t *) * info.root_size);
+	info.root = calloc(info.root_size, sizeof(node2_t *));
 }
 
 /**
@@ -297,6 +297,7 @@ int main(int argc, char *argv[])
 	int opt;
 	int longindex;
 	int ret = 0;
+	int entries = 0;
 	uint32_t attr = 0;
 	uint32_t cluster = 0;
 	uint32_t sector = 0;
@@ -413,8 +414,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	pr_msg("Read \"/\" Directory (%d entries).\n", ret);
-	for (i = 0; i < ret; i++)
+	entries = ret;
+	pr_msg("Read \"/\" Directory (%d entries).\n", entries);
+	for (i = 0; i < entries; i++)
 		pr_msg("%s ", dirs[i].name);
 
 	pr_msg("\n");
@@ -440,6 +442,8 @@ int main(int argc, char *argv[])
 	}
 
 out:
+	for (i = 0; i < entries; i++)
+		free(dirs[i].name);
 	free(dirs);
 	free(info.upcase_table);
 
