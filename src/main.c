@@ -428,14 +428,13 @@ int main(int argc, char *argv[])
 		pr_msg("Convert: %s -> %s\n", input, out);
 	}
 
-	if (attr & OPTION_SECTOR) {
-		ret = pseudo_print_sector(sector);
-		if (ret < 0)
-			goto out;
-	}
+	/* Command line: -c, -s option */
+	if ((attr & OPTION_SECTOR) || (attr & OPTION_CLUSTER)) {
+		if (attr & OPTION_CLUSTER)
+			ret = ops.print_cluster(cluster);
+		else
+			ret = pseudo_print_sector(sector);
 
-	if (attr & OPTION_CLUSTER) {
-		ret = ops.print_cluster(cluster);
 		if (ret < 0)
 			goto out;
 	}
