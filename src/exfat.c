@@ -30,13 +30,15 @@ static int exfat_traverse_directories(uint32_t, uint32_t);
 
 /* Check function prototype */
 static bool exfat_check_allocation_cluster(uint32_t);
+int exfat_get_fatentry(uint32_t, uint32_t *);;
 static uint32_t exfat_check_fatentry(uint32_t);
 static int exfat_check_exist_directory(uint32_t);
 
 /* Create function prototype */
 static uint32_t exfat_concat_cluster(uint32_t, void **, size_t);
 int exfat_convert_character(const char *, size_t, char *);
-static uint32_t exfat_set_fatentry(uint32_t, uint32_t);
+int exfat_set_fatentry(uint32_t, uint32_t);
+static uint32_t exfat_update_fatentry(uint32_t, uint32_t);
 static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 
 static const struct operations exfat_ops = {
@@ -46,6 +48,8 @@ static const struct operations exfat_ops = {
 	.reload = exfat_reload_directory,
 	.convert = exfat_convert_character,
 	.clean = exfat_clean_directory_chain,
+	.setfat = exfat_set_fatentry,
+	.getfat = exfat_get_fatentry,
 	.print_cluster = exfat_print_cluster,
 };
 
@@ -650,6 +654,18 @@ static bool exfat_check_allocation_cluster(uint32_t index)
 }
 
 /**
+ * exfat_get_fatentry - Get cluster is continuous
+ * @index:              index of the cluster want to check
+ * @entry:              any cluster index
+ *
+ *                      0
+ */
+int exfat_get_fatentry(uint32_t index, uint32_t *entry)
+{
+	*entry = exfat_check_fatentry(index);
+	return 0;
+}
+/**
  * exfat_check_fatentry - Whether or not cluster is continuous
  * @index:         index of the cluster want to check
  *
@@ -775,12 +791,25 @@ int exfat_convert_character(const char *src, size_t len, char *dist)
 
 /**
  * exfat_set_fatentry - Set FAT Entry to any cluster
- * @index:         index of the cluster want to check
- * @entry:         any cluster index
+ * @index:              index of the cluster want to check
+ * @entry:              any cluster index
  *
- * @retrun:        previous FAT entry
+ * @retrun:             0
  */
-static uint32_t exfat_set_fatentry(uint32_t index, uint32_t entry)
+int exfat_set_fatentry(uint32_t index, uint32_t entry)
+{
+	exfat_update_fatentry(index, entry);
+	return 0;
+}
+
+/**
+ * exfat_update_fatentry - Update FAT Entry to any cluster
+ * @index:                 index of the cluster want to check
+ * @entry:                 any cluster index
+ *
+ * @retrun:                previous FAT entry
+ */
+static uint32_t exfat_update_fatentry(uint32_t index, uint32_t entry)
 {
 	uint32_t ret;
 	size_t entry_per_sector = info.sector_size / sizeof(uint32_t);

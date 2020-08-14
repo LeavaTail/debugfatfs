@@ -343,6 +343,8 @@ struct operations {
 	int (*reload)(uint32_t, uint32_t);
 	int (*convert)(const char *, size_t, char *);
 	int (*clean)(uint32_t);
+	int (*setfat)(uint32_t, uint32_t);
+	int (*getfat)(uint32_t, uint32_t *);
 	int (*print_cluster)(uint32_t);
 };
 

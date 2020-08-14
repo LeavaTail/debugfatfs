@@ -11,6 +11,7 @@ static int get_env(char **, char *, char *);
 
 static int cmd_ls(int, char **, char **);
 static int cmd_cd(int, char **, char **);
+static int cmd_fat(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
 /**
@@ -19,6 +20,7 @@ static int cmd_exit(int, char **, char **);
 struct command cmd[] = {
 	{"ls", cmd_ls},
 	{"cd", cmd_cd},
+	{"fat", cmd_fat},
 	{"exit", cmd_exit},
 };
 
@@ -114,6 +116,39 @@ static int cmd_cd(int argc, char **argv, char **envp)
 		set_env(envp, "PWD", path);
 	}
 
+	return 0;
+}
+
+/**
+ * cmd_fat     - Set/Get FAT entry.
+ * @argc:       argument count
+ * @argv:       argument vetor
+ * @envp:       environment pointer
+ *
+ * @return        0 (success)
+ */
+static int cmd_fat(int argc, char **argv, char **envp)
+{
+	unsigned int index = 0, entry = 0;
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			index = strtoul(argv[1], NULL, 10);
+			info.ops->getfat(index, &entry);
+			fprintf(stdout, "Get: Cluster %u is FAT entry %08x\n", index, entry);
+			break;
+		case 3:
+			index = strtoul(argv[1], NULL, 10);
+			entry = strtoul(argv[2], NULL, 16);
+			info.ops->setfat(index, entry);
+			fprintf(stdout, "Set: Cluster %u is FAT entry %08x\n", index, entry);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
 	return 0;
 }
 
