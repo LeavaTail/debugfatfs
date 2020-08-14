@@ -517,11 +517,35 @@ static int exfat_traverse_one_directory(uint32_t index)
 					}
 
 					next = ((struct exfat_dentry *)clu)[i + 1];
-					name = ((struct exfat_dentry *)clu)[i + 2];
-					if (next.EntryType != DENTRY_STREAM || name.EntryType != DENTRY_NAME) {
-						pr_warn("File should have stream/name entry, but This don't have.\n");
+					while ((!(next.EntryType & 0x80)) && (next.EntryType != DENTRY_UNUSED)) {
+						pr_debug("This entry was deleted (%x).\n", next.EntryType);
+						if (++i + scount >= entries) {
+							index = exfat_concat_cluster(index, &clu, size);
+							size += info.cluster_size;
+							entries = size / sizeof(struct exfat_dentry);
+						}
+						next = ((struct exfat_dentry *)clu)[i + 1];
+					}
+					if (next.EntryType != DENTRY_STREAM) {
+						pr_warn("File should have stream entry, but This don't have.\n");
 						return -1;
 					}
+
+					name = ((struct exfat_dentry *)clu)[i + 2];
+					while ((!(name.EntryType & 0x80)) && (name.EntryType != DENTRY_UNUSED)) {
+						pr_debug("This entry was deleted (%x).\n", name.EntryType);
+						if (++i + scount >= entries - 1) {
+							index = exfat_concat_cluster(index, &clu, size);
+							size += info.cluster_size;
+							entries = size / sizeof(struct exfat_dentry);
+						}
+						name = ((struct exfat_dentry *)clu)[i + 2];
+					}
+					if (name.EntryType != DENTRY_NAME) {
+						pr_warn("File should have name entry, but This don't have.\n");
+						return -1;
+					}
+
 					name_len = next.dentry.stream.NameLength;
 					for (j = 0; j < scount - 1; j++) {
 						name_len = MIN(ENTRY_NAME_MAX, next.dentry.stream.NameLength - j * ENTRY_NAME_MAX);
