@@ -106,6 +106,29 @@ int get_sector(void *data, off_t index, size_t count)
 }
 
 /**
+ * set_sector - Set Raw-Data from any sector.
+ * @data:       Sector raw data
+ * @index:      Start bytes
+ * @count:      The number of sectors
+ *
+ * @return        0 (success)
+ *               -1 (failed to read)
+ *
+ * NOTE: Need to allocate @data before call it.
+ */
+int set_sector(void *data, off_t index, size_t count)
+{
+	size_t sector_size = info.sector_size;
+
+	pr_debug("Set: Sector from %lx to %lx\n", index , index + (count * sector_size) - 1);
+	if ((pwrite(info.fd, data, count * sector_size, index)) < 0) {
+		pr_err("can't write %s.", info.name);
+		return -1;
+	}
+	return 0;
+}
+
+/**
  * get_cluster - Get Raw-Data from any cluster.
  * @data:        cluster raw data (Output)
  * @index:       Start cluster index
@@ -118,6 +141,21 @@ int get_sector(void *data, off_t index, size_t count)
 int get_cluster(void *data, off_t index)
 {
 	return get_clusters(data, index, 1);
+}
+
+/**
+ * set_cluster - Set Raw-Data from any cluster.
+ * @data:        cluster raw data
+ * @index:       Start cluster index
+ *
+ * @return        0 (success)
+ *               -1 (failed to read)
+ *
+ * NOTE: Need to allocate @data before call it.
+ */
+int set_cluster(void *data, off_t index)
+{
+	return set_clusters(data, index, 1);
 }
 
 /**
@@ -142,6 +180,32 @@ int get_clusters(void *data, off_t index, size_t num)
 	}
 
 	return get_sector(data,
+			heap_start + ((index - 2) * info.cluster_size),
+			clu_per_sec * num);
+}
+
+/**
+ * set_clusters - Set Raw-Data from any cluster.
+ * @data:        cluster raw data
+ * @index:       Start cluster index
+ * @num:         The number of clusters
+ *
+ * @return        0 (success)
+ *               -1 (failed to read)
+ *
+ * NOTE: Need to allocate @data before call it.
+ */
+int set_clusters(void *data, off_t index, size_t num)
+{
+	size_t clu_per_sec = info.cluster_size / info.sector_size;
+	off_t heap_start = info.heap_offset * info.sector_size;
+
+	if (index < 2 || index + num > info.cluster_count) {
+		pr_err("invalid cluster index %lu.", index);
+		return -1;
+	}
+
+	return set_sector(data,
 			heap_start + ((index - 2) * info.cluster_size),
 			clu_per_sec * num);
 }
@@ -206,7 +270,7 @@ static int get_device_info(void)
 	int fd;
 	struct stat s;
 
-	if ((fd = open(info.name, O_RDONLY)) < 0) {
+	if ((fd = open(info.name, O_RDWR)) < 0) {
 		pr_err("can't open %s.", info.name);
 		return -1;
 	}

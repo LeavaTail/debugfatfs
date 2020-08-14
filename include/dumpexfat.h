@@ -380,6 +380,9 @@ extern struct device_info info;
 int get_sector(void *, off_t, size_t);
 int get_cluster(void *, off_t);
 int get_clusters(void *, off_t, size_t);
+int set_sector(void *, off_t, size_t);
+int set_cluster(void *, off_t);
+int set_clusters(void *, off_t, size_t);
 void hexdump(FILE *, void *, size_t);
 
 /* exFAT/FAT check function */
