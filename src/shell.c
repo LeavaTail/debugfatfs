@@ -90,14 +90,19 @@ static int cmd_cd(int argc, char **argv, char **envp)
 {
 	int dir = 0;
 	char *path = "/";
+	char pwd[CMD_MAXLEN + 1] = {};
 
 	switch (argc) {
 		case 1:
 			dir = info.root_offset;
 			break;
 		case 2:
+			get_env(envp, "PWD", pwd);
 			dir = info.ops->lookup(cluster, argv[1]);
-			path = argv[1];
+			if (argv[1][0] == '/')
+				path = argv[1];
+			else
+				path = strcat(pwd, argv[1]);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
