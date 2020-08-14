@@ -32,7 +32,9 @@ static struct option const longopts[] =
 	{"cluster", required_argument, NULL, 'c'},
 	{"force", no_argument, NULL, 'f'},
 	{"interactive", no_argument, NULL, 'i'},
+	{"load", required_argument, NULL, 'l'},
 	{"output", required_argument, NULL, 'o'},
+	{"save", required_argument, NULL, 's'},
 	{"upper", required_argument, NULL, 'u'},
 	{"verbose", no_argument, NULL, 'v'},
 	{"help", no_argument, NULL, GETOPT_HELP_CHAR},
@@ -55,7 +57,9 @@ static void usage()
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
 	fprintf(stderr, "  -f, --force\tdump the cluster forcibly in spite of the non-allocated.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
+	fprintf(stderr, "  -l, --load=file\tLoad Main boot region and FAT region from file.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
+	fprintf(stderr, "  -s, --save=file\tSave Main boot region and FAT region in file.\n");
 	fprintf(stderr, "  -u, --upper\tconvert into uppercase latter by up-case Table.\n");
 	fprintf(stderr, "  -v, --verbose\tVersion mode.\n");
 	fprintf(stderr, "  --help\tdisplay this help and exit.\n");
@@ -365,13 +369,16 @@ int main(int argc, char *argv[])
 	uint32_t cluster = 0;
 	uint32_t sector = 0;
 	char *outfile = NULL;
+	char *backup = NULL;
 	char *input = NULL;
 	char out[MAX_NAME_LENGTH + 1] = {};
+	char *s;
+	FILE *bfile = NULL;
 	struct pseudo_bootsec bootsec;
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ab:c:fio:u:v",
+					"ab:c:fil:o:s:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
@@ -391,9 +398,17 @@ int main(int argc, char *argv[])
 			case 'i':
 				attr |= OPTION_INTERACTIVE;
 				break;
+			case 'l':
+				attr |= OPTION_LOAD;
+				backup = optarg;
+				break;
 			case 'o':
 				attr |= OPTION_OUTPUT;
 				outfile = optarg;
+				break;
+			case 's':
+				attr |= OPTION_SAVE;
+				backup = optarg;
 				break;
 			case 'u':
 				attr |= OPTION_UPPER;
@@ -446,6 +461,31 @@ int main(int argc, char *argv[])
 	/* Interactive Mode: -i option */
 	if (attr & OPTION_INTERACTIVE) {
 		shell();
+		goto device_close;
+	}
+
+	/* Command line: -s, -l option */
+	if ((attr & OPTION_SAVE) || (attr & OPTION_LOAD)) {
+		if ((bfile = fopen(backup, "ab+")) == NULL) {
+			pr_err("can't open %s.", optarg);
+			goto device_close;
+		}
+		s = malloc(sizeof(char) * info.sector_size);
+		if (attr & OPTION_SAVE) {
+			/* Save Phase */
+			for (i = 0; i < info.heap_offset; i++) {
+				get_sector(s, i * info.sector_size, 1);
+				fwrite(s, info.sector_size, 1, bfile);
+			}
+		} else {
+			/* load Phase */
+			for (i = 0; i < info.heap_offset; i++) {
+				fwrite(s, info.sector_size, 1, bfile);
+				set_sector(s, i * info.sector_size, 1);
+			}
+		}
+		free(s);
+		fclose(bfile);
 		goto device_close;
 	}
 

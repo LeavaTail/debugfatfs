@@ -129,6 +129,8 @@ struct device_info {
 #define OPTION_OUTPUT		(1 << 4)
 #define OPTION_SECTOR		(1 << 5)
 #define OPTION_UPPER		(1 << 6)
+#define OPTION_SAVE			(1 << 7)
+#define OPTION_LOAD			(1 << 8)
 
 
 struct directory {
