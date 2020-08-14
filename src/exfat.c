@@ -36,6 +36,7 @@ static int exfat_check_exist_directory(uint32_t);
 /* Create function prototype */
 static uint32_t exfat_concat_cluster(uint32_t, void **, size_t);
 int exfat_convert_character(const char *, size_t, char *);
+static uint32_t exfat_set_fatentry(uint32_t, uint32_t);
 static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 
 static const struct operations exfat_ops = {
@@ -770,6 +771,39 @@ int exfat_convert_character(const char *src, size_t len, char *dist)
 	free(utf16_upper);
 	free(utf16_src);
 	return utf8_len;
+}
+
+/**
+ * exfat_set_fatentry - Set FAT Entry to any cluster
+ * @index:         index of the cluster want to check
+ * @entry:         any cluster index
+ *
+ * @retrun:        previous FAT entry
+ */
+static uint32_t exfat_set_fatentry(uint32_t index, uint32_t entry)
+{
+	uint32_t ret;
+	size_t entry_per_sector = info.sector_size / sizeof(uint32_t);
+	uint32_t fat_index = (info.fat_offset +  index / entry_per_sector) * info.sector_size;
+	uint32_t *fat;
+	uint32_t entry_off = (index) % entry_per_sector;
+
+	if (index > info.cluster_count + 1) {
+		pr_warn("This Filesystem doesn't have Entry %u\n", index);
+		return 0;
+	}
+
+	fat = malloc(info.sector_size);
+	get_sector(fat, fat_index, 1);
+
+	ret = fat[entry_off];
+	fat[entry_off] = entry;
+
+	set_sector(fat, fat_index, 1);
+	pr_debug("Rewrite Entry(%u) %x to %x.\n", index, ret, fat[entry_off]);
+
+	free(fat);
+	return ret;
 }
 
 /**
