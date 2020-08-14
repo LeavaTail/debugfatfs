@@ -18,6 +18,8 @@ dumpexfat can ontain these inforamtion.
  * Cluster raw data
  * Sector raw data
 
+:warning: dumpexfat can write filesystem image. If you don't want, Please add `-r`(read only) option.
+
 ## Example
 ```sh
 $ sudo dumpexfat /dev/sdc1

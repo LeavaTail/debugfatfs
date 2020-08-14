@@ -34,6 +34,7 @@ static struct option const longopts[] =
 	{"interactive", no_argument, NULL, 'i'},
 	{"load", required_argument, NULL, 'l'},
 	{"output", required_argument, NULL, 'o'},
+	{"ro", no_argument, NULL, 'r'},
 	{"save", required_argument, NULL, 's'},
 	{"upper", required_argument, NULL, 'u'},
 	{"verbose", no_argument, NULL, 'v'},
@@ -59,6 +60,7 @@ static void usage()
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -l, --load=file\tLoad Main boot region and FAT region from file.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
+	fprintf(stderr, "  -r, --ro\tread only mode. \n");
 	fprintf(stderr, "  -s, --save=file\tSave Main boot region and FAT region in file.\n");
 	fprintf(stderr, "  -u, --upper\tconvert into uppercase latter by up-case Table.\n");
 	fprintf(stderr, "  -v, --verbose\tVersion mode.\n");
@@ -265,16 +267,17 @@ static void init_device_info(void)
 
 /**
  * get_device_info - get device name and store in device_info
+ * @attr:            command line options
  *
  * @return        0 (success)
  *               -1 (failed to open)
  */
-static int get_device_info(void)
+static int get_device_info(uint32_t attr)
 {
 	int fd;
 	struct stat s;
 
-	if ((fd = open(info.name, O_RDWR)) < 0) {
+	if ((fd = open(info.name, attr & OPTION_READONLY ? O_RDONLY : O_RDWR)) < 0) {
 		pr_err("can't open %s.", info.name);
 		return -1;
 	}
@@ -378,7 +381,7 @@ int main(int argc, char *argv[])
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ab:c:fil:o:s:u:v",
+					"ab:c:fil:o:rs:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
@@ -405,6 +408,9 @@ int main(int argc, char *argv[])
 			case 'o':
 				attr |= OPTION_OUTPUT;
 				outfile = optarg;
+				break;
+			case 'r':
+				attr |= OPTION_READONLY;
 				break;
 			case 's':
 				attr |= OPTION_SAVE;
@@ -450,7 +456,7 @@ int main(int argc, char *argv[])
 	}
 
 	memcpy(info.name, argv[optind], 255);
-	ret = get_device_info();
+	ret = get_device_info(attr);
 	if (ret < 0)
 		goto output_close;
 
