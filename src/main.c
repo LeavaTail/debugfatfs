@@ -28,11 +28,11 @@ enum
 static struct option const longopts[] =
 {
 	{"all", no_argument, NULL, 'a'},
+	{"byte", required_argument, NULL, 'b'},
 	{"cluster", required_argument, NULL, 'c'},
 	{"force", no_argument, NULL, 'f'},
 	{"interactive", no_argument, NULL, 'i'},
 	{"output", required_argument, NULL, 'o'},
-	{"sector", required_argument, NULL, 's'},
 	{"upper", required_argument, NULL, 'u'},
 	{"verbose", no_argument, NULL, 'v'},
 	{"help", no_argument, NULL, GETOPT_HELP_CHAR},
@@ -51,11 +51,11 @@ static void usage()
 	fprintf(stderr, "\n");
 
 	fprintf(stderr, "  -a, --all\tTrverse all directories.\n");
+	fprintf(stderr, "  -b, --byte=offset\tdump the any byte after dump filesystem information.\n");
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
 	fprintf(stderr, "  -f, --force\tdump the cluster forcibly in spite of the non-allocated.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
-	fprintf(stderr, "  -s, --sector=index\tdump the sector index after dump filesystem information.\n");
 	fprintf(stderr, "  -u, --upper\tconvert into uppercase latter by up-case Table.\n");
 	fprintf(stderr, "  -v, --verbose\tVersion mode.\n");
 	fprintf(stderr, "  --help\tdisplay this help and exit.\n");
@@ -307,11 +307,15 @@ int main(int argc, char *argv[])
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ac:fio:s:u:v",
+					"ab:c:fio:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
 				attr |= OPTION_ALL;
+				break;
+			case 'b':
+				attr |= OPTION_SECTOR;
+				sector = strtoul(optarg, NULL, 0);
 				break;
 			case 'c':
 				attr |= OPTION_CLUSTER;
@@ -326,10 +330,6 @@ int main(int argc, char *argv[])
 			case 'o':
 				attr |= OPTION_OUTPUT;
 				outfile = optarg;
-				break;
-			case 's':
-				attr |= OPTION_SECTOR;
-				sector = strtoul(optarg, NULL, 0);
 				break;
 			case 'u':
 				attr |= OPTION_UPPER;
