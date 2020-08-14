@@ -205,8 +205,10 @@ static int set_env(char **envp, char *env, char *value)
 	char *str = malloc(sizeof(char) * (CMD_MAXLEN + 1));
 
 	for (i = 0; envp[i]; i++) {
-		if (!strcmp(strtok(envp[i], "="), env))
+		if (!strcmp(strtok(envp[i], "="), env)) {
+			free(envp[i]);
 			break;
+		}
 	}
 	snprintf(str, CMD_MAXLEN, "%s=%s", env, value);
 	envp[i] = str;
