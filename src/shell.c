@@ -13,12 +13,25 @@ static int cmd_ls(int, char **, char **);
 static int cmd_cd(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
+/**
+ * command list
+ */
 struct command cmd[] = {
 	{"ls", cmd_ls},
 	{"cd", cmd_cd},
 	{"exit", cmd_exit},
 };
 
+/**
+ * cmd_ls     - List directory contests.
+ * @argc:       argument count
+ * @argv:       argument vetor
+ * @envp:       environment pointer
+ *
+ * @return        0 (success)
+ *
+ * TODO: Use arguemnt
+ */
 static int cmd_ls(int argc, char **argv, char **envp)
 {
 	int i = 0, ret = 0;
@@ -82,12 +95,29 @@ static int cmd_cd(int argc, char **argv, char **envp)
 	return 0;
 }
 
+/**
+ * cmd_exit   - Cause the shell to exit.
+ * @argc:       argument count
+ * @argv:       argument vetor
+ * @envp:       environment pointer
+ *
+ * @return      1
+ */
 static int cmd_exit(int argc, char **argv, char **envp)
 {
 	fprintf(stdout, "Goodbye!\n");
 	return 1;
 }
 
+/**
+ * execute_cmd    - Execute registerd command
+ * @argc:           argument count
+ * @argv:           argument vetor
+ * @envp:           environment pointer
+ *
+ * @return      0 (continue shell)
+ *              1 (exit shell)
+ */
 static int execute_cmd(int argc, char **argv, char **envp)
 {
 	int i, ret;
@@ -103,6 +133,14 @@ static int execute_cmd(int argc, char **argv, char **envp)
 	return 0;
 }
 
+/**
+ * decode_cmd     - Interpret strings as commands
+ * @str             Input string
+ * @argv:           argument vetor (Output)
+ * @envp:           environment pointer
+ *
+ * @return          argument count
+ */
 static int decode_cmd(char *str, char **argv, char **envp)
 {
 	int argc = 0;
@@ -121,6 +159,13 @@ static int decode_cmd(char *str, char **argv, char **envp)
 	return argc;
 }
 
+/**
+ * read_cmd       - Prompt for a string
+ * @buf:            string (Output)
+ *
+ * @return          0 (success)
+ *                  1 (failed)
+ */
 static int read_cmd(char *buf)
 {
 	if (fgets(buf, CMD_MAXLEN, stdin) == NULL) {
@@ -129,6 +174,14 @@ static int read_cmd(char *buf)
 	return 0;
 }
 
+/**
+ * set_env        - Set environment
+ * @envp:           environment pointer
+ * @env:            environment
+ * @value:          parameter
+ *
+ * @return          0
+ */
 static int set_env(char **envp, char *env, char *value)
 {
 	int i;
@@ -144,6 +197,15 @@ static int set_env(char **envp, char *env, char *value)
 	return 0;
 }
 
+/**
+ * get_env        - Get environment
+ * @envp:           environment pointer
+ * @env:            environment
+ * @value:          parameter (Output)
+ *
+ * @return          0 (Found)
+ *                  1 (Not found)
+ */
 static int get_env(char **envp, char *env, char *value)
 {
 	int i;
@@ -162,6 +224,12 @@ static int get_env(char **envp, char *env, char *value)
 	return 1;
 }
 
+/**
+ * init_env       - Initialize environment
+ * @envp:           environment pointer
+ *
+ * @return          0
+ */
 static int init_env(char **envp)
 {
 	cluster = info.root_offset;
@@ -169,6 +237,11 @@ static int init_env(char **envp)
 	return 0;
 }
 
+/**
+ * shell          - Interactive main function
+ *
+ * @return          0
+ */
 int shell(void)
 {
 	int argc = 0;
