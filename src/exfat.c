@@ -419,6 +419,7 @@ int exfat_readdir(struct directory *dir, size_t count, uint32_t clu)
 		strncpy((char *)dir[i].name, (char *)finfo->name, finfo->namelen + 1);
 		dir[i].namelen = finfo->namelen;
 		dir[i].datalen = finfo->datalen;
+		dir[i].attr = finfo->attr;
 		dir[i].ctime = finfo->ctime;
 		dir[i].atime = finfo->atime;
 		dir[i].mtime = finfo->mtime;

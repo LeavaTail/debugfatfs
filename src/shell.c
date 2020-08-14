@@ -30,11 +30,14 @@ struct command cmd[] = {
  *
  * @return        0 (success)
  *
- * TODO: Use arguemnt
+ * TODO: Use 10msIncrement and shift timestamp
  */
 static int cmd_ls(int argc, char **argv, char **envp)
 {
 	int i = 0, ret = 0;
+	char ro = 'R', hidden = 'H', sys = 'S', dir = 'D', arch = 'A';
+	char len[16] = {}, time[64] = {};
+	struct tm t;
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	dirs = malloc(sizeof(struct directory) * DIRECTORY_FILES);
@@ -52,8 +55,22 @@ static int cmd_ls(int argc, char **argv, char **envp)
 		}
 	}
 
-	for (i = 0; i < ret; i++)
-		fprintf(stdout, "%s ", dirs[i].name);
+	for (i = 0; i < ret; i++) {
+		t = dirs[i].ctime;
+		sprintf(len, "%8lu", dirs[i].datalen);
+		sprintf(time, "%d-%02d-%02d %02d:%02d:%02d",
+			1980 + t.tm_year, t.tm_mon, t.tm_mday,
+			t.tm_hour, t.tm_min, t.tm_sec);
+		fprintf(stdout, "%c", (dirs[i].attr & ATTR_READ_ONLY) ? ro : '-');
+		fprintf(stdout, "%c", (dirs[i].attr & ATTR_HIDDEN) ? hidden : '-');
+		fprintf(stdout, "%c", (dirs[i].attr & ATTR_SYSTEM) ? sys : '-');
+		fprintf(stdout, "%c", (dirs[i].attr & ATTR_DIRECTORY) ? dir : '-');
+		fprintf(stdout, "%c", (dirs[i].attr & ATTR_ARCHIVE) ? arch : '-');
+		fprintf(stdout, " %s", len);
+		fprintf(stdout, " %s", time);
+		fprintf(stdout, " %s ", dirs[i].name);
+		fprintf(stdout, "\n");
+	}
 
 	fprintf(stdout, "\n");
 	return 0;
