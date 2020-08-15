@@ -38,6 +38,8 @@ static int exfat_check_exist_directory(uint32_t);
 static uint32_t exfat_concat_cluster(uint32_t, void **, size_t);
 int exfat_convert_character(const char *, size_t, char *);
 int exfat_set_fatentry(uint32_t, uint32_t);
+int exfat_alloc_cluster(uint32_t);
+int exfat_release_cluster(uint32_t);
 static uint32_t exfat_update_fatentry(uint32_t, uint32_t);
 static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 
@@ -50,6 +52,8 @@ static const struct operations exfat_ops = {
 	.clean = exfat_clean_directory_chain,
 	.setfat = exfat_set_fatentry,
 	.getfat = exfat_get_fatentry,
+	.alloc = exfat_alloc_cluster,
+	.release = exfat_release_cluster,
 	.print_cluster = exfat_print_cluster,
 };
 
@@ -815,6 +819,30 @@ int exfat_set_fatentry(uint32_t index, uint32_t entry)
 {
 	exfat_update_fatentry(index, entry);
 	return 0;
+}
+
+/**
+ * exfat_alloc_cluster - function to allocate cluster
+ * @index:               cluster index
+ *
+ * @return                0 (success)
+ *                       -1 (failed)
+ */
+int exfat_alloc_cluster(uint32_t index)
+{
+	return exfat_save_allocation_bitmap(index, 1);
+}
+
+/**
+ * exfat_release_cluster - function to release cluster
+ * @index:                 cluster index
+ *
+ * @return                  0 (success)
+ *                         -1 (failed)
+ */
+int exfat_release_cluster(uint32_t index)
+{
+	return exfat_save_allocation_bitmap(index, 0);
 }
 
 /**

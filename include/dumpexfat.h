@@ -344,6 +344,8 @@ struct operations {
 	int (*clean)(uint32_t);
 	int (*setfat)(uint32_t, uint32_t);
 	int (*getfat)(uint32_t, uint32_t *);
+	int (*alloc)(uint32_t);
+	int (*release)(uint32_t);
 	int (*print_cluster)(uint32_t);
 };
 

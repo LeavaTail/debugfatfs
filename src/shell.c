@@ -11,6 +11,8 @@ static int get_env(char **, char *, char *);
 
 static int cmd_ls(int, char **, char **);
 static int cmd_cd(int, char **, char **);
+static int cmd_alloc(int, char **, char **);
+static int cmd_release(int, char **, char **);
 static int cmd_fat(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
@@ -20,6 +22,8 @@ static int cmd_exit(int, char **, char **);
 struct command cmd[] = {
 	{"ls", cmd_ls},
 	{"cd", cmd_cd},
+	{"alloc", cmd_alloc},
+	{"release", cmd_release},
 	{"fat", cmd_fat},
 	{"exit", cmd_exit},
 };
@@ -116,6 +120,60 @@ static int cmd_cd(int argc, char **argv, char **envp)
 		set_env(envp, "PWD", path);
 	}
 
+	return 0;
+}
+
+/**
+ * cmd_alloc     - Allocate cluster in bitmap.
+ * @argc:          argument count
+ * @argv:          argument vetor
+ * @envp:          environment pointer
+ *
+ * @return         0 (success)
+ */
+static int cmd_alloc(int argc, char **argv, char **envp)
+{
+	unsigned int index = 0;
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			index = strtoul(argv[1], NULL, 10);
+			info.ops->alloc(index);
+			fprintf(stdout, "Alloc: cluster %u.\n", index);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
+ * cmd_release     - Release cluster in bitmap.
+ * @argc:            argument count
+ * @argv:            argument vetor
+ * @envp:            environment pointer
+ *
+ * @return           0 (success)
+ */
+static int cmd_release(int argc, char **argv, char **envp)
+{
+	unsigned int index = 0;
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			index = strtoul(argv[1], NULL, 10);
+			info.ops->release(index);
+			fprintf(stdout, "Release: cluster %u.\n", index);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
 	return 0;
 }
 
