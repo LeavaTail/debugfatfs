@@ -122,7 +122,6 @@ struct device_info {
 };
 
 #define OPTION_ALL			(1 << 0)
-#define OPTION_FORCE		(1 << 1)
 #define OPTION_CLUSTER		(1 << 2)
 #define OPTION_INTERACTIVE	(1 << 3)
 #define OPTION_OUTPUT		(1 << 4)

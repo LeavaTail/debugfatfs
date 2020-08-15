@@ -30,7 +30,6 @@ static struct option const longopts[] =
 	{"all", no_argument, NULL, 'a'},
 	{"byte", required_argument, NULL, 'b'},
 	{"cluster", required_argument, NULL, 'c'},
-	{"force", no_argument, NULL, 'f'},
 	{"interactive", no_argument, NULL, 'i'},
 	{"load", required_argument, NULL, 'l'},
 	{"output", required_argument, NULL, 'o'},
@@ -56,7 +55,6 @@ static void usage()
 	fprintf(stderr, "  -a, --all\tTrverse all directories.\n");
 	fprintf(stderr, "  -b, --byte=offset\tdump the any byte after dump filesystem information.\n");
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
-	fprintf(stderr, "  -f, --force\tdump the cluster forcibly in spite of the non-allocated.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -l, --load=file\tLoad Main boot region and FAT region from file.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
@@ -400,7 +398,7 @@ int main(int argc, char *argv[])
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ab:c:fil:o:rs:u:v",
+					"ab:c:il:o:rs:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
@@ -413,9 +411,6 @@ int main(int argc, char *argv[])
 			case 'c':
 				attr |= OPTION_CLUSTER;
 				cluster = strtoul(optarg, NULL, 0);
-				break;
-			case 'f':
-				attr |= OPTION_FORCE;
 				break;
 			case 'i':
 				attr |= OPTION_INTERACTIVE;
