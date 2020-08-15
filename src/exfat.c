@@ -6,7 +6,6 @@
 
 /* Print function prototype */
 int exfat_print_boot_sec(void);
-static void exfat_print_allocation_bitmap(void);
 static void exfat_print_upcase_table(void);
 static void exfat_print_volume_label(uint16_t *, int);
 static void exfat_print_directory_chain(void);
@@ -14,7 +13,8 @@ int exfat_print_cluster(uint32_t);
 
 /* Load function prototype */
 static int exfat_load_boot_sec(struct exfat_bootsec *);
-static int exfat_create_allocation_chain(void *);
+static int exfat_save_allocation_bitmap(uint32_t index, uint32_t value);
+static int exfat_load_allocation_bitmap(uint32_t index);
 int exfat_clean_directory_chain(uint32_t);
 static void exfat_load_filename(uint16_t *, uint64_t, unsigned char *);
 static void exfat_load_timestamp(struct tm *, char *,
@@ -90,19 +90,6 @@ int exfat_print_boot_sec(void)
 
 	free(b);
 	return 0;
-}
-
-/**
- * exfat_print_allocation_bitmap - print allocation bitmap
- */
-static void exfat_print_allocation_bitmap(void)
-{
-	node_t *node = info.chain_head;
-	while (node->next != NULL) {
-		node = node->next;
-		pr_info("%u ", node->x);
-	}
-	pr_info("\n");
 }
 
 /**
@@ -206,28 +193,29 @@ static int exfat_load_boot_sec(struct exfat_bootsec *b)
 }
 
 /**
- * exfat_create_allocation_chain - function to get cluster chain
- * @bitmap:       pointer to Bitmap table
+ * exfat_load_allocation_bitmap - function to load allocation table
+ * @index:                        cluster index
  *
- * @return        0 (success)
+ * @return                        0 (cluster as available for allocation)
+ *                                1 (cluster as not available for allocation)
+ *                               -1 (failed)
  */
-static int exfat_create_allocation_chain(void *bitmap)
+static int exfat_load_allocation_bitmap(uint32_t index)
 {
-	int i, bit;
+	int offset, byte;
 	uint8_t entry;
-	for (i = 0; i < (info.cluster_count / CHAR_BIT); i++) {
-		entry = ((uint8_t *)bitmap)[i];
-		if (!entry)
-			continue;
 
-		for (bit = 0; bit < CHAR_BIT; bit++, entry >>= 1) {
-			if (entry & 0x01) {
-				uint64_t clu = (i * CHAR_BIT) + bit + EXFAT_FIRST_CLUSTER;
-				append_node(info.chain_head, clu);
-			}
-		}
+	if (index < EXFAT_FIRST_CLUSTER || index > info.cluster_count + 1) {
+		pr_warn("cluster: %u is invalid.\n", index);
+		return -1;
 	}
-	return 0;
+
+	index -= EXFAT_FIRST_CLUSTER;
+	byte = index / CHAR_BIT;
+	offset = index % CHAR_BIT;
+
+	entry = info.alloc_table[byte];
+	return (entry >> offset) & 0x01;
 }
 
 /**
@@ -488,14 +476,9 @@ static int exfat_traverse_one_directory(uint32_t index)
 					pr_debug("Get: allocation table: cluster %x, size: %lx\n",
 							d.dentry.bitmap.FirstCluster,
 							d.dentry.bitmap.DataLength);
-					info.chain_head = init_node();
-					clu_tmp = malloc(info.cluster_size);
-					get_cluster(clu_tmp, d.dentry.bitmap.FirstCluster);
-					exfat_create_allocation_chain(clu_tmp);
-					free(clu_tmp);
-
+					info.alloc_table = malloc(info.cluster_size);
+					get_cluster(info.alloc_table, d.dentry.bitmap.FirstCluster);
 					pr_info("Allocation Bitmap (#%u):\n", d.dentry.bitmap.FirstCluster);
-					exfat_print_allocation_bitmap();
 					break;
 				case DENTRY_UPCASE:
 					info.upcase_size = d.dentry.upcase.DataLength;
@@ -647,8 +630,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot)
  */
 static bool exfat_check_allocation_cluster(uint32_t index)
 {
-	node_t *node = search_node(info.chain_head, index);
-	if (node)
+	if (exfat_load_allocation_bitmap(index) == 1)
 		return true;
 	return false;
 }
@@ -745,6 +727,39 @@ static uint32_t exfat_concat_cluster(uint32_t index, void **data, size_t size)
 		}
 	}
 	return ret;
+}
+
+/**
+ * exfat_save_allocation_bitmap - function to save allocation table
+ * @index:                        cluster index
+ * @value:                        Bit
+ *
+ * @return                        0 (success)
+ *                               -1 (failed)
+ */
+static int exfat_save_allocation_bitmap(uint32_t index, uint32_t value)
+{
+	int offset, byte;
+	uint8_t entry, mask = 0x01;
+
+	if (index < EXFAT_FIRST_CLUSTER || index > info.cluster_count + 1) {
+		pr_warn("cluster: %u is invalid.\n", index);
+		return -1;
+	}
+
+	index -= EXFAT_FIRST_CLUSTER;
+	byte = index / CHAR_BIT;
+	offset = index % CHAR_BIT;
+
+	pr_debug("index %u: allocation bitmap is %x ->", index, info.alloc_table[byte]);
+	mask <<= offset;
+	if (value)
+		info.alloc_table[byte] |= mask;
+	else
+		info.alloc_table[byte] &= mask;
+
+	pr_debug("%x\n", info.alloc_table[byte]);
+	return 0;
 }
 
 /**

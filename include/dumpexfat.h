@@ -7,7 +7,6 @@
 #include <time.h>
 
 #include "list.h"
-#include "list2.h"
 #include "nls.h"
 #include "shell.h"
 /**
@@ -114,7 +113,7 @@ struct device_info {
 	uint32_t fat_length;
 	uint32_t heap_offset;
 	uint32_t root_offset;
-	node_t *chain_head;
+	uint8_t *alloc_table;
 	uint16_t *upcase_table;
 	size_t upcase_size;
 	node2_t **root;

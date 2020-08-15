@@ -258,7 +258,7 @@ static void init_device_info(void)
 	info.fat_length = 0;
 	info.heap_offset = 0;
 	info.root_offset = 0;
-	info.chain_head = NULL;
+	info.alloc_table = NULL;
 	info.upcase_table = NULL;
 	info.upcase_size = 0;
 	info.root_size = DENTRY_LISTSIZE;
@@ -555,6 +555,7 @@ out:
 		free(dirs[i].name);
 	free(dirs);
 	free(info.upcase_table);
+	free(info.alloc_table);
 
 device_close:
 	close(info.fd);
@@ -565,7 +566,6 @@ output_close:
 
 info_release:
 	free_dentry_list();
-	free_list(info.chain_head);
 
 	return ret;
 }
