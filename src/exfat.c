@@ -484,7 +484,7 @@ static int exfat_traverse_one_directory(uint32_t index)
 					}
 
 					next = ((struct exfat_dentry *)clu)[i + 1];
-					while ((!(next.EntryType & 0x80)) && (next.EntryType != DENTRY_UNUSED)) {
+					while ((!(next.EntryType & EXFAT_INUSE)) && (next.EntryType != DENTRY_UNUSED)) {
 						pr_debug("This entry was deleted (%x).\n", next.EntryType);
 						if (++i + scount >= entries) {
 							index = exfat_concat_cluster(index, &clu, size);
@@ -499,7 +499,7 @@ static int exfat_traverse_one_directory(uint32_t index)
 					}
 
 					name = ((struct exfat_dentry *)clu)[i + 2];
-					while ((!(name.EntryType & 0x80)) && (name.EntryType != DENTRY_UNUSED)) {
+					while ((!(name.EntryType & EXFAT_INUSE)) && (name.EntryType != DENTRY_UNUSED)) {
 						pr_debug("This entry was deleted (%x).\n", name.EntryType);
 						if (++i + scount >= entries - 1) {
 							index = exfat_concat_cluster(index, &clu, size);

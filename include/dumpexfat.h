@@ -366,6 +366,12 @@ struct operations {
 #define DENTRY_VENDOR		0xE0
 #define DENTRY_VENDOR_ALLOC	0xE1
 
+/* exFAT EntryType */
+#define EXFAT_TYPECODE			0x1F
+#define EXFAT TYPEIMPORTANCE	0x20
+#define EXFAT_CATEGORY			0x40
+#define EXFAT_INUSE				0x80
+
 /* TimeStamp */
 #define EXFAT_DSEC		0
 #define EXFAT_MINUTE	5
