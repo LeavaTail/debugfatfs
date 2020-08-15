@@ -348,7 +348,7 @@ static int pseudo_print_sector(uint32_t sector)
 	void *data;
 
 	data = malloc(info.sector_size);
-	if (get_sector(data, sector, 1)) {
+	if (!get_sector(data, sector, 1)) {
 		pr_msg("Sector #%u:\n", sector);
 		hexdump(output, data, info.sector_size);
 	}
