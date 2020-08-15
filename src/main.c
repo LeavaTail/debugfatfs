@@ -357,6 +357,25 @@ static int pseudo_print_sector(uint32_t sector)
 }
 
 /**
+ * print_cluster - print any cluster
+ * @index:         cluster index to display
+ *
+ * @return        0 (success)
+ */
+int print_cluster(uint32_t index)
+{
+	void *data;
+
+	data = malloc(info.cluster_size);
+	if (!get_cluster(data, index)) {
+		pr_msg("Cluster #%u:\n", index);
+		hexdump(output, data, info.cluster_size);
+	}
+	free(data);
+	return 0;
+}
+
+/**
  * main - main function
  * @argc:      argument count
  * @argv:      argument vector
@@ -542,7 +561,7 @@ int main(int argc, char *argv[])
 	/* Command line: -c, -s option */
 	if ((attr & OPTION_SECTOR) || (attr & OPTION_CLUSTER)) {
 		if (attr & OPTION_CLUSTER)
-			ret = info.ops->print_cluster(cluster);
+			ret = print_cluster(cluster);
 		else
 			ret = pseudo_print_sector(sector);
 

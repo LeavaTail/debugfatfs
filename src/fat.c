@@ -16,7 +16,6 @@ static const struct operations fat_ops = {
 	.reload = NULL,
 	.convert = NULL,
 	.clean = NULL,
-	.print_cluster = fat_print_cluster,
 };
 
 /**
@@ -146,17 +145,6 @@ static int fat32_print_fsinfo(struct fat32_fsinfo *fsi)
 
 	pr_msg("%-28s\t: %8u (cluster)\n", "free cluster count", fsi->FSI_Free_Count);
 	pr_msg("%-28s\t: %8u (cluster)\n", "first available cluster", fsi->FSI_Nxt_Free);
-	return 0;
-}
-
-int fat_print_cluster(uint32_t index)
-{
-	void *data;
-	data = malloc(info.cluster_size);
-	get_cluster(data, index);
-	pr_msg("Cluster #%u:\n", index);
-	hexdump(output, data, info.cluster_size);
-	free(data);
 	return 0;
 }
 

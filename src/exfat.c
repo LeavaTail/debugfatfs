@@ -9,7 +9,6 @@ int exfat_print_boot_sec(void);
 static void exfat_print_upcase_table(void);
 static void exfat_print_volume_label(uint16_t *, int);
 static void exfat_print_directory_chain(void);
-int exfat_print_cluster(uint32_t);
 
 /* Load function prototype */
 static int exfat_load_boot_sec(struct exfat_bootsec *);
@@ -54,7 +53,6 @@ static const struct operations exfat_ops = {
 	.getfat = exfat_get_fatentry,
 	.alloc = exfat_alloc_cluster,
 	.release = exfat_release_cluster,
-	.print_cluster = exfat_print_cluster,
 };
 
 /**
@@ -159,29 +157,6 @@ static void exfat_print_directory_chain(void)
 		pr_msg("\n");
 	}
 	pr_msg("\n");
-}
-
-/**
- * exfat_show_boot_sec - function to print any cluster
- * @index:      cluster index to display
- *
- * @return        0 (success)
- *               -1 (cluster isn't allocated)
- */
-int exfat_print_cluster(uint32_t index)
-{
-	if (!exfat_check_allocation_cluster(index) && !(info.attr & OPTION_FORCE)) {
-		pr_err("cluster %u is not allocated.\n", index);
-		return -1;
-	}
-
-	void *data;
-	data = malloc(info.cluster_size);
-	get_cluster(data, index);
-	pr_msg("Cluster #%u:\n", index);
-	hexdump(output, data, info.cluster_size);
-	free(data);
-	return 0;
 }
 
 /**
