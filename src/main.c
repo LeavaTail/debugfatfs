@@ -336,12 +336,12 @@ static int pseudo_check_filesystem(struct pseudo_bootsec *boot)
 }
 
 /**
- * pseudo_print_sector - virtual function to print any sector
- * @sector:    sector index to display
+ * print_sector - print any sector
+ * @sector:       sector index to display
  *
  * return:     0  (succeeded in obtaining filesystem)
  */
-static int pseudo_print_sector(uint32_t sector)
+static int print_sector(uint32_t sector)
 {
 	void *data;
 
@@ -558,7 +558,7 @@ int main(int argc, char *argv[])
 		if (attr & OPTION_CLUSTER)
 			ret = print_cluster(cluster);
 		else
-			ret = pseudo_print_sector(sector);
+			ret = print_sector(sector);
 
 		if (ret < 0)
 			goto out;
