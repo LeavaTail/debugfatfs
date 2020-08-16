@@ -438,7 +438,7 @@ static int exfat_traverse_one_directory(uint32_t index)
 	struct exfat_dirinfo *dinfo = (struct exfat_dirinfo *)info.root[dindex]->data;
 	size_t size = info.cluster_size;
 	size_t entries = size / sizeof(struct exfat_dentry);
-	void *clu, *clu_tmp;
+	void *clu;
 	struct exfat_dentry d, next, name;
 
 	if (!(dinfo->attr & EXFAT_DIR_NEW)) {
@@ -724,7 +724,7 @@ static uint32_t exfat_concat_cluster(uint32_t index, void **data, size_t size)
 static int exfat_save_allocation_bitmap(uint32_t index, uint32_t value)
 {
 	int offset, byte;
-	uint8_t entry, mask = 0x01;
+	uint8_t mask = 0x01;
 
 	if (index < EXFAT_FIRST_CLUSTER || index > info.cluster_count + 1) {
 		pr_warn("cluster: %u is invalid.\n", index);
@@ -1033,7 +1033,7 @@ static const struct query create_prompt[] = {
  */
 int exfat_create(const char *name, uint32_t index, int opt)
 {
-	int i, namei, lasti, filei;
+	int i, namei, lasti;
 	uint8_t attr = 0;
 	void *clu;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
