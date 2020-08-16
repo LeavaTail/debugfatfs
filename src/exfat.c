@@ -964,7 +964,7 @@ static int exfat_query_timestamp(struct tm *t,
 {
 	char buf[QUERY_BUFFER_SIZE] = {};
 	pr_msg("Timestamp\n");
-	pr_msg("Select (Default: %d-%02d-%02d %02d:%02d:%02d.%03d): ",
+	pr_msg("Select (Default: %d-%02d-%02d %02d:%02d:%02d.%02d): ",
 			t->tm_year + 1900,
 			t->tm_mon + 1,
 			t->tm_mday,
@@ -978,7 +978,7 @@ static int exfat_query_timestamp(struct tm *t,
 		return -1;
 
 	if (buf[0] != '\n') {
-		sscanf(buf, "%d-%02d-%02d %02d:%02d:%02d.%03hhd",
+		sscanf(buf, "%d-%02d-%02d %02d:%02d:%02d.%02hhd",
 				&(t->tm_year),
 				&(t->tm_mon),
 				&(t->tm_mday),
@@ -991,17 +991,14 @@ static int exfat_query_timestamp(struct tm *t,
 	}
 
 	pr_msg("\n");
-	*time |= (t->tm_year + 80);
-	*time <<= EXFAT_YEAR;
-	*time |= (t->tm_mon + 1);
-	*time <<= EXFAT_MONTH;
-	*time |= t->tm_mday;
-	*time <<= EXFAT_DAY;
-	*time |= t->tm_hour;
-	*time <<= EXFAT_HOUR;
-	*time |= t->tm_min;
-	*time <<= EXFAT_MINUTE;
-	*time |= t->tm_sec;
+
+	*time |= ((t->tm_year - 80) << EXFAT_YEAR);
+	*time |= ((t->tm_mon + 1) << EXFAT_MONTH);
+	*time |= (t->tm_mday << EXFAT_DAY);
+	*time |= (t->tm_hour << EXFAT_HOUR);
+	*time |= (t->tm_min << EXFAT_MINUTE);
+	*time |= t->tm_sec / 2;
+	*subsec += ((t->tm_sec % 2) * 100);
 
 	return 0;
 }
