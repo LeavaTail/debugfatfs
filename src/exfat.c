@@ -1112,8 +1112,10 @@ int exfat_create(const char *name, uint32_t index, int opt)
 		default:
 			break;
 	}
-	if (attr)
+	if (attr) {
+		d = ((struct exfat_dentry *)clu) + i;
 		d->dentry.file.SetChecksum = exfat_entry_set_checksum(clu + i * sizeof(struct exfat_dentry), count);
+	}
 	set_cluster(clu, index);
 	free(clu);
 	return 0;
