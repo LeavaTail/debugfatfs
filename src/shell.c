@@ -14,6 +14,7 @@ static int cmd_cd(int, char **, char **);
 static int cmd_alloc(int, char **, char **);
 static int cmd_release(int, char **, char **);
 static int cmd_fat(int, char **, char **);
+static int cmd_create(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
 /**
@@ -25,6 +26,7 @@ struct command cmd[] = {
 	{"alloc", cmd_alloc},
 	{"release", cmd_release},
 	{"fat", cmd_fat},
+	{"create", cmd_create},
 	{"exit", cmd_exit},
 };
 
@@ -202,6 +204,31 @@ static int cmd_fat(int argc, char **argv, char **envp)
 			entry = strtoul(argv[2], NULL, 16);
 			info.ops->setfat(index, entry);
 			fprintf(stdout, "Set: Cluster %u is FAT entry %08x\n", index, entry);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
+ * cmd_create     - Create file or Directory.
+ * @argc:            argument count
+ * @argv:            argument vetor
+ * @envp:            environment pointer
+ *
+ * @return           0 (success)
+ */
+static int cmd_create(int argc, char **argv, char **envp)
+{
+	unsigned int index = 0;
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			info.ops->create(argv[1], cluster, 0);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);

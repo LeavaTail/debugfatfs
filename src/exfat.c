@@ -41,6 +41,8 @@ int exfat_alloc_cluster(uint32_t);
 int exfat_release_cluster(uint32_t);
 static uint32_t exfat_update_fatentry(uint32_t, uint32_t);
 static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
+static int exfat_query_timestamp(struct tm *, uint32_t *, uint8_t *, uint8_t *);
+int exfat_create(const char *, uint32_t, int);
 
 static const struct operations exfat_ops = {
 	.statfs = exfat_print_boot_sec,
@@ -53,6 +55,7 @@ static const struct operations exfat_ops = {
 	.getfat = exfat_get_fatentry,
 	.alloc = exfat_alloc_cluster,
 	.release = exfat_release_cluster,
+	.create = exfat_create,
 };
 
 /**
@@ -903,4 +906,170 @@ static void exfat_create_fileinfo(node2_t *dir, uint32_t index,
 		i = exfat_get_dirindex(next_index);
 		info.root[i] = init_node2(next_index, dinfo);
 	}
+}
+/**
+/**
+ * exfat_query_timestamp - Prompt user for timestamp
+ * @tz:                    local timezone
+ * @time:                  Time Field (Output)
+ * @subsec:                Time subsecond Field (Output)
+ * @tz:                    offset from UTC Field (Output)
+ *
+ * @return        0 (Success)
+ */
+static int exfat_query_timestamp(struct tm *t,
+		uint32_t *time, uint8_t *subsec, uint8_t *tz)
+{
+	char buf[QUERY_BUFFER_SIZE] = {};
+	pr_msg("Timestamp\n");
+	pr_msg("Select (Default: %d-%02d-%02d %02d:%02d:%02d.%03d): ",
+			t->tm_year + 1900,
+			t->tm_mon + 1,
+			t->tm_mday,
+			t->tm_hour,
+			t->tm_min,
+			t->tm_sec,
+			0);
+	fflush(stdout);
+
+	if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
+		return -1;
+
+	if (buf[0] != '\n') {
+		sscanf(buf, "%d-%02d-%02d %02d:%02d:%02d.%03hhd",
+				&(t->tm_year),
+				&(t->tm_mon),
+				&(t->tm_mday),
+				&(t->tm_hour),
+				&(t->tm_min),
+				&(t->tm_sec),
+				subsec);
+		t->tm_year -= 1900;
+		t->tm_mon -= 1;
+	}
+
+	pr_msg("\n");
+	*time |= (t->tm_year + 80);
+	*time <<= EXFAT_YEAR;
+	*time |= (t->tm_mon + 1);
+	*time <<= EXFAT_MONTH;
+	*time |= t->tm_mday;
+	*time <<= EXFAT_DAY;
+	*time |= t->tm_hour;
+	*time <<= EXFAT_HOUR;
+	*time |= t->tm_min;
+	*time <<= EXFAT_MINUTE;
+	*time |= t->tm_sec;
+
+	return 0;
+}
+
+static const struct query create_prompt[] = {
+	{"Entry Type", 3, (char *[]){"  85  File","  C0  Stream", "  C1  Filename"}},
+	{"File Attributes", 5, (char *[]){
+										 "  Bit0  ReadOnly",
+										 "  Bit1  Hidden",
+										 "  Bit2  System",
+										 "  Bit4  Directory",
+										 "  Bit5  Archive"}},
+	{"Secondary Count", 0, NULL},
+	{"Reserverd", 0, NULL},
+	{"General Seconday Flags", 2, (char *[]){"  Bit0 AllocationPossible", "  Bit1 NoFatChain"}},
+	{"Name Length", 0, NULL},
+	{"Name Hash", 0, NULL},
+	{"Valid Data Length", 0, NULL},
+	{"First Cluster", 0, NULL},
+	{"Data Length", 0, NULL},
+};
+
+/**
+ * exfat_create -  function interface to create entry
+ * @name:          Filename in UTF-8
+ * @index:         Current Directory Index
+ * @opt:           create option
+ *
+ * @return        0 (Success)
+ *
+ * NOTE: Tentative implemetation
+ */
+int exfat_create(const char *name, uint32_t index, int opt)
+{
+	int i, namei, lasti;
+	void *clu;
+	uint16_t uniname[MAX_NAME_LENGTH] = {0};
+	uint8_t len;
+	uint8_t count;
+	uint32_t stamp;
+	uint8_t subsec, tz;
+	size_t size = info.cluster_size;
+	size_t entries = size / sizeof(struct exfat_dentry);
+	size_t name_len;
+	struct exfat_dentry *d;
+	time_t t = time(NULL);
+	struct tm *local = localtime(&t);
+
+	/* convert UTF-8 to UTF16 */
+	len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
+	count = ((len + ENTRY_NAME_MAX - 1) / ENTRY_NAME_MAX) + 1;
+
+	/* Lookup last entry */
+	clu = malloc(size);
+	get_cluster(clu, index);
+	for (i = 0; i < entries; i++){
+		d = ((struct exfat_dentry *)clu) + i;
+		if (d->EntryType == DENTRY_UNUSED)
+			break;
+	}
+
+	query_param(create_prompt[0], &(d->EntryType), 0x85);
+	lasti = i;
+	switch (d->EntryType) {
+		case DENTRY_FILE:
+			query_param(create_prompt[1], &(d->dentry.file.FileAttributes), 0x20);
+			query_param(create_prompt[2], &(d->dentry.file.SecondaryCount), count);
+			query_param(create_prompt[3], &(d->dentry.file.Reserved1), 0x0);
+			exfat_query_timestamp(local, &stamp, &subsec, &tz);
+			d->dentry.file.CreateTimestamp = stamp;
+			d->dentry.file.LastAccessedTimestamp = stamp;
+			d->dentry.file.LastModifiedTimestamp = stamp;
+			d->dentry.file.Create10msIncrement = subsec;
+			d->dentry.file.LastModified10msIncrement = subsec;
+			pr_msg("DO you want to create stream entry? (Default [y]/n): ");
+			fflush(stdout);
+			if (getchar() == 'n')
+				break;
+			lasti = i + 1;
+			d = ((struct exfat_dentry *)clu) + lasti;
+			d->EntryType = DENTRY_STREAM;
+		case DENTRY_STREAM:
+			query_param(create_prompt[4], &(d->dentry.stream.GeneralSecondaryFlags), 0x01);
+			query_param(create_prompt[3], &(d->dentry.stream.Reserved1), 0x00);
+			query_param(create_prompt[5], &(d->dentry.stream.NameLength), len);
+			query_param(create_prompt[6], &(d->dentry.stream.NameHash), 0x0000);
+			query_param(create_prompt[3], &(d->dentry.stream.Reserved2), 0x00);
+			query_param(create_prompt[7], &(d->dentry.stream.ValidDataLength), 0x00);
+			query_param(create_prompt[3], &(d->dentry.stream.Reserved3), 0x00);
+			query_param(create_prompt[8], &(d->dentry.stream.FirstCluster), 0x00);
+			query_param(create_prompt[9], &(d->dentry.stream.DataLength), 0x00);
+			pr_msg("DO you want to create Name entry? (Default [y]/n): ");
+			fflush(stdout);
+			if (getchar() == 'n')
+				break;
+			lasti = i + 2;
+			d = ((struct exfat_dentry *)clu) + lasti;
+			d->EntryType = DENTRY_NAME;
+		case DENTRY_NAME:
+			for (namei = 0; namei < count - 1; namei++) {
+				name_len = MIN(ENTRY_NAME_MAX, len - namei * ENTRY_NAME_MAX);
+				memcpy(d->dentry.name.FileName, uniname + namei * name_len, name_len * sizeof(uint16_t));
+				d = ((struct exfat_dentry *)clu) + lasti + namei;
+				d->EntryType = DENTRY_NAME;
+			}
+			break;
+		default:
+			break;
+	}
+	set_cluster(clu, index);
+	free(clu);
+	return 0;
 }

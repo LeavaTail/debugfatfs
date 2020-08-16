@@ -345,6 +345,7 @@ struct operations {
 	int (*getfat)(uint32_t, uint32_t *);
 	int (*alloc)(uint32_t);
 	int (*release)(uint32_t);
+	int (*create)(const char *, uint32_t, int);
 };
 
 /* FAT dentry type */
@@ -383,6 +384,14 @@ struct operations {
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
+struct query {
+	char *name;
+	size_t len;
+	char **select;
+};
+
+#define QUERY_BUFFER_SIZE	36
+
 extern struct device_info info;
 
 /* General function */
@@ -393,6 +402,7 @@ int set_sector(void *, off_t, size_t);
 int set_cluster(void *, off_t);
 int set_clusters(void *, off_t, size_t);
 void hexdump(FILE *, void *, size_t);
+int query_param(const struct query, void *, unsigned int);
 
 /* exFAT/FAT check function */
 int exfat_check_filesystem(struct pseudo_bootsec *);

@@ -374,6 +374,37 @@ int print_cluster(uint32_t index)
 }
 
 /**
+ * query_param - prompt user from parameter
+ * @q:           query paramater
+ * @param:       parameter (output)
+ * @def:         default parameter
+ *
+ * @return        0 (success)
+ *               -1 (failed)
+ */
+int query_param(const struct query q, void *param, unsigned int def)
+{
+	int i;
+	char buf[QUERY_BUFFER_SIZE] = {};
+
+	pr_msg("%s\n", q.name);
+	for (i = 0; i < q.len; i++)
+		pr_msg("%s\n", q.select[i]);
+	pr_msg("Select (Default %0x): ", def);
+	fflush(stdout);
+
+	if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
+		return -1;
+
+	pr_msg("\n");
+	if (buf[0] == '\n')
+		*(unsigned int *)param = def;
+	else
+		sscanf(buf, "%02x", (unsigned int *)param);
+	return 0;
+}
+
+/**
  * main - main function
  * @argc:      argument count
  * @argv:      argument vector
