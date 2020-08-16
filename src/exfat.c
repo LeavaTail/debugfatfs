@@ -40,6 +40,8 @@ int exfat_set_fatentry(uint32_t, uint32_t);
 int exfat_alloc_cluster(uint32_t);
 int exfat_release_cluster(uint32_t);
 static uint32_t exfat_update_fatentry(uint32_t, uint32_t);
+static uint16_t exfat_entry_set_checksum(unsigned char *, unsigned char);
+static uint16_t exfat_entry_namehash(uint16_t *, unsigned char *);
 static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 static int exfat_query_timestamp(struct tm *, uint32_t *, uint8_t *, uint8_t *);
 int exfat_create(const char *, uint32_t, int);
@@ -907,7 +909,47 @@ static void exfat_create_fileinfo(node2_t *dir, uint32_t index,
 		info.root[i] = init_node2(next_index, dinfo);
 	}
 }
+
 /**
+ * exfat_entry_set_checksum - Calculate file entry Checksum
+ * @Entries:                  points to an in-memory copy of the directory entry set
+ * @SecondaryCount:           the number of secondary directory entries
+ *
+ * @return                   Checksum
+ */
+static uint16_t exfat_entry_set_checksum(unsigned char *Entries, unsigned char SecondaryCount)
+{
+	uint16_t NumberOfBytes = ((uint16_t)SecondaryCount + 1) * 32;
+	uint16_t Checksum = 0;
+	uint16_t Index;
+
+	for (Index = 0; Index < NumberOfBytes; Index++) {
+		if ((Index == 2) || (Index == 3))
+			continue;
+		Checksum = ((Checksum & 1) ? 0x8000 : 0) + (Checksum >> 1) +  (uint16_t)Entries[Index];
+	}
+	return Checksum;
+}
+
+/**
+ * exfat_entry_namehash - Calculate name hash
+ * @FileName:             points to an in-memory copy of the up-cased file name
+ * @NameLength:           Name length
+ *
+ * @return                NameHash
+ */
+static uint16_t exfat_entry_namehash(uint16_t *FileName, unsigned char *NameLength)
+{
+	unsigned char* Buffer = (unsigned char *)FileName;
+	uint16_t NumberOfBytes = (uint16_t)NameLength * 2;
+	uint16_t Hash = 0;
+	uint16_t Index;
+	for (Index = 0; Index < NumberOfBytes; Index++)
+		Hash = ((Hash & 1) ? 0x8000 : 0) + (Hash >> 1) + (uint16_t)Buffer[Index];
+
+	return Hash;
+}
+
 /**
  * exfat_query_timestamp - Prompt user for timestamp
  * @tz:                    local timezone
@@ -994,9 +1036,11 @@ static const struct query create_prompt[] = {
  */
 int exfat_create(const char *name, uint32_t index, int opt)
 {
-	int i, namei, lasti;
+	int i, namei, lasti, filei;
+	uint8_t attr = 0;
 	void *clu;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
+	uint16_t namehash = 0;
 	uint8_t len;
 	uint8_t count;
 	uint32_t stamp;
@@ -1011,6 +1055,7 @@ int exfat_create(const char *name, uint32_t index, int opt)
 	/* convert UTF-8 to UTF16 */
 	len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
 	count = ((len + ENTRY_NAME_MAX - 1) / ENTRY_NAME_MAX) + 1;
+	namehash = exfat_entry_namehash(uniname, len);
 
 	/* Lookup last entry */
 	clu = malloc(size);
@@ -1025,7 +1070,8 @@ int exfat_create(const char *name, uint32_t index, int opt)
 	lasti = i;
 	switch (d->EntryType) {
 		case DENTRY_FILE:
-			query_param(create_prompt[1], &(d->dentry.file.FileAttributes), 0x20);
+			query_param(create_prompt[1], &attr, ATTR_ARCHIVE);
+			d->dentry.file.FileAttributes = attr;
 			query_param(create_prompt[2], &(d->dentry.file.SecondaryCount), count);
 			query_param(create_prompt[3], &(d->dentry.file.Reserved1), 0x0);
 			exfat_query_timestamp(local, &stamp, &subsec, &tz);
@@ -1045,7 +1091,7 @@ int exfat_create(const char *name, uint32_t index, int opt)
 			query_param(create_prompt[4], &(d->dentry.stream.GeneralSecondaryFlags), 0x01);
 			query_param(create_prompt[3], &(d->dentry.stream.Reserved1), 0x00);
 			query_param(create_prompt[5], &(d->dentry.stream.NameLength), len);
-			query_param(create_prompt[6], &(d->dentry.stream.NameHash), 0x0000);
+			query_param(create_prompt[6], &(d->dentry.stream.NameHash), namehash);
 			query_param(create_prompt[3], &(d->dentry.stream.Reserved2), 0x00);
 			query_param(create_prompt[7], &(d->dentry.stream.ValidDataLength), 0x00);
 			query_param(create_prompt[3], &(d->dentry.stream.Reserved3), 0x00);
@@ -1069,6 +1115,8 @@ int exfat_create(const char *name, uint32_t index, int opt)
 		default:
 			break;
 	}
+	if (attr)
+		d->dentry.file.SetChecksum = exfat_entry_set_checksum(clu + i * sizeof(struct exfat_dentry), count);
 	set_cluster(clu, index);
 	free(clu);
 	return 0;
