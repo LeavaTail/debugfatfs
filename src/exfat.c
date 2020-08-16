@@ -660,7 +660,7 @@ static uint32_t exfat_check_fatentry(uint32_t index)
 		pr_debug("cluster: %u is invalid.\n", index);
 	} else {
 		ret = fat[entry_off];
-		pr_debug("cluster: %u has chain. next is %u.\n", index, fat[entry_off]);
+		pr_debug("cluster: %u has chain. next is %x.\n", index, fat[entry_off]);
 	}
 
 	free(fat);
