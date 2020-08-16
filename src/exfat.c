@@ -41,7 +41,7 @@ int exfat_alloc_cluster(uint32_t);
 int exfat_release_cluster(uint32_t);
 static uint32_t exfat_update_fatentry(uint32_t, uint32_t);
 static uint16_t exfat_entry_set_checksum(unsigned char *, unsigned char);
-static uint16_t exfat_entry_namehash(uint16_t *, unsigned char *);
+static uint16_t exfat_entry_namehash(uint16_t *, uint8_t);
 static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 static int exfat_query_timestamp(struct tm *, uint32_t *, uint8_t *, uint8_t *);
 int exfat_create(const char *, uint32_t, int);
@@ -938,7 +938,7 @@ static uint16_t exfat_entry_set_checksum(unsigned char *Entries, unsigned char S
  *
  * @return                NameHash
  */
-static uint16_t exfat_entry_namehash(uint16_t *FileName, unsigned char *NameLength)
+static uint16_t exfat_entry_namehash(uint16_t *FileName, uint8_t NameLength)
 {
 	unsigned char* Buffer = (unsigned char *)FileName;
 	uint16_t NumberOfBytes = (uint16_t)NameLength * 2;
