@@ -14,6 +14,7 @@ static void exfat_print_directory_chain(void);
 static int exfat_load_boot_sec(struct exfat_bootsec *);
 static int exfat_save_allocation_bitmap(uint32_t index, uint32_t value);
 static int exfat_load_allocation_bitmap(uint32_t index);
+static int exfat_get_next_unallocated(uint32_t *index);
 int exfat_clean_directory_chain(uint32_t);
 static void exfat_load_filename(uint16_t *, uint64_t, unsigned char *);
 static void exfat_load_timestamp(struct tm *, char *,
@@ -1070,6 +1071,7 @@ int exfat_create(const char *name, uint32_t index, int opt)
 	uint8_t len;
 	uint8_t count;
 	uint32_t stamp;
+	uint32_t unused = 0;
 	uint8_t subsec, tz;
 	size_t size = info.cluster_size;
 	size_t entries = size / sizeof(struct exfat_dentry);
@@ -1121,7 +1123,9 @@ int exfat_create(const char *name, uint32_t index, int opt)
 			query_param(create_prompt[3], &(d->dentry.stream.Reserved2), 0x00, 2);
 			query_param(create_prompt[7], &(d->dentry.stream.ValidDataLength), 0x00, 8);
 			query_param(create_prompt[3], &(d->dentry.stream.Reserved3), 0x00, 4);
-			query_param(create_prompt[8], &(d->dentry.stream.FirstCluster), 0x00, 4);
+			if (attr & ATTR_DIRECTORY)
+				exfat_get_next_unallocated(&unused);
+			query_param(create_prompt[8], &(d->dentry.stream.FirstCluster), unused, 4);
 			query_param(create_prompt[9], &(d->dentry.stream.DataLength), 0x00, 8);
 			pr_msg("DO you want to create Name entry? (Default [y]/n): ");
 			fflush(stdout);
