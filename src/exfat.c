@@ -203,6 +203,35 @@ static int exfat_load_allocation_bitmap(uint32_t index)
 }
 
 /**
+ * exfat_get_next_unallocated   - get unused cluster index by allocation bitmap
+ * @index:                        cluster index (Output)
+ *
+ * @return                        0 (found unused allocation cluster)
+ *                               -1 (failed)
+ */
+static int exfat_get_next_unallocated(uint32_t *index)
+{
+	int offset, byte;
+	uint8_t mask = 0x01, entry;
+
+	if (!info.alloc_table)
+		exfat_traverse_one_directory(info.root_offset);
+
+	for (byte = 0; byte < (info.cluster_count / CHAR_BIT); byte++) {
+		entry = info.alloc_table[byte];
+		for (offset = 0; offset < CHAR_BIT; offset++, entry >>= 1) {
+			if (!(entry & mask)) {
+				*index = (byte * CHAR_BIT) + offset + EXFAT_FIRST_CLUSTER;
+				exfat_save_allocation_bitmap(*index, 1);
+				return 0;
+			}
+		}
+	}
+
+	return -1;
+}
+
+/**
  * exfat_clean_directory_chain - function to clean opeartions
  * @index:                       directory chain index
  *
