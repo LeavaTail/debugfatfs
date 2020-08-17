@@ -378,11 +378,12 @@ int print_cluster(uint32_t index)
  * @q:           query paramater
  * @param:       parameter (output)
  * @def:         default parameter
+ * @size:        byte size in @param
  *
  * @return        0 (success)
  *               -1 (failed)
  */
-int query_param(const struct query q, void *param, unsigned int def)
+int query_param(const struct query q, void *param, unsigned int def, size_t size)
 {
 	int i;
 	char buf[QUERY_BUFFER_SIZE] = {};
@@ -397,10 +398,36 @@ int query_param(const struct query q, void *param, unsigned int def)
 		return -1;
 
 	pr_msg("\n");
-	if (buf[0] == '\n')
-		*(unsigned int *)param = def;
-	else
-		sscanf(buf, "%02x", (unsigned int *)param);
+	switch (size) {
+		case 1:
+			if (buf[0] == '\n')
+				*(uint8_t *)param = def;
+			else 
+				sscanf(buf, "%02hhx", (uint8_t *)param);
+			break;
+		case 2:
+			if (buf[0] == '\n')
+				*(uint16_t *)param = def;
+			else 
+				sscanf(buf, "%04hx", (uint16_t *)param);
+			break;
+		case 4:
+			if (buf[0] == '\n')
+				*(uint32_t *)param = def;
+			else 
+				sscanf(buf, "%08x", (uint32_t *)param);
+			break;
+		case 8:
+			if (buf[0] == '\n')
+				*(uint64_t *)param = def;
+			else 
+				sscanf(buf, "%016lx", (uint64_t *)param);
+			break;
+		default:
+			pr_warn("size should be param length.\n");
+			return -1;
+	}
+	
 	return 0;
 }
 

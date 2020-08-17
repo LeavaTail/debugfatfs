@@ -1092,14 +1092,14 @@ int exfat_create(const char *name, uint32_t index, int opt)
 			break;
 	}
 
-	query_param(create_prompt[0], &(d->EntryType), 0x85);
+	query_param(create_prompt[0], &(d->EntryType), 0x85, 1);
 	lasti = i;
 	switch (d->EntryType) {
 		case DENTRY_FILE:
-			query_param(create_prompt[1], &attr, ATTR_ARCHIVE);
+			query_param(create_prompt[1], &attr, ATTR_ARCHIVE, 2);
 			d->dentry.file.FileAttributes = attr;
-			query_param(create_prompt[2], &(d->dentry.file.SecondaryCount), count);
-			query_param(create_prompt[3], &(d->dentry.file.Reserved1), 0x0);
+			query_param(create_prompt[2], &(d->dentry.file.SecondaryCount), count, 1);
+			query_param(create_prompt[3], &(d->dentry.file.Reserved1), 0x0, 2);
 			exfat_query_timestamp(local, &stamp, &subsec, &tz);
 			d->dentry.file.CreateTimestamp = stamp;
 			d->dentry.file.LastAccessedTimestamp = stamp;
@@ -1114,15 +1114,15 @@ int exfat_create(const char *name, uint32_t index, int opt)
 			d = ((struct exfat_dentry *)clu) + lasti;
 			d->EntryType = DENTRY_STREAM;
 		case DENTRY_STREAM:
-			query_param(create_prompt[4], &(d->dentry.stream.GeneralSecondaryFlags), 0x01);
-			query_param(create_prompt[3], &(d->dentry.stream.Reserved1), 0x00);
-			query_param(create_prompt[5], &(d->dentry.stream.NameLength), len);
-			query_param(create_prompt[6], &(d->dentry.stream.NameHash), namehash);
-			query_param(create_prompt[3], &(d->dentry.stream.Reserved2), 0x00);
-			query_param(create_prompt[7], &(d->dentry.stream.ValidDataLength), 0x00);
-			query_param(create_prompt[3], &(d->dentry.stream.Reserved3), 0x00);
-			query_param(create_prompt[8], &(d->dentry.stream.FirstCluster), 0x00);
-			query_param(create_prompt[9], &(d->dentry.stream.DataLength), 0x00);
+			query_param(create_prompt[4], &(d->dentry.stream.GeneralSecondaryFlags), 0x01, 1);
+			query_param(create_prompt[3], &(d->dentry.stream.Reserved1), 0x00, 1);
+			query_param(create_prompt[5], &(d->dentry.stream.NameLength), len, 1);
+			query_param(create_prompt[6], &(d->dentry.stream.NameHash), namehash, 2);
+			query_param(create_prompt[3], &(d->dentry.stream.Reserved2), 0x00, 2);
+			query_param(create_prompt[7], &(d->dentry.stream.ValidDataLength), 0x00, 8);
+			query_param(create_prompt[3], &(d->dentry.stream.Reserved3), 0x00, 4);
+			query_param(create_prompt[8], &(d->dentry.stream.FirstCluster), 0x00, 4);
+			query_param(create_prompt[9], &(d->dentry.stream.DataLength), 0x00, 8);
 			pr_msg("DO you want to create Name entry? (Default [y]/n): ");
 			fflush(stdout);
 			if (getchar() == 'n')
