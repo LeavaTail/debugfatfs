@@ -42,7 +42,7 @@ The number of FATs              :        1
 The percentage of clusters      :        0 (%)
 
 Read "/" Directory (4 entries).
-System Volume Information 新しいi DIRECTORY NEW_TEXT.TXT 
+System Volume Information 新しいフォルダー DIRECTORY NEW_TEXT.TXT
 Cluster #4:
 00000000:  83 07 45 00 53 00 44 00 2D 00 55 00 53 00 42 00  ..E.S.D.-.U.S.B.
 00000010:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
@@ -68,7 +68,7 @@ Welcome to dumpexfat 0.1 (Interactive Mode)
 
 /> ls
 -HSD-    32768 2020-08-17 02:39:27 System Volume Information 
----D-    32768 2020-08-17 02:41:06 新しいiY 
+---D-    32768 2020-08-17 02:41:06 新しいフォルダー 
 ---D-    32768 2020-08-17 02:41:10 DIRECTORY 
 ----A        0 2020-08-17 02:42:18 NEW_TEXT.TXT 
 

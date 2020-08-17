@@ -392,8 +392,8 @@ int exfat_readdir(struct directory *dir, size_t count, uint32_t clu)
 	for (i = 0; i < count && tmp->next != NULL; i++) {
 		tmp = tmp->next;
 		finfo = (struct exfat_fileinfo *)(tmp->data);
-		dir[i].name = malloc(sizeof(unsigned char *) * (finfo->namelen + 1));
-		strncpy((char *)dir[i].name, (char *)finfo->name, finfo->namelen + 1);
+		dir[i].name = malloc(sizeof(uint32_t) * (finfo->namelen + 1));
+		strncpy((char *)dir[i].name, (char *)finfo->name, sizeof(uint32_t) * (finfo->namelen + 1));
 		dir[i].namelen = finfo->namelen;
 		dir[i].datalen = finfo->datalen;
 		dir[i].attr = finfo->attr;
