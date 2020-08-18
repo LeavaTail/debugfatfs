@@ -530,7 +530,7 @@ static int exfat_traverse_one_directory(uint32_t index)
 					}
 					if (next.EntryType != DENTRY_STREAM) {
 						pr_warn("File should have stream entry, but This don't have.\n");
-						return -1;
+						continue;
 					}
 
 					name = ((struct exfat_dentry *)clu)[i + 2];
