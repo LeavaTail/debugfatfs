@@ -401,7 +401,7 @@ int get_clusters(void *, off_t, size_t);
 int set_sector(void *, off_t, size_t);
 int set_cluster(void *, off_t);
 int set_clusters(void *, off_t, size_t);
-int print_cluster(uint32_t index);
+int print_cluster(uint32_t);
 void hexdump(FILE *, void *, size_t);
 int query_param(const struct query, void *, unsigned int, size_t);
 

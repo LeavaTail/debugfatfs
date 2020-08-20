@@ -12,9 +12,9 @@ static void exfat_print_directory_chain(void);
 
 /* Load function prototype */
 static int exfat_load_boot_sec(struct exfat_bootsec *);
-static int exfat_save_allocation_bitmap(uint32_t index, uint32_t value);
-static int exfat_load_allocation_bitmap(uint32_t index);
-static int exfat_get_next_unallocated(uint32_t *index);
+static int exfat_save_allocation_bitmap(uint32_t, uint32_t);
+static int exfat_load_allocation_bitmap(uint32_t);
+static int exfat_get_next_unallocated(uint32_t *);
 int exfat_clean_directory_chain(uint32_t);
 static void exfat_load_filename(uint16_t *, uint64_t, unsigned char *);
 static void exfat_load_timestamp(struct tm *, char *,
