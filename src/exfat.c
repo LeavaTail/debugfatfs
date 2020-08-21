@@ -149,12 +149,11 @@ static void exfat_print_directory_chain(void)
 	int i;
 	node2_t *tmp;
 	struct exfat_fileinfo *f;
-	struct exfat_dirinfo *d;
 
 	for (i = 0; i < info.root_size && info.root[i]; i++) {
 		tmp = info.root[i];
-		d = (struct exfat_dirinfo *)info.root[i]->data;
-		pr_msg("%-16s(%u) | ", d->name, tmp->index);
+		f = (struct exfat_fileinfo *)info.root[i]->data;
+		pr_msg("%-16s(%u) | ", f->name, tmp->index);
 		while (tmp->next != NULL) {
 			tmp = tmp->next;
 			f = (struct exfat_fileinfo *)tmp->data;
@@ -242,7 +241,6 @@ static int exfat_get_next_unallocated(uint32_t *index)
 int exfat_clean_directory_chain(uint32_t index)
 {
 	node2_t *tmp;
-	struct exfat_dirinfo *d;
 	struct exfat_fileinfo *f;
 
 	if ((!info.root[index])) {
@@ -251,9 +249,9 @@ int exfat_clean_directory_chain(uint32_t index)
 	}
 
 	tmp = info.root[index];
-	d = (struct exfat_dirinfo *)tmp->data;
-	free(d->name);
-	d->name = NULL;
+	f = (struct exfat_fileinfo *)tmp->data;
+	free(f->name);
+	f->name = NULL;
 
 	while (tmp->next != NULL) {
 		tmp = tmp->next;
@@ -312,7 +310,6 @@ int exfat_lookup(uint32_t dir, char *name)
 	char pathname[PATHNAME_MAX + 1] = {};
 	node2_t *tmp;
 	struct exfat_fileinfo *f;
-	struct exfat_dirinfo *d;
 
 	if (!name) {
 		pr_err("invalid pathname.\n");
@@ -341,8 +338,8 @@ int exfat_lookup(uint32_t dir, char *name)
 		pr_debug("Lookup %s to %d\n", path[depth], dir);
 		found = false;
 		index = exfat_get_dirindex(dir);
-		d = (struct exfat_dirinfo *)info.root[index]->data;
-		if ((!info.root[index]) || (d->attr & EXFAT_DIR_NEW)) {
+		f = (struct exfat_fileinfo *)info.root[index]->data;
+		if ((!info.root[index]) || (f->namelen == 0)) {
 			pr_debug("Directory hasn't load yet, or This Directory doesn't exist in filesystem.\n");
 			exfat_traverse_one_directory(dir);
 			index = exfat_get_dirindex(dir);
@@ -465,14 +462,14 @@ static int exfat_traverse_one_directory(uint32_t index)
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint64_t len;
 	size_t dindex = exfat_get_dirindex(index);
-	struct exfat_dirinfo *dinfo = (struct exfat_dirinfo *)info.root[dindex]->data;
+	struct exfat_fileinfo *finfo = (struct exfat_fileinfo *)info.root[dindex]->data;
 	size_t size = info.cluster_size;
 	size_t entries = size / sizeof(struct exfat_dentry);
 	void *clu;
 	struct exfat_dentry d, next, name;
 
-	if (!(dinfo->attr & EXFAT_DIR_NEW)) {
-		pr_debug("Directory %s was already traversed.\n", dinfo->name);
+	if (finfo->datalen > 0) {
+		pr_debug("Directory %s was already traversed.\n", finfo->name);
 		return 0;
 	}
 
@@ -570,7 +567,6 @@ static int exfat_traverse_one_directory(uint32_t index)
 		entries = size / sizeof(struct exfat_dentry);
 	} while (1);
 out:
-	((struct exfat_dirinfo *)(info.root[dindex]->data))->attr &= ~EXFAT_DIR_NEW;
 	free(clu);
 	return 0;
 }
@@ -606,7 +602,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot)
 {
 	int ret = 0;
 	struct exfat_bootsec *b;
-	struct exfat_dirinfo *dinfo;
+	struct exfat_fileinfo *finfo;
 
 	b = (struct exfat_bootsec *)boot;
 	if (!strncmp((char *)boot->FileSystemName, "EXFAT   ", 8)) {
@@ -619,14 +615,14 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot)
 		info.cluster_size = (1 << b->SectorsPerClusterShift) * info.sector_size;
 		info.cluster_count = b->ClusterCount;
 		info.fat_length = b->NumberOfFats * b->FatLength * info.sector_size;
-		dinfo = malloc(sizeof(struct exfat_dirinfo));
-		dinfo->name = malloc(sizeof(unsigned char *) * (strlen("/") + 1));
-		strncpy((char *)dinfo->name, "/", strlen("/") + 1);
-		dinfo->pindex = info.root_offset;
-		dinfo->entries = 0;
-		dinfo->attr = EXFAT_DIR_NEW;
-		dinfo->hash = 0;
-		info.root[0] = init_node2(info.root_offset, dinfo);
+		finfo = malloc(sizeof(struct exfat_fileinfo));
+		finfo->name = malloc(sizeof(unsigned char *) * (strlen("/") + 1));
+		strncpy((char *)finfo->name, "/", strlen("/") + 1);
+		finfo->namelen = 1;
+		finfo->datalen = 0;
+		finfo->attr = ATTR_DIRECTORY;
+		finfo->hash = 0;
+		info.root[0] = init_node2(info.root_offset, finfo);
 
 		info.ops = &exfat_ops;
 		ret = 1;
@@ -923,20 +919,20 @@ static void exfat_create_fileinfo(node2_t *dir, uint32_t index,
 			0,
 			file->dentry.file.LastAccessdUtcOffset);
 	append_node2(dir, next_index, finfo);
-	((struct exfat_dirinfo *)(dir->data))->entries++;
+	 ((struct exfat_fileinfo *)(dir->data))->datalen++;
 
 	/* If this entry is Directory, prepare to create next chain */
 	if ((finfo->attr & ATTR_DIRECTORY) && (!exfat_check_exist_directory(next_index))) {
-		struct exfat_dirinfo *dinfo = malloc(sizeof(struct exfat_dirinfo));
-		dinfo->name = malloc(finfo->namelen + 1);
-		strncpy((char *)dinfo->name, (char *)finfo->name, finfo->namelen + 1);
-		dinfo->pindex = index;
-		dinfo->entries = 0;
-		dinfo->attr = EXFAT_DIR_NEW;
-		dinfo->hash = finfo->hash;
+		struct exfat_fileinfo *d = malloc(sizeof(struct exfat_fileinfo));
+		d->name = malloc(finfo->namelen + 1);
+		strncpy((char *)d->name, (char *)finfo->name, finfo->namelen + 1);
+		d->namelen = namelen;
+		d->datalen = 0;
+		d->attr = file->dentry.file.FileAttributes;
+		d->hash = stream->dentry.stream.NameHash;
 
 		i = exfat_get_dirindex(next_index);
-		info.root[i] = init_node2(next_index, dinfo);
+		info.root[i] = init_node2(next_index, dir);
 	}
 }
 

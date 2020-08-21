@@ -155,16 +155,6 @@ struct exfat_fileinfo {
 	uint16_t hash;
 };
 
-struct exfat_dirinfo {
-	unsigned char *name;
-	uint32_t pindex;
-	uint32_t attr;
-	size_t entries;
-	uint16_t hash;
-};
-
-#define EXFAT_DIR_NEW	1
-
 struct pseudo_bootsec {
 	unsigned char JumpBoot[JMPBOOTSIZE];
 	unsigned char FileSystemName[ORMNAMESIZE];
