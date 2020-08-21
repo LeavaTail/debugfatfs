@@ -1,5 +1,5 @@
-#ifndef _DUMPEXFAT_H
-#define _DUMPEXFAT_H
+#ifndef _DEBUGFATFS_H
+#define _DEBUGFATFS_H
 
 #include <stdio.h>
 #include <stdint.h>
@@ -13,7 +13,7 @@
  * Program Name, version, author.
  * displayed when 'usage' and 'version'
  */
-#define PROGRAM_NAME	"dumpexfat"
+#define PROGRAM_NAME	"debugfatfs"
 #define PROGRAM_VERSION	"0.1"
 #define PROGRAM_AUTHOR	"LeavaTail"
 #define COPYRIGHT_YEAR	"2020"
@@ -412,4 +412,4 @@ int fat_check_filesystem(struct pseudo_bootsec *);
 /* nls function */
 int utf16_to_utf8(uint16_t *, uint16_t, unsigned char*);
 
-#endif /*_DUMPEXFAT_H */
+#endif /*_DEBUGFATFS_H */

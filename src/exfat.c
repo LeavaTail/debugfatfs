@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <limits.h>
-#include "dumpexfat.h"
+#include "debugfatfs.h"
 
 /* Print function prototype */
 int exfat_print_boot_sec(void);

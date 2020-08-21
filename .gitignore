@@ -17,10 +17,10 @@ config.h.in
 config.log
 stamp-h1
 config.h.in~
-dumpexfat.1
+debugfatfs.1
 
 # build
-dumpexfat
+debugfatfs
 src/.deps
 src/.dirstamp
 src/*.o

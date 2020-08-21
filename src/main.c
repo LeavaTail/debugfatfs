@@ -11,7 +11,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "dumpexfat.h"
+#include "debugfatfs.h"
 FILE *output = NULL;
 unsigned int print_level = PRINT_WARNING;
 struct device_info info;
@@ -507,7 +507,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-#ifdef DUMPEXFAT_DEBUG
+#ifdef DEBUGFATFS_DEBUG
 	print_level = PRINT_DEBUG;
 #endif
 

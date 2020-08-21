@@ -1,5 +1,5 @@
-# dumpexfat
-dump FAT/exFAT filesystem information.
+# debugfatfs
+FAT/exFAT file system debugger.
 
 ## Table of Contents
 - [Description](#Description)
@@ -13,7 +13,7 @@ FAT/exFAT has filesystem information(e.g. cluster size, root directory cluster i
 Some users want to obtain these information to confirm filesystem status.  
 In addition, Some developer want to create any FAT/exFAT filesystem image. 
 
-dumpexfat can ontain these inforamtion.
+debugfatfs can ontain these inforamtion.
 
  * Main Boot Sector field
  * Cluster raw data
@@ -23,12 +23,12 @@ dumpexfat can ontain these inforamtion.
  * Change any FAT entry (Only interactive mode)
  * Change any allocation bitmap (Only interactive mode)
 
-:warning: dumpexfat can write filesystem image. If you don't want, Please add `-r`(read only) option.
+:warning: debugfatfs can write filesystem image. If you don't want, Please add `-r`(read only) option.
 
 ## Example
 **Command line mode**
 ```sh
-$ sudo dumpexfat /dev/sdc1
+$ sudo debugfatfs /dev/sdc1
 media-relative sector offset    :      800 (sector)
 Offset of the First FAT         :      800 (sector)
 Length of FAT table             :     1984 (sector)
@@ -63,8 +63,8 @@ Cluster #4:
 
 **Interactive mode**
 ```sh
-$ sudo dumpexfat -i /dev/sdc1
-Welcome to dumpexfat 0.1 (Interactive Mode)
+$ sudo debugfatfs -i /dev/sdc1
+Welcome to debugfatfs 0.1 (Interactive Mode)
 
 /> ls
 -HSD-    32768 2020-08-17 02:39:27 System Volume Information 

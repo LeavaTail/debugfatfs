@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "shell.h"
-#include "dumpexfat.h"
+#include "debugfatfs.h"
 
 static uint32_t cluster = 0;
 

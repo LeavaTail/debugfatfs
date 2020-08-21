@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include "dumpexfat.h"
+#include "debugfatfs.h"
 
 int fat_print_boot_sec(void);
 static int fat16_print_boot_sec(struct fat_bootsec *);
