@@ -15,6 +15,7 @@ static int cmd_alloc(int, char **, char **);
 static int cmd_release(int, char **, char **);
 static int cmd_fat(int, char **, char **);
 static int cmd_create(int, char **, char **);
+static int cmd_help(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
 /**
@@ -27,6 +28,7 @@ struct command cmd[] = {
 	{"release", cmd_release},
 	{"fat", cmd_fat},
 	{"create", cmd_create},
+	{"help", cmd_help},
 	{"exit", cmd_exit},
 };
 
@@ -233,6 +235,27 @@ static int cmd_create(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
 			break;
 	}
+	return 0;
+}
+
+/**
+ * cmd_help   - display help
+ * @argc:       argument count
+ * @argv:       argument vector
+ * @envp:       environment pointer
+ *
+ * @return        0 (success)
+ */
+static int cmd_help(int argc, char **argv, char **envp)
+{
+	fprintf(stderr, "ls         list current directory contents.\n");
+	fprintf(stderr, "cd         tchange directory.\n");
+	fprintf(stderr, "alloc      allocate cluster.\n");
+	fprintf(stderr, "release    release cluster.\n");
+	fprintf(stderr, "fat        change File Allocation Table entry\n");
+	fprintf(stderr, "create     create directory entry.\n");
+	fprintf(stderr, "help       display this help.\n");
+	fprintf(stderr, "\n");
 	return 0;
 }
 
