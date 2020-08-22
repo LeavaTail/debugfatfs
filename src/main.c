@@ -305,6 +305,7 @@ static int free_dentry_list(void)
 		/* FIXME: There may be areas that have not been released. */
 		info.ops->clean(i);
 	}
+	free(*(info.root));
 	free(info.root);
 
 	return i;
