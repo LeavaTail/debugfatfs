@@ -127,16 +127,16 @@ static void exfat_print_upcase_table(void)
 
 /**
  * exfat_print_volume_label - print volume label
- * @src:        volume label in UTF16
- * @len:        volume label length
+ * @uniname:                  volume label in UTF16
+ * @len:                      volume label length
  */
-static void exfat_print_volume_label(uint16_t *src, int len)
+static void exfat_print_volume_label(uint16_t *uniname, int len)
 {
 	unsigned char *name;
 
 	name = malloc(len * sizeof(uint16_t) + 1);
 	memset(name, '\0', len * sizeof(uint16_t) + 1);
-	utf16s_to_utf8s(src, len, name);
+	utf16s_to_utf8s(uniname, len, name);
 	pr_info("%s\n", name);
 	free(name);
 }
@@ -178,25 +178,25 @@ static int exfat_load_boot_sec(struct exfat_bootsec *b)
 
 /**
  * exfat_load_allocation_bitmap - function to load allocation table
- * @index:                        cluster index
+ * @clu:                          cluster index
  *
  * @return                        0 (cluster as available for allocation)
  *                                1 (cluster as not available for allocation)
  *                               -1 (failed)
  */
-static int exfat_load_allocation_bitmap(uint32_t index)
+static int exfat_load_allocation_bitmap(uint32_t clu)
 {
 	int offset, byte;
 	uint8_t entry;
 
-	if (index < EXFAT_FIRST_CLUSTER || index > info.cluster_count + 1) {
-		pr_warn("cluster: %u is invalid.\n", index);
+	if (clu < EXFAT_FIRST_CLUSTER || clu > info.cluster_count + 1) {
+		pr_warn("cluster: %u is invalid.\n", clu);
 		return -1;
 	}
 
-	index -= EXFAT_FIRST_CLUSTER;
-	byte = index / CHAR_BIT;
-	offset = index % CHAR_BIT;
+	clu -= EXFAT_FIRST_CLUSTER;
+	byte = clu / CHAR_BIT;
+	offset = clu % CHAR_BIT;
 
 	entry = info.alloc_table[byte];
 	return (entry >> offset) & 0x01;
@@ -204,12 +204,12 @@ static int exfat_load_allocation_bitmap(uint32_t index)
 
 /**
  * exfat_get_next_unallocated   - get unused cluster index by allocation bitmap
- * @index:                        cluster index (Output)
+ * @clup:                         cluster index pointer (Output)
  *
  * @return                        0 (found unused allocation cluster)
  *                               -1 (failed)
  */
-static int exfat_get_next_unallocated(uint32_t *index)
+static int exfat_get_next_unallocated(uint32_t *clup)
 {
 	int offset, byte;
 	uint8_t mask = 0x01, entry;
@@ -221,8 +221,8 @@ static int exfat_get_next_unallocated(uint32_t *index)
 		entry = info.alloc_table[byte];
 		for (offset = 0; offset < CHAR_BIT; offset++, entry >>= 1) {
 			if (!(entry & mask)) {
-				*index = (byte * CHAR_BIT) + offset + EXFAT_FIRST_CLUSTER;
-				exfat_save_allocation_bitmap(*index, 1);
+				*clup = (byte * CHAR_BIT) + offset + EXFAT_FIRST_CLUSTER;
+				exfat_save_allocation_bitmap(*clup, 1);
 				return 0;
 			}
 		}
@@ -296,18 +296,18 @@ static void exfat_load_timestamp(struct tm *t, char *str,
 
 /**
  * exfat_lookup       - function interface to lookup pathname
- * @dir:                directory cluster index
+ * @clu:                directory cluster index
  * @name:               file name
  *
  * @return:              cluster index
  *                       0 (Not found)
  */
-int exfat_lookup(uint32_t dir, char *name)
+int exfat_lookup(uint32_t clu, char *name)
 {
 	int index, i = 0, depth = 0;
 	bool found = false;
 	char *path[MAX_NAME_LENGTH] = {};
-	char pathname[PATHNAME_MAX + 1] = {};
+	char fullpath[PATHNAME_MAX + 1] = {};
 	node2_t *tmp;
 	struct exfat_fileinfo *f;
 
@@ -319,30 +319,30 @@ int exfat_lookup(uint32_t dir, char *name)
 	/* Absolute path */
 	if (name[0] == '/') {
 		pr_debug("\"%s\" is Absolute path, so change current directory(%u) to root(%u)\n",
-				name, dir, info.root_offset);
-		dir = info.root_offset;
+				name, clu, info.root_offset);
+		clu = info.root_offset;
 	}
 
 	/* Separate pathname by slash */
-	strncpy(pathname, name, PATHNAME_MAX);
-	path[i] = strtok(pathname, "/");
-	while (path[i] != NULL) {
-		if (i >= MAX_NAME_LENGTH) {
+	strncpy(fullpath, name, PATHNAME_MAX);
+	path[depth] = strtok(fullpath, "/");
+	while (path[depth] != NULL) {
+		if (depth >= MAX_NAME_LENGTH) {
 			pr_warn("Pathname is too depth. (> %d)\n", MAX_NAME_LENGTH);
 			return -1;
 		}
-		path[++i] = strtok(NULL, "/");
+		path[++depth] = strtok(NULL, "/");
 	};
 
-	for (depth = 0; path[depth] && depth < i + 1; depth++) {
-		pr_debug("Lookup %s to %d\n", path[depth], dir);
+	for (i = 0; path[i] && i < depth + 1; i++) {
+		pr_debug("Lookup %s to %d\n", path[i], clu);
 		found = false;
-		index = exfat_get_dirindex(dir);
+		index = exfat_get_dirindex(clu);
 		f = (struct exfat_fileinfo *)info.root[index]->data;
 		if ((!info.root[index]) || (f->namelen == 0)) {
 			pr_debug("Directory hasn't load yet, or This Directory doesn't exist in filesystem.\n");
-			exfat_traverse_one_directory(dir);
-			index = exfat_get_dirindex(dir);
+			exfat_traverse_one_directory(clu);
+			index = exfat_get_dirindex(clu);
 			if (!info.root[index]) {
 				pr_warn("This Directory doesn't exist in filesystem.\n");
 				return 0;
@@ -353,8 +353,8 @@ int exfat_lookup(uint32_t dir, char *name)
 		while (tmp->next != NULL) {
 			tmp = tmp->next;
 			f = (struct exfat_fileinfo *)tmp->data;
-			if (!strcmp(path[depth], (char *)f->name)) {
-				dir = tmp->index;
+			if (!strcmp(path[i], (char *)f->name)) {
+				clu = tmp->index;
 				found = true;
 				break;
 			}
@@ -366,21 +366,21 @@ int exfat_lookup(uint32_t dir, char *name)
 		}
 	}
 
-	return dir;
+	return clu;
 }
 
 /**
  * exfat_get_dirindex - get directory chain index by argument
- * @index:              index of the cluster
+ * @clu:                index of the cluster
  *
- * @return:              index
+ * @return:             directory chain index
  *                      Start of unused area (if doesn't lookup directory cache)
  */
-static int exfat_get_dirindex(uint32_t index)
+static int exfat_get_dirindex(uint32_t clu)
 {
 	int i;
 	for (i = 0; i < info.root_size && info.root[i]; i++) {
-		if (info.root[i]->index == index)
+		if (info.root[i]->index == clu)
 			return i;
 	}
 
@@ -410,7 +410,7 @@ int exfat_readdir(struct directory *dir, size_t count, uint32_t clu)
 {
 	int i;
 	node2_t *tmp;
-	struct exfat_fileinfo *finfo;
+	struct exfat_fileinfo *f;
 
 	exfat_traverse_one_directory(clu);
 	i = exfat_get_dirindex(clu);
@@ -418,15 +418,15 @@ int exfat_readdir(struct directory *dir, size_t count, uint32_t clu)
 
 	for (i = 0; i < count && tmp->next != NULL; i++) {
 		tmp = tmp->next;
-		finfo = (struct exfat_fileinfo *)(tmp->data);
-		dir[i].name = malloc(sizeof(uint32_t) * (finfo->namelen + 1));
-		strncpy((char *)dir[i].name, (char *)finfo->name, sizeof(uint32_t) * (finfo->namelen + 1));
-		dir[i].namelen = finfo->namelen;
-		dir[i].datalen = finfo->datalen;
-		dir[i].attr = finfo->attr;
-		dir[i].ctime = finfo->ctime;
-		dir[i].atime = finfo->atime;
-		dir[i].mtime = finfo->mtime;
+		f = (struct exfat_fileinfo *)(tmp->data);
+		dir[i].name = malloc(sizeof(uint32_t) * (f->namelen + 1));
+		strncpy((char *)dir[i].name, (char *)f->name, sizeof(uint32_t) * (f->namelen + 1));
+		dir[i].namelen = f->namelen;
+		dir[i].datalen = f->datalen;
+		dir[i].attr = f->attr;
+		dir[i].ctime = f->ctime;
+		dir[i].atime = f->atime;
+		dir[i].mtime = f->mtime;
 	}
 	/* If Dentry remains, Return error */
 	if (tmp->next != NULL) {
@@ -453,35 +453,35 @@ int exfat_reload_directory(uint32_t clu)
 
 /**
  * exfat_traverse_one_directory - function to traverse one directory
- * @index:         index of the cluster want to check
+ * @clu:                          index of the cluster want to check
  *
  * @return        0 (success)
  *               -1 (failed to read)
  */
-static int exfat_traverse_one_directory(uint32_t index)
+static int exfat_traverse_one_directory(uint32_t clu)
 {
 	int i, j, name_len;
-	uint8_t scount;
+	uint8_t remaining;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint64_t len;
-	size_t dindex = exfat_get_dirindex(index);
-	struct exfat_fileinfo *finfo = (struct exfat_fileinfo *)info.root[dindex]->data;
+	size_t index = exfat_get_dirindex(clu);
+	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
 	size_t size = info.cluster_size;
 	size_t entries = size / sizeof(struct exfat_dentry);
-	void *clu;
+	void *data;
 	struct exfat_dentry d, next, name;
 
-	if (finfo->datalen > 0) {
-		pr_debug("Directory %s was already traversed.\n", finfo->name);
+	if (f->datalen > 0) {
+		pr_debug("Directory %s was already traversed.\n", f->name);
 		return 0;
 	}
 
-	clu = malloc(size);
-	get_cluster(clu, index);
+	data = malloc(size);
+	get_cluster(data, clu);
 
 	do {
 		for (i = 0; i < entries; i++){
-			d = ((struct exfat_dentry *)clu)[i];
+			d = ((struct exfat_dentry *)data)[i];
 
 			switch (d.EntryType) {
 				case DENTRY_UNUSED:
@@ -511,37 +511,37 @@ static int exfat_traverse_one_directory(uint32_t index)
 					exfat_print_volume_label(uniname, name_len);
 					break;
 				case DENTRY_FILE:
-					scount = d.dentry.file.SecondaryCount;
-					if (i + scount >= entries) {
-						index = exfat_concat_cluster(index, &clu, size);
+					remaining = d.dentry.file.SecondaryCount;
+					if (i + remaining >= entries) {
+						clu = exfat_concat_cluster(clu, &data, size);
 						size += info.cluster_size;
 						entries = size / sizeof(struct exfat_dentry);
 					}
 
-					next = ((struct exfat_dentry *)clu)[i + 1];
+					next = ((struct exfat_dentry *)data)[i + 1];
 					while ((!(next.EntryType & EXFAT_INUSE)) && (next.EntryType != DENTRY_UNUSED)) {
 						pr_debug("This entry was deleted (%x).\n", next.EntryType);
-						if (++i + scount >= entries) {
-							index = exfat_concat_cluster(index, &clu, size);
+						if (++i + remaining >= entries) {
+							clu = exfat_concat_cluster(clu, &data, size);
 							size += info.cluster_size;
 							entries = size / sizeof(struct exfat_dentry);
 						}
-						next = ((struct exfat_dentry *)clu)[i + 1];
+						next = ((struct exfat_dentry *)data)[i + 1];
 					}
 					if (next.EntryType != DENTRY_STREAM) {
 						pr_warn("File should have stream entry, but This don't have.\n");
 						continue;
 					}
 
-					name = ((struct exfat_dentry *)clu)[i + 2];
+					name = ((struct exfat_dentry *)data)[i + 2];
 					while ((!(name.EntryType & EXFAT_INUSE)) && (name.EntryType != DENTRY_UNUSED)) {
 						pr_debug("This entry was deleted (%x).\n", name.EntryType);
-						if (++i + scount >= entries - 1) {
-							index = exfat_concat_cluster(index, &clu, size);
+						if (++i + remaining >= entries - 1) {
+							clu = exfat_concat_cluster(clu, &data, size);
 							size += info.cluster_size;
 							entries = size / sizeof(struct exfat_dentry);
 						}
-						name = ((struct exfat_dentry *)clu)[i + 2];
+						name = ((struct exfat_dentry *)data)[i + 2];
 					}
 					if (name.EntryType != DENTRY_NAME) {
 						pr_warn("File should have name entry, but This don't have.\n");
@@ -549,28 +549,28 @@ static int exfat_traverse_one_directory(uint32_t index)
 					}
 
 					name_len = next.dentry.stream.NameLength;
-					for (j = 0; j < scount - 1; j++) {
+					for (j = 0; j < remaining - 1; j++) {
 						name_len = MIN(ENTRY_NAME_MAX, next.dentry.stream.NameLength - j * ENTRY_NAME_MAX);
-						memcpy(uniname + j * ENTRY_NAME_MAX, (((struct exfat_dentry *)clu)[i + 2 + j]).dentry.name.FileName, name_len * sizeof(uint16_t));
+						memcpy(uniname + j * ENTRY_NAME_MAX, (((struct exfat_dentry *)data)[i + 2 + j]).dentry.name.FileName, name_len * sizeof(uint16_t));
 					}
-					exfat_create_fileinfo(info.root[dindex], index,
+					exfat_create_fileinfo(info.root[index], clu,
 							&d, &next, uniname);
-					i += scount;
+					i += remaining;
 					break;
 				case DENTRY_STREAM:
 					pr_warn("Stream needs be File entry, but This is not.\n");
 					break;
 			}
 		}
-		index = exfat_concat_cluster(index, &clu, size);
-		if (!index)
+		clu = exfat_concat_cluster(clu, &data, size);
+		if (!clu)
 			break;
 
 		size += info.cluster_size;
 		entries = size / sizeof(struct exfat_dentry);
 	} while (1);
 out:
-	free(clu);
+	free(data);
 	return 0;
 }
 
@@ -605,7 +605,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot)
 {
 	int ret = 0;
 	struct exfat_bootsec *b;
-	struct exfat_fileinfo *finfo;
+	struct exfat_fileinfo *f;
 
 	b = (struct exfat_bootsec *)boot;
 	if (!strncmp((char *)boot->FileSystemName, "EXFAT   ", 8)) {
@@ -618,14 +618,14 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot)
 		info.cluster_size = (1 << b->SectorsPerClusterShift) * info.sector_size;
 		info.cluster_count = b->ClusterCount;
 		info.fat_length = b->NumberOfFats * b->FatLength * info.sector_size;
-		finfo = malloc(sizeof(struct exfat_fileinfo));
-		finfo->name = malloc(sizeof(unsigned char *) * (strlen("/") + 1));
-		strncpy((char *)finfo->name, "/", strlen("/") + 1);
-		finfo->namelen = 1;
-		finfo->datalen = 0;
-		finfo->attr = ATTR_DIRECTORY;
-		finfo->hash = 0;
-		info.root[0] = init_node2(info.root_offset, finfo);
+		f = malloc(sizeof(struct exfat_fileinfo));
+		f->name = malloc(sizeof(unsigned char *) * (strlen("/") + 1));
+		strncpy((char *)f->name, "/", strlen("/") + 1);
+		f->namelen = 1;
+		f->datalen = 0;
+		f->attr = ATTR_DIRECTORY;
+		f->hash = 0;
+		info.root[0] = init_node2(info.root_offset, f);
 
 		info.ops = &exfat_ops;
 		ret = 1;
@@ -641,9 +641,9 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot)
  * @return         true  (allocated cluster)
  *                 false (not allocated)
  */
-static bool exfat_check_allocation_cluster(uint32_t index)
+static bool exfat_check_allocation_cluster(uint32_t clu)
 {
-	if (exfat_load_allocation_bitmap(index) == 1)
+	if (exfat_load_allocation_bitmap(clu) == 1)
 		return true;
 	return false;
 }
@@ -655,41 +655,41 @@ static bool exfat_check_allocation_cluster(uint32_t index)
  *
  *                      0
  */
-int exfat_get_fatentry(uint32_t index, uint32_t *entry)
+int exfat_get_fatentry(uint32_t clu, uint32_t *entry)
 {
-	*entry = exfat_check_fatentry(index);
+	*entry = exfat_check_fatentry(clu);
 	return 0;
 }
 /**
  * exfat_check_fatentry - Whether or not cluster is continuous
- * @index:         index of the cluster want to check
+ * @clu:                  index of the cluster want to check
  *
- * @retrun:        next cluster (@index has next cluster)
- *                 0            (@index doesn't have next cluster)
+ * @retrun:        next cluster (@clu has next cluster)
+ *                 0            (@clu doesn't have next cluster)
  */
-static uint32_t exfat_check_fatentry(uint32_t index)
+static uint32_t exfat_check_fatentry(uint32_t clu)
 {
 	uint32_t ret;
 	size_t entry_per_sector = info.sector_size / sizeof(uint32_t);
-	uint32_t fat_index = (info.fat_offset +  index / entry_per_sector) * info.sector_size;
+	uint32_t fat_index = (info.fat_offset +  clu / entry_per_sector) * info.sector_size;
 	uint32_t *fat;
-	uint32_t entry_off = (index) % entry_per_sector;
+	uint32_t offset = (clu) % entry_per_sector;
 
 	fat = malloc(info.sector_size);
 	get_sector(fat, fat_index, 1);
 	/* validate index */
-	if (index == EXFAT_BADCLUSTER) {
+	if (clu == EXFAT_BADCLUSTER) {
 		ret = 0;
-		pr_err("cluster: %u is bad cluster.\n", index);
-	} else if (index == EXFAT_LASTCLUSTER) {
+		pr_err("cluster: %u is bad cluster.\n", clu);
+	} else if (clu == EXFAT_LASTCLUSTER) {
 		ret = 0;
-		pr_debug("cluster: %u is the last cluster of cluster chain.\n", index);
-	} else if (index < EXFAT_FIRST_CLUSTER || index > info.cluster_count + 1) {
+		pr_debug("cluster: %u is the last cluster of cluster chain.\n", clu);
+	} else if (clu < EXFAT_FIRST_CLUSTER || clu > info.cluster_count + 1) {
 		ret = 0;
-		pr_debug("cluster: %u is invalid.\n", index);
+		pr_debug("cluster: %u is invalid.\n", clu);
 	} else {
-		ret = fat[entry_off];
-		pr_debug("cluster: %u has chain. next is %x.\n", index, fat[entry_off]);
+		ret = fat[offset];
+		pr_debug("cluster: %u has chain. next is %x.\n", clu, fat[offset]);
 	}
 
 	free(fat);
@@ -698,16 +698,16 @@ static uint32_t exfat_check_fatentry(uint32_t index)
 
 /**
  * exfat_check_exist_directory - check whether @index has already loaded
- * @index:         index of the cluster
+ * @clu:                         index of the cluster
  *
- * @retrun:        1 (@index has loaded)
- *                 0 (@index hasn't loaded)
+ * @retrun:        1 (@clu has loaded)
+ *                 0 (@clu hasn't loaded)
  */
-static int exfat_check_exist_directory(uint32_t index)
+static int exfat_check_exist_directory(uint32_t clu)
 {
 	int i;
 	for (i = 0; info.root[i] && i < info.root_size; i++) {
-		if (info.root[i]->index == index)
+		if (info.root[i]->index == clu)
 			return 1;
 	}
 	return 0;
@@ -715,25 +715,25 @@ static int exfat_check_exist_directory(uint32_t index)
 
 /**
  * exfat_concat_cluster - Contatenate cluster @data with next_cluster
- * @index:         index of the cluster
- * @data:          The cluster
- * @size:          allocated size to store cluster data
+ * @clu:                  index of the cluster
+ * @data:                 The cluster
+ * @size:                 allocated size to store cluster data
  *
- * @retrun:        next cluster (@index has next cluster)
- *                 0            (@index doesn't have next cluster, or failed to realloc)
+ * @retrun:        next cluster (@clu has next cluster)
+ *                 0            (@clu doesn't have next cluster, or failed to realloc)
  */
-static uint32_t exfat_concat_cluster(uint32_t index, void **data, size_t size)
+static uint32_t exfat_concat_cluster(uint32_t clu, void **data, size_t size)
 {
 	uint32_t ret;
-	void *clu_tmp;
-	ret = exfat_check_fatentry(index);
+	void *tmp;
+	ret = exfat_check_fatentry(clu);
 
 	if (ret) {
-		clu_tmp = realloc(*data, size + info.cluster_size);
-		if (clu_tmp) {
-			*data = clu_tmp;
-			get_cluster(clu_tmp + size, ret);
-			pr_debug("Concatenate cluster #%u with #%u\n", index, ret);
+		tmp = realloc(*data, size + info.cluster_size);
+		if (tmp) {
+			*data = tmp;
+			get_cluster(tmp + size, ret);
+			pr_debug("Concatenate cluster #%u with #%u\n", clu, ret);
 		} else {
 			pr_err("Failed to Get new memory.\n");
 			ret = 0;
@@ -744,27 +744,27 @@ static uint32_t exfat_concat_cluster(uint32_t index, void **data, size_t size)
 
 /**
  * exfat_save_allocation_bitmap - function to save allocation table
- * @index:                        cluster index
+ * @clu:                          cluster index
  * @value:                        Bit
  *
  * @return                        0 (success)
  *                               -1 (failed)
  */
-static int exfat_save_allocation_bitmap(uint32_t index, uint32_t value)
+static int exfat_save_allocation_bitmap(uint32_t clu, uint32_t value)
 {
 	int offset, byte;
 	uint8_t mask = 0x01;
 
-	if (index < EXFAT_FIRST_CLUSTER || index > info.cluster_count + 1) {
-		pr_warn("cluster: %u is invalid.\n", index);
+	if (clu < EXFAT_FIRST_CLUSTER || clu > info.cluster_count + 1) {
+		pr_warn("cluster: %u is invalid.\n", clu);
 		return -1;
 	}
 
-	index -= EXFAT_FIRST_CLUSTER;
-	byte = index / CHAR_BIT;
-	offset = index % CHAR_BIT;
+	clu -= EXFAT_FIRST_CLUSTER;
+	byte = clu / CHAR_BIT;
+	offset = clu % CHAR_BIT;
 
-	pr_debug("index %u: allocation bitmap is %x ->", index, info.alloc_table[byte]);
+	pr_debug("index %u: allocation bitmap is %x ->", clu, info.alloc_table[byte]);
 	mask <<= offset;
 	if (value)
 		info.alloc_table[byte] |= mask;
@@ -824,9 +824,9 @@ int exfat_convert_character(const char *src, size_t len, char *dist)
  *
  * @retrun:             0
  */
-int exfat_set_fatentry(uint32_t index, uint32_t entry)
+int exfat_set_fatentry(uint32_t clu, uint32_t entry)
 {
-	exfat_update_fatentry(index, entry);
+	exfat_update_fatentry(clu, entry);
 	return 0;
 }
 
@@ -837,9 +837,9 @@ int exfat_set_fatentry(uint32_t index, uint32_t entry)
  * @return                0 (success)
  *                       -1 (failed)
  */
-int exfat_alloc_cluster(uint32_t index)
+int exfat_alloc_cluster(uint32_t clu)
 {
-	return exfat_save_allocation_bitmap(index, 1);
+	return exfat_save_allocation_bitmap(clu, 1);
 }
 
 /**
@@ -849,39 +849,39 @@ int exfat_alloc_cluster(uint32_t index)
  * @return                  0 (success)
  *                         -1 (failed)
  */
-int exfat_release_cluster(uint32_t index)
+int exfat_release_cluster(uint32_t clu)
 {
-	return exfat_save_allocation_bitmap(index, 0);
+	return exfat_save_allocation_bitmap(clu, 0);
 }
 
 /**
  * exfat_update_fatentry - Update FAT Entry to any cluster
- * @index:                 index of the cluster want to check
+ * @clu:                 index of the cluster want to check
  * @entry:                 any cluster index
  *
  * @retrun:                previous FAT entry
  */
-static uint32_t exfat_update_fatentry(uint32_t index, uint32_t entry)
+static uint32_t exfat_update_fatentry(uint32_t clu, uint32_t entry)
 {
 	uint32_t ret;
 	size_t entry_per_sector = info.sector_size / sizeof(uint32_t);
-	uint32_t fat_index = (info.fat_offset +  index / entry_per_sector) * info.sector_size;
+	uint32_t fat_index = (info.fat_offset +  clu / entry_per_sector) * info.sector_size;
 	uint32_t *fat;
-	uint32_t entry_off = (index) % entry_per_sector;
+	uint32_t offset = (clu) % entry_per_sector;
 
-	if (index > info.cluster_count + 1) {
-		pr_warn("This Filesystem doesn't have Entry %u\n", index);
+	if (clu > info.cluster_count + 1) {
+		pr_warn("This Filesystem doesn't have Entry %u\n", clu);
 		return 0;
 	}
 
 	fat = malloc(info.sector_size);
 	get_sector(fat, fat_index, 1);
 
-	ret = fat[entry_off];
-	fat[entry_off] = entry;
+	ret = fat[offset];
+	fat[offset] = entry;
 
 	set_sector(fat, fat_index, 1);
-	pr_debug("Rewrite Entry(%u) %x to %x.\n", index, ret, fat[entry_off]);
+	pr_debug("Rewrite Entry(%u) %x to %x.\n", clu, ret, fat[offset]);
 
 	free(fat);
 	return ret;
@@ -889,94 +889,94 @@ static uint32_t exfat_update_fatentry(uint32_t index, uint32_t entry)
 
 /**
  * exfat_create_file_entry - Create file infomarion
- * @dir:        Directory chain head
- * @index:      parent Directory cluster index
+ * @head:       Directory chain head
+ * @clu:        parent Directory cluster index
  * @file:       file dentry
  * @stream:     stream Extension dentry
  * @uniname:    File Name dentry
  */
-static void exfat_create_fileinfo(node2_t *dir, uint32_t index,
+static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 		struct exfat_dentry *file, struct exfat_dentry *stream, uint16_t *uniname)
 {
-	int i, next_index = stream->dentry.stream.FirstCluster;
-	struct exfat_fileinfo *finfo;
+	int index, next_index = stream->dentry.stream.FirstCluster;
+	struct exfat_fileinfo *f;
 	size_t namelen = stream->dentry.stream.NameLength;
 
-	finfo = malloc(sizeof(struct exfat_fileinfo));
-	finfo->name = malloc(namelen * UTF8_MAX_CHARSIZE + 1);
-	memset(finfo->name, '\0', namelen * UTF8_MAX_CHARSIZE + 1);
+	f = malloc(sizeof(struct exfat_fileinfo));
+	f->name = malloc(namelen * UTF8_MAX_CHARSIZE + 1);
+	memset(f->name, '\0', namelen * UTF8_MAX_CHARSIZE + 1);
 
-	exfat_load_filename(uniname, namelen, finfo->name);
-	finfo->namelen = namelen;
-	finfo->datalen = stream->dentry.stream.DataLength;
-	finfo->attr = file->dentry.file.FileAttributes;
-	finfo->hash = stream->dentry.stream.NameHash;
+	exfat_load_filename(uniname, namelen, f->name);
+	f->namelen = namelen;
+	f->datalen = stream->dentry.stream.DataLength;
+	f->attr = file->dentry.file.FileAttributes;
+	f->hash = stream->dentry.stream.NameHash;
 
-	exfat_load_timestamp(&finfo->ctime, "Create", file->dentry.file.CreateTimestamp,
+	exfat_load_timestamp(&f->ctime, "Create", file->dentry.file.CreateTimestamp,
 			file->dentry.file.Create10msIncrement,
 			file->dentry.file.CreateUtcOffset);
-	exfat_load_timestamp(&finfo->mtime, "Modify", file->dentry.file.LastModifiedTimestamp,
+	exfat_load_timestamp(&f->mtime, "Modify", file->dentry.file.LastModifiedTimestamp,
 			file->dentry.file.LastModified10msIncrement,
 			file->dentry.file.LastModifiedUtcOffset);
-	exfat_load_timestamp(&finfo->atime, "Access", file->dentry.file.LastAccessedTimestamp,
+	exfat_load_timestamp(&f->atime, "Access", file->dentry.file.LastAccessedTimestamp,
 			0,
 			file->dentry.file.LastAccessdUtcOffset);
-	append_node2(dir, next_index, finfo);
-	 ((struct exfat_fileinfo *)(dir->data))->datalen++;
+	append_node2(head, next_index, f);
+	 ((struct exfat_fileinfo *)(head->data))->datalen++;
 
 	/* If this entry is Directory, prepare to create next chain */
-	if ((finfo->attr & ATTR_DIRECTORY) && (!exfat_check_exist_directory(next_index))) {
+	if ((f->attr & ATTR_DIRECTORY) && (!exfat_check_exist_directory(next_index))) {
 		struct exfat_fileinfo *d = malloc(sizeof(struct exfat_fileinfo));
-		d->name = malloc(finfo->namelen + 1);
-		strncpy((char *)d->name, (char *)finfo->name, finfo->namelen + 1);
+		d->name = malloc(f->namelen + 1);
+		strncpy((char *)d->name, (char *)f->name, f->namelen + 1);
 		d->namelen = namelen;
 		d->datalen = 0;
 		d->attr = file->dentry.file.FileAttributes;
 		d->hash = stream->dentry.stream.NameHash;
 
-		i = exfat_get_dirindex(next_index);
-		info.root[i] = init_node2(next_index, dir);
+		index = exfat_get_dirindex(next_index);
+		info.root[index] = init_node2(next_index, head);
 	}
 }
 
 /**
  * exfat_entry_set_checksum - Calculate file entry Checksum
- * @Entries:                  points to an in-memory copy of the directory entry set
- * @SecondaryCount:           the number of secondary directory entries
+ * @entry:                    points to an in-memory copy of the directory entry set
+ * @count:                    the number of secondary directory entries
  *
  * @return                   Checksum
  */
-static uint16_t exfat_entry_set_checksum(unsigned char *Entries, unsigned char SecondaryCount)
+static uint16_t exfat_entry_set_checksum(unsigned char *entry, unsigned char count)
 {
-	uint16_t NumberOfBytes = ((uint16_t)SecondaryCount + 1) * 32;
-	uint16_t Checksum = 0;
-	uint16_t Index;
+	uint16_t bytes = ((uint16_t)count + 1) * 32;
+	uint16_t checksum = 0;
+	uint16_t index;
 
-	for (Index = 0; Index < NumberOfBytes; Index++) {
-		if ((Index == 2) || (Index == 3))
+	for (index = 0; index < bytes; index++) {
+		if ((index == 2) || (index == 3))
 			continue;
-		Checksum = ((Checksum & 1) ? 0x8000 : 0) + (Checksum >> 1) +  (uint16_t)Entries[Index];
+		checksum = ((checksum & 1) ? 0x8000 : 0) + (checksum >> 1) +  (uint16_t)entry[index];
 	}
-	return Checksum;
+	return checksum;
 }
 
 /**
  * exfat_entry_namehash - Calculate name hash
- * @FileName:             points to an in-memory copy of the up-cased file name
- * @NameLength:           Name length
+ * @name:                 points to an in-memory copy of the up-cased file name
+ * @len:                  Name length
  *
  * @return                NameHash
  */
-static uint16_t exfat_entry_namehash(uint16_t *FileName, uint8_t NameLength)
+static uint16_t exfat_entry_namehash(uint16_t *name, uint8_t len)
 {
-	unsigned char* Buffer = (unsigned char *)FileName;
-	uint16_t NumberOfBytes = (uint16_t)NameLength * 2;
-	uint16_t Hash = 0;
-	uint16_t Index;
-	for (Index = 0; Index < NumberOfBytes; Index++)
-		Hash = ((Hash & 1) ? 0x8000 : 0) + (Hash >> 1) + (uint16_t)Buffer[Index];
+	unsigned char* buffer = (unsigned char *)name;
+	uint16_t bytes = (uint16_t)len * 2;
+	uint16_t hash = 0;
+	uint16_t index;
+	for (index = 0; index < bytes; index++)
+		hash = ((hash & 1) ? 0x8000 : 0) + (hash >> 1) + (uint16_t)buffer[index];
 
-	return Hash;
+	return hash;
 }
 
 /**
@@ -1060,11 +1060,11 @@ static const struct query create_prompt[] = {
  *
  * NOTE: Tentative implemetation
  */
-int exfat_create(const char *name, uint32_t index, int opt)
+int exfat_create(const char *name, uint32_t clu, int opt)
 {
 	int i, namei, lasti;
 	uint8_t attr = 0;
-	void *clu;
+	void *data;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint16_t namehash = 0;
 	uint8_t len;
@@ -1085,10 +1085,10 @@ int exfat_create(const char *name, uint32_t index, int opt)
 	namehash = exfat_entry_namehash(uniname, len);
 
 	/* Lookup last entry */
-	clu = malloc(size);
-	get_cluster(clu, index);
+	data = malloc(size);
+	get_cluster(data, clu);
 	for (i = 0; i < entries; i++){
-		d = ((struct exfat_dentry *)clu) + i;
+		d = ((struct exfat_dentry *)data) + i;
 		if (d->EntryType == DENTRY_UNUSED)
 			break;
 	}
@@ -1112,7 +1112,7 @@ int exfat_create(const char *name, uint32_t index, int opt)
 			if (getchar() == 'n')
 				break;
 			lasti = i + 1;
-			d = ((struct exfat_dentry *)clu) + lasti;
+			d = ((struct exfat_dentry *)data) + lasti;
 			d->EntryType = DENTRY_STREAM;
 		case DENTRY_STREAM:
 			query_param(create_prompt[4], &(d->dentry.stream.GeneralSecondaryFlags), 0x01, 1);
@@ -1131,13 +1131,13 @@ int exfat_create(const char *name, uint32_t index, int opt)
 			if (getchar() == 'n')
 				break;
 			lasti = i + 2;
-			d = ((struct exfat_dentry *)clu) + lasti;
+			d = ((struct exfat_dentry *)data) + lasti;
 			d->EntryType = DENTRY_NAME;
 		case DENTRY_NAME:
 			for (namei = 0; namei < count - 1; namei++) {
 				name_len = MIN(ENTRY_NAME_MAX, len - namei * ENTRY_NAME_MAX);
 				memcpy(d->dentry.name.FileName, uniname + namei * name_len, name_len * sizeof(uint16_t));
-				d = ((struct exfat_dentry *)clu) + lasti + namei;
+				d = ((struct exfat_dentry *)data) + lasti + namei;
 				d->EntryType = DENTRY_NAME;
 			}
 			break;
@@ -1145,10 +1145,10 @@ int exfat_create(const char *name, uint32_t index, int opt)
 			break;
 	}
 	if (attr) {
-		d = ((struct exfat_dentry *)clu) + i;
-		d->dentry.file.SetChecksum = exfat_entry_set_checksum(clu + i * sizeof(struct exfat_dentry), count);
+		d = ((struct exfat_dentry *)data) + i;
+		d->dentry.file.SetChecksum = exfat_entry_set_checksum(data+ i * sizeof(struct exfat_dentry), count);
 	}
-	set_cluster(clu, index);
-	free(clu);
+	set_cluster(data, clu);
+	free(data);
 	return 0;
 }
