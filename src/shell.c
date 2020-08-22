@@ -230,6 +230,7 @@ static int cmd_create(int argc, char **argv, char **envp)
 			break;
 		case 2:
 			info.ops->create(argv[1], cluster, 0);
+			info.ops->reload(cluster);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);

@@ -305,6 +305,7 @@ static int free_dentry_list(void)
 		/* FIXME: There may be areas that have not been released. */
 		info.ops->clean(i);
 	}
+	free((*(info.root))->data);
 	free(*(info.root));
 	free(info.root);
 
@@ -574,7 +575,7 @@ int main(int argc, char *argv[])
 
 	/* Command line: -a option */
 	if (attr & OPTION_ALL) {
-		ret = info.ops->reload(0, INT_MAX);
+		ret = info.ops->reload(0);
 		if (ret < 0)
 			goto device_close;
 	}

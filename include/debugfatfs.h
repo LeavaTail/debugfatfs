@@ -328,7 +328,7 @@ struct operations {
 	int (*statfs)(void);
 	int (*lookup)(uint32_t, char *);
 	int (*readdir)(struct directory *, size_t, uint32_t);
-	int (*reload)(uint32_t, uint32_t);
+	int (*reload)(uint32_t);
 	int (*convert)(const char *, size_t, char *);
 	int (*clean)(uint32_t);
 	int (*setfat)(uint32_t, uint32_t);

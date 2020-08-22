@@ -24,7 +24,7 @@ static void exfat_load_timestamp(struct tm *, char *,
 int exfat_lookup(uint32_t, char *);
 static int exfat_get_dirindex(uint32_t);
 int exfat_readdir(struct directory *, size_t, uint32_t);
-int exfat_reload_directory(uint32_t, uint32_t);
+int exfat_reload_directory(uint32_t);
 static int exfat_traverse_one_directory(uint32_t);
 static int exfat_traverse_directories(uint32_t, uint32_t);
 
@@ -438,14 +438,17 @@ int exfat_readdir(struct directory *dir, size_t count, uint32_t clu)
 
 /**
  * exfat_reload_directory - function interface to read directories
- * @from            cluster index to start search
- * @to              cluster index to end search
- *
- * TODO: Delete chain once if chain is exist
+ * @clu                     cluster index
  */
-int exfat_reload_directory(uint32_t from, uint32_t to)
+int exfat_reload_directory(uint32_t clu)
 {
-	return exfat_traverse_directories(from, to);
+	int index = exfat_get_dirindex(clu);
+	struct exfat_fileinfo *f = NULL;
+
+	exfat_clean_directory_chain(index);
+	f = ((struct exfat_fileinfo *)(info.root[index])->data);
+	f->datalen = 0;
+	return exfat_traverse_one_directory(clu);
 }
 
 /**
