@@ -2,15 +2,15 @@
 #include <stdbool.h>
 #include "debugfatfs.h"
 
-int fat_print_boot_sec(void);
-static int fat16_print_boot_sec(struct fat_bootsec *);
-static int fat32_print_boot_sec(struct fat_bootsec *);
+int fat_print_bootsec(void);
+static int fat16_print_bootsec(struct fat_bootsec *);
+static int fat32_print_bootsec(struct fat_bootsec *);
 static int fat32_print_fsinfo(struct fat32_fsinfo *);
-static int fat_load_boot_sec(struct fat_bootsec *);
+static int fat_load_bootsec(struct fat_bootsec *);
 int fat_print_cluster(uint32_t);
 
 static const struct operations fat_ops = {
-	.statfs = fat_print_boot_sec,
+	.statfs = fat_print_bootsec,
 	.lookup = NULL,
 	.readdir = NULL,
 	.reload = NULL,
@@ -19,17 +19,17 @@ static const struct operations fat_ops = {
 };
 
 /**
- * fat_print_boot_sec - print boot sector in FAT12/16/32
+ * fat_print_bootsec - print boot sector in FAT12/16/32
  * @b:         boot sector pointer in FAT
  *
  * TODO: implement function in FAT12/16/32
  */
-int fat_print_boot_sec(void)
+int fat_print_bootsec(void)
 {
 	int ret = 0;
 	struct fat_bootsec *b = malloc(sizeof(struct fat_bootsec));
 
-	fat_load_boot_sec(b);
+	fat_load_bootsec(b);
 	pr_msg("%-28s\t: %8u (byte)\n", "Bytes per Sector", b->BPB_BytesPerSec);
 	pr_msg("%-28s\t: %8u (sector)\n", "Sectors per cluster", b->BPB_SecPerClus);
 	pr_msg("%-28s\t: %8u (sector)\n", "Reserved Sector", b->BPB_RevdSecCnt);
@@ -41,13 +41,13 @@ int fat_print_boot_sec(void)
 		case FAT12_FILESYSTEM:
 			/* FALLTHROUGH */
 		case FAT16_FILESYSTEM:
-			fat16_print_boot_sec(b);
+			fat16_print_bootsec(b);
 			break;
 		case FAT32_FILESYSTEM:
 			{
 				void *fsinfo;
 				fsinfo = malloc(info.sector_size);
-				fat32_print_boot_sec(b);
+				fat32_print_bootsec(b);
 				get_sector(fsinfo,
 						b->reserved_info.fat32_reserved_info.BPB_FSInfo * info.sector_size, 1);
 				fat32_print_fsinfo(fsinfo);
@@ -63,10 +63,10 @@ int fat_print_boot_sec(void)
 }
 
 /**
- * fat16_print_boot_sec - print boot sector in FAT12/16
+ * fat16_print_bootsec - print boot sector in FAT12/16
  * @b:         boot sector pointer in FAT
  */
-static int fat16_print_boot_sec(struct fat_bootsec *b)
+static int fat16_print_bootsec(struct fat_bootsec *b)
 {
 	int i;
 	const char *type = (char *)b->reserved_info.fat16_reserved_info.BS_FilSysType;
@@ -93,10 +93,10 @@ static int fat16_print_boot_sec(struct fat_bootsec *b)
 }
 
 /**
- * fat32_print_boot_sec - print boot sector in FAT32
+ * fat32_print_bootsec - print boot sector in FAT32
  * @b:         boot sector pointer in FAT
  */
-static int fat32_print_boot_sec(struct fat_bootsec *b)
+static int fat32_print_bootsec(struct fat_bootsec *b)
 {
 	int i;
 	const char *type = (char *)b->reserved_info.fat32_reserved_info.BS_FilSysType;
@@ -149,10 +149,10 @@ static int fat32_print_fsinfo(struct fat32_fsinfo *fsi)
 }
 
 /**
- * fat_load_boot_sec - load boot sector in FAT
+ * fat_load_bootsec - load boot sector in FAT
  * @b:         boot sector pointer in FAT
  */
-static int fat_load_boot_sec(struct fat_bootsec *b)
+static int fat_load_bootsec(struct fat_bootsec *b)
 {
 	return get_sector(b, 0, 1);
 }
