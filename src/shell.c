@@ -15,6 +15,7 @@ static int cmd_alloc(int, char **, char **);
 static int cmd_release(int, char **, char **);
 static int cmd_fat(int, char **, char **);
 static int cmd_create(int, char **, char **);
+static int cmd_remove(int, char **, char **);
 static int cmd_help(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
@@ -28,6 +29,7 @@ struct command cmd[] = {
 	{"release", cmd_release},
 	{"fat", cmd_fat},
 	{"create", cmd_create},
+	{"remove", cmd_remove},
 	{"help", cmd_help},
 	{"exit", cmd_exit},
 };
@@ -230,6 +232,31 @@ static int cmd_create(int argc, char **argv, char **envp)
 			break;
 		case 2:
 			info.ops->create(argv[1], cluster, 0);
+			info.ops->reload(cluster);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
+ * cmd_remove      - Remove file or Directory.
+ * @argc:            argument count
+ * @argv:            argument vetor
+ * @envp:            environment pointer
+ *
+ * @return           0 (success)
+ */
+static int cmd_remove(int argc, char **argv, char **envp)
+{
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			info.ops->remove(argv[1], cluster, 0);
 			info.ops->reload(cluster);
 			break;
 		default:

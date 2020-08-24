@@ -48,6 +48,7 @@ int exfat_get_fat_entry(uint32_t, uint32_t *);
 int exfat_alloc_cluster(uint32_t);
 int exfat_release_cluster(uint32_t);
 int exfat_create(const char *, uint32_t, int);
+int exfat_remove(const char *, uint32_t, int);
 
 static const struct operations exfat_ops = {
 	.statfs = exfat_print_bootsec,
@@ -61,6 +62,7 @@ static const struct operations exfat_ops = {
 	.alloc = exfat_alloc_cluster,
 	.release = exfat_release_cluster,
 	.create = exfat_create,
+	.remove = exfat_remove,
 };
 
 static const struct query create_prompt[] = {
@@ -1186,3 +1188,95 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	return 0;
 }
 
+/**
+ * exfat_remove -  function interface to remove entry
+ * @name:          Filename in UTF-8
+ * @index:         Current Directory Index
+ * @opt:           create option
+ *
+ * @return        0 (Success)
+ * @return       -1 (Not found)
+ *
+ * NOTE: Tentative implemetation
+ */
+int exfat_remove(const char *name, uint32_t clu, int opt)
+{
+	int i, j, name_len, name_len2;
+	void *data;
+	uint16_t uniname[MAX_NAME_LENGTH] = {0};
+	uint16_t uniname2[MAX_NAME_LENGTH] = {0};
+	uint16_t namehash = 0;
+	uint8_t remaining;
+	size_t size = info.cluster_size;
+	size_t entries = size / sizeof(struct exfat_dentry);
+	struct exfat_dentry *d, *s, *n;
+
+	/* convert UTF-8 to UTF16 */
+	name_len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
+	namehash = exfat_calculate_namehash(uniname, name_len);
+
+	/* Lookup last entry */
+	data = malloc(size);
+	get_cluster(data, clu);
+
+	for (i = 0; i < entries; i++) {
+		d = ((struct exfat_dentry *)data) + i;
+		switch (d->EntryType) {
+			case DENTRY_UNUSED:
+				free(data);
+				return -1;
+			case DENTRY_FILE:
+				remaining = d->dentry.file.SecondaryCount;
+				if (i + remaining >= entries) {
+					clu = exfat_concat_cluster(clu, &data, size);
+					size += info.cluster_size;
+					entries = size / sizeof(struct exfat_dentry);
+				}
+
+				s = ((struct exfat_dentry *)data) + i + 1;
+				if (s->EntryType != DENTRY_STREAM) {
+					pr_warn("File should have stream entry, but This don't have.\n");
+					continue;
+				}
+
+				if (s->dentry.stream.NameHash != namehash) {
+					i += remaining - 1;
+					continue;
+				}
+
+				n = ((struct exfat_dentry *)data) + i + 2;
+				if (n->EntryType != DENTRY_NAME) {
+					pr_warn("File should have name entry, but This don't have.\n");
+					return -1;
+				}
+
+				name_len2 = s->dentry.stream.NameLength;
+				if (name_len != name_len2) {
+					i += remaining - 1;
+					continue;
+				}
+
+				for (j = 0; j < remaining - 1; j++) {
+					name_len2 = MIN(ENTRY_NAME_MAX,
+							s->dentry.stream.NameLength - j * ENTRY_NAME_MAX);
+					memcpy(uniname2 + j * ENTRY_NAME_MAX,
+							(((struct exfat_dentry *)data) + i + 2 + j)->dentry.name.FileName,
+							name_len2 * sizeof(uint16_t));
+				}
+				if (!memcmp(uniname, uniname2, name_len2)) {
+					d->EntryType &= ~EXFAT_INUSE;
+					s->EntryType &= ~EXFAT_INUSE;
+					n->EntryType &= ~EXFAT_INUSE;
+					goto out;
+				}
+				i += remaining;
+				break;
+			default:
+				break;
+		}
+	}
+out:
+	set_cluster(data, clu);
+	free(data);
+	return 0;
+}

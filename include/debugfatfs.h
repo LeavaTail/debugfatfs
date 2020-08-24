@@ -336,6 +336,7 @@ struct operations {
 	int (*alloc)(uint32_t);
 	int (*release)(uint32_t);
 	int (*create)(const char *, uint32_t, int);
+	int (*remove)(const char *, uint32_t, int);
 };
 
 /* FAT dentry type */
