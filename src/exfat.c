@@ -1021,9 +1021,6 @@ int exfat_clean_dchain(uint32_t index)
 	}
 
 	tmp = info.root[index];
-	f = (struct exfat_fileinfo *)tmp->data;
-	free(f->name);
-	f->name = NULL;
 
 	while (tmp->next != NULL) {
 		tmp = tmp->next;
