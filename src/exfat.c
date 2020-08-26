@@ -10,7 +10,7 @@ static uint32_t exfat_concat_cluster(uint32_t, void **, size_t);
 /* Boot sector function prototype */
 static int exfat_load_bootsec(struct exfat_bootsec *);
 static void exfat_print_upcase(void);
-static void exfat_print_label(uint16_t *, int);
+static void exfat_print_label(void);
 static int exfat_load_bitmap(uint32_t);
 static int exfat_save_bitmap(uint32_t, uint32_t);
 
@@ -202,16 +202,14 @@ static void exfat_print_upcase(void)
 
 /**
  * exfat_print_label - print volume label
- * @uniname:                  volume label in UTF16
- * @len:                      volume label length
  */
-static void exfat_print_label(uint16_t *uniname, int len)
+static void exfat_print_label(void)
 {
 	unsigned char *name;
-
-	name = malloc(len * sizeof(uint16_t) + 1);
-	memset(name, '\0', len * sizeof(uint16_t) + 1);
-	utf16s_to_utf8s(uniname, len, name);
+	pr_info("volume Label: ");
+	name = malloc(info.vol_length * sizeof(uint16_t) + 1);
+	memset(name, '\0', info.vol_length * sizeof(uint16_t) + 1);
+	utf16s_to_utf8s(info.vol_label, info.vol_length, name);
 	pr_info("%s\n", name);
 	free(name);
 }
@@ -519,10 +517,14 @@ static int exfat_traverse_directory(uint32_t clu)
 					exfat_print_upcase();
 					break;
 				case DENTRY_VOLUME:
-					pr_info("volume Label: ");
-					name_len = d.dentry.vol.CharacterCount;
-					memcpy(uniname, d.dentry.vol.VolumeLabel, sizeof(uint16_t) * name_len);
-					exfat_print_label(uniname, name_len);
+					info.vol_length = d.dentry.vol.CharacterCount;
+					if (info.vol_length) {
+						info.vol_label = malloc(sizeof(uint16_t) * info.vol_length);
+						pr_debug("Get: Volume label: size: %x\n",
+								d.dentry.vol.CharacterCount);
+						memcpy(info.vol_label, d.dentry.vol.VolumeLabel,
+								sizeof(uint16_t) * info.vol_length);
+					}
 					break;
 				case DENTRY_FILE:
 					remaining = d.dentry.file.SecondaryCount;

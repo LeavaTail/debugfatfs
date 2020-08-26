@@ -259,6 +259,8 @@ static void init_device_info(void)
 	info.alloc_table = NULL;
 	info.upcase_table = NULL;
 	info.upcase_size = 0;
+	info.vol_label = NULL;
+	info.vol_length = 0;
 	info.root_size = DENTRY_LISTSIZE;
 	info.root = calloc(info.root_size, sizeof(node2_t *));
 }
@@ -628,6 +630,7 @@ out:
 	for (i = 0; i < entries; i++)
 		free(dirs[i].name);
 	free(dirs);
+	free(info.vol_label);
 	free(info.upcase_table);
 	free(info.alloc_table);
 

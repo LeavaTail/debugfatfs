@@ -116,6 +116,8 @@ struct device_info {
 	uint8_t *alloc_table;
 	uint16_t *upcase_table;
 	size_t upcase_size;
+	uint16_t *vol_label;
+	uint8_t vol_length;
 	node2_t **root;
 	size_t root_size;
 	const struct operations *ops;
