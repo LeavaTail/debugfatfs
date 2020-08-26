@@ -38,6 +38,7 @@ static int exfat_query_timestamp(struct tm *, uint32_t *, uint8_t *, uint8_t *);
 
 /* Operations function prototype */
 int exfat_print_bootsec(void);
+int exfat_print_fsinfo(void);
 int exfat_lookup(uint32_t, char *);
 int exfat_readdir(struct directory *, size_t, uint32_t);
 int exfat_reload_directory(uint32_t);
@@ -52,6 +53,7 @@ int exfat_remove(const char *, uint32_t, int);
 
 static const struct operations exfat_ops = {
 	.statfs = exfat_print_bootsec,
+	.info = exfat_print_fsinfo,
 	.lookup =  exfat_lookup,
 	.readdir = exfat_readdir,
 	.reload = exfat_reload_directory,
@@ -185,18 +187,18 @@ static void exfat_print_upcase(void)
 	size_t length = info.upcase_size;
 
 	/* Output table header */
-	pr_info("Offset  ");
+	pr_msg("Offset  ");
 	for (byte = 0; byte < uni_count; byte++)
-		pr_info("  +%u ",byte);
-	pr_info("\n");
+		pr_msg("  +%u ",byte);
+	pr_msg("\n");
 
 	/* Output Table contents */
 	for (offset = 0; offset < length / uni_count; offset++) {
-		pr_info("%04lxh:  ", offset * 0x10 / sizeof(uint16_t));
+		pr_msg("%04lxh:  ", offset * 0x10 / sizeof(uint16_t));
 		for (byte = 0; byte < uni_count; byte++) {
-			pr_info("%04x ", info.upcase_table[offset * uni_count + byte]);
+			pr_msg("%04x ", info.upcase_table[offset * uni_count + byte]);
 		}
-		pr_info("\n");
+		pr_msg("\n");
 	}
 }
 
@@ -206,11 +208,11 @@ static void exfat_print_upcase(void)
 static void exfat_print_label(void)
 {
 	unsigned char *name;
-	pr_info("volume Label: ");
+	pr_msg("volume Label: ");
 	name = malloc(info.vol_length * sizeof(uint16_t) + 1);
 	memset(name, '\0', info.vol_length * sizeof(uint16_t) + 1);
 	utf16s_to_utf8s(info.vol_label, info.vol_length, name);
-	pr_info("%s\n", name);
+	pr_msg("%s\n", name);
 	free(name);
 }
 
@@ -514,7 +516,6 @@ static int exfat_traverse_directory(uint32_t clu)
 							d.dentry.upcase.FirstCluster,
 							d.dentry.upcase.DataLength);
 					get_clusters(info.upcase_table, d.dentry.upcase.FirstCluster, len);
-					exfat_print_upcase();
 					break;
 				case DENTRY_VOLUME:
 					info.vol_length = d.dentry.vol.CharacterCount;
@@ -831,6 +832,18 @@ int exfat_print_bootsec(void)
 	pr_msg("\n");
 
 	free(b);
+	return 0;
+}
+
+/**
+ * exfat_print_fsinfo - print filesystem information in exFAT
+ *
+ * @return        0 (success)
+ */
+int exfat_print_fsinfo(void)
+{
+	exfat_print_upcase();
+	exfat_print_label();
 	return 0;
 }
 

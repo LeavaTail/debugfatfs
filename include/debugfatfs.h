@@ -328,6 +328,7 @@ struct exfat_dentry {
 
 struct operations {
 	int (*statfs)(void);
+	int (*info)(void);
 	int (*lookup)(uint32_t, char *);
 	int (*readdir)(struct directory *, size_t, uint32_t);
 	int (*reload)(uint32_t);

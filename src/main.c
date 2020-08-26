@@ -575,13 +575,6 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		goto device_close;
 
-	/* Command line: -a option */
-	if (attr & OPTION_ALL) {
-		ret = info.ops->reload(0);
-		if (ret < 0)
-			goto device_close;
-	}
-
 	dirs = malloc(sizeof(struct directory) * DIRECTORY_FILES);
 	ret = info.ops->readdir(dirs, DIRECTORY_FILES, info.root_offset);
 	if (ret < 0) {
@@ -606,6 +599,13 @@ int main(int argc, char *argv[])
 
 	pr_msg("\n");
 	ret = 0;
+
+	/* Command line: -a option */
+	if (attr & OPTION_ALL) {
+		ret = info.ops->info();
+		if (ret < 0)
+			goto device_close;
+	}
 
 	/* Command line: -u option */
 	if (attr & OPTION_UPPER) {
