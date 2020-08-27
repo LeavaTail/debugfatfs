@@ -336,6 +336,7 @@ static int pseudo_check_filesystem(struct pseudo_bootsec *boot)
 	if (fat_check_filesystem(boot))
 		return 0;
 
+	pr_err("%s can't support this image.\n", PROGRAM_NAME);
 	return -1;
 }
 
