@@ -67,7 +67,7 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 	info.cluster_size = b->BPB_SecPerClus * b->BPB_BytesPerSec;
 
 	info.ops = &fat_ops;
-	return 0;
+	return 1;
 }
 
 /*************************************************************************************************/
