@@ -5,6 +5,7 @@
 /* Generic function prototype */
 /* Boot sector function prototype */
 static int fat_load_bootsec(struct fat_bootsec *);
+static int fat_validate_bootsec(struct fat_bootsec *);
 /* FAT-entry function prototype */
 static int fat16_print_bootsec(struct fat_bootsec *);
 static int fat32_print_bootsec(struct fat_bootsec *);
@@ -39,6 +40,9 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 	uint32_t TotSec;
 	uint32_t DataSec;
 	uint32_t CountofClusters;
+
+	if (!fat_validate_bootsec(b))
+		return 0;
 
 	if (b->BPB_FATSz16 != 0) {
 		FATSz = b->BPB_FATSz16;
@@ -78,6 +82,45 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 static int fat_load_bootsec(struct fat_bootsec *b)
 {
 	return get_sector(b, 0, 1);
+}
+
+/**
+ * fat_validate_bootsec - check whether boot sector is vaild
+ * @b:                    boot sector pointer in FAT
+ */
+static int fat_validate_bootsec(struct fat_bootsec *b)
+{
+	int ret = 1;
+	uint8_t media = b->BPB_Media;
+	uint16_t sector = b->BPB_BytesPerSec / SECSIZE;
+	uint8_t cluster = b->BPB_SecPerClus;
+
+	if (!b->BPB_RevdSecCnt) {
+		pr_debug("invalid reserved sectors: %x\n", b->BPB_RevdSecCnt);
+		ret = 0;
+	}
+
+	if (!b->BPB_NumFATs) {
+		pr_debug("invalid FAT structure: %x\n", b->BPB_NumFATs);
+		ret = 0;
+	}
+
+	if (media != 0xf0 && media < 0xF8) {
+		pr_debug("invalid Media value: %x\n", b->BPB_Media);
+		ret = 0;
+	}
+
+	if (!is_power2(sector) || sector > 8) {
+		pr_debug("invalid Sector size: %u\n", b->BPB_BytesPerSec);
+		ret = 0;
+	}
+
+	if (!is_power2(cluster) || cluster > 128) {
+		pr_debug("invalid Cluster size: %u\n", b->BPB_SecPerClus);
+		ret = 0;
+	}
+
+	return ret;
 }
 
 /*************************************************************************************************/

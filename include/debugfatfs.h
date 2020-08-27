@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 #include <time.h>
 
 #include "list.h"
@@ -377,6 +378,11 @@ struct operations {
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+static inline bool is_power2(unsigned int n)
+{
+	return (n != 0 && ((n & (n - 1)) == 0));
+}
 
 struct query {
 	char *name;
