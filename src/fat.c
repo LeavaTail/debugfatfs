@@ -65,6 +65,12 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 
 	info.sector_size = b->BPB_BytesPerSec;
 	info.cluster_size = b->BPB_SecPerClus * b->BPB_BytesPerSec;
+	info.cluster_count = CountofClusters;
+	info.fat_offset = b->BPB_RevdSecCnt;
+	info.fat_length = b->BPB_NumFATs * FATSz;
+	info.heap_offset = info.fat_offset + info.fat_length;
+	if (info.fstype == FAT32_FILESYSTEM)
+		info.root_offset = b->reserved_info.fat32_reserved_info.BPB_RootClus;
 
 	info.ops = &fat_ops;
 	return 1;
@@ -135,12 +141,6 @@ static int fat16_print_bootsec(struct fat_bootsec *b)
 	if (strncmp(type, "FAT", 3))
 		pr_warn("BS_FilSysType is expected \"FAT     \", But this is %s\n", type);
 
-	info.fat_offset = b->BPB_RevdSecCnt;
-	info.fat_length = b->BPB_NumFATs * b->BPB_FATSz16;
-	info.root_offset = info.fat_offset + info.fat_length;
-	info.heap_offset = info.root_offset +
-		(b->BPB_RootEntCnt * 32 + b->BPB_BytesPerSec - 1) / b->BPB_BytesPerSec;
-
 	pr_msg("%-28s\t: ", "Volume ID");
 	for (i = 0; i < VOLIDSIZE; i++)
 		pr_msg("%x", b->reserved_info.fat16_reserved_info.BS_VolID[i]);
@@ -164,13 +164,6 @@ static int fat32_print_bootsec(struct fat_bootsec *b)
 
 	if (strncmp(type, "FAT32", 5))
 		pr_warn("BS_FilSysType is expected \"FAT32   \", But this is %s\n", type);
-
-	info.fat_offset = b->BPB_RevdSecCnt;
-	info.fat_length = b->BPB_NumFATs * b->reserved_info.fat32_reserved_info.BPB_FATSz32;
-	info.heap_offset = info.fat_offset + info.fat_length;
-	info.root_offset = info.heap_offset +
-		(b->reserved_info.fat32_reserved_info.BPB_RootClus - 2) *
-		b->BPB_SecPerClus * b->BPB_BytesPerSec;
 
 	pr_msg("%-28s\t: ", "Volume ID");
 	for (i = 0; i < VOLIDSIZE; i++)
