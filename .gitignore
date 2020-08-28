@@ -17,7 +17,7 @@ config.h.in
 config.log
 stamp-h1
 config.h.in~
-debugfatfs.1
+debugfatfs.8
 
 # build
 debugfatfs
