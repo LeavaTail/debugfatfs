@@ -10,6 +10,9 @@ static int fat16_print_bootsec(struct fat_bootsec *);
 static int fat32_print_bootsec(struct fat_bootsec *);
 static int fat32_print_fsinfo(struct fat32_fsinfo *);
 /* FAT-entry function prototype */
+static int fat12_set_fat_entry(uint32_t, uint32_t);
+static int fat16_set_fat_entry(uint32_t, uint32_t);
+static int fat32_set_fat_entry(uint32_t, uint32_t);
 static uint32_t fat12_get_fat_entry(uint32_t);
 static uint32_t fat16_get_fat_entry(uint32_t);
 static uint32_t fat32_get_fat_entry(uint32_t);
@@ -17,10 +20,12 @@ static uint32_t fat32_get_fat_entry(uint32_t);
 /* File function prototype */
 /* Operations function prototype */
 int fat_print_bootsec(void);
+int fat_set_fat_entry(uint32_t, uint32_t);
 int fat_get_fat_entry(uint32_t, uint32_t *);
 
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
+	.setfat = fat_set_fat_entry,
 	.getfat = fat_get_fat_entry,
 };
 
@@ -213,6 +218,75 @@ static int fat32_print_fsinfo(struct fat32_fsinfo *fsi)
 /*                                                                                               */
 /*************************************************************************************************/
 /**
+ * fat12_set_fat_entry - Set FAT Entry to any cluster
+ * @clu:                 index of the cluster want to check
+ * @entry:               any cluster index
+ *
+ * @retrun:              0
+ */
+static int fat12_set_fat_entry(uint32_t clu, uint32_t entry)
+{
+	uint32_t FATOffset = clu + (clu / 2);
+	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
+
+	uint16_t *fat;
+	fat = malloc(info.sector_size);
+	get_sector(fat, info.fat_offset * info.sector_size, 1);
+	if (clu % 2) {
+		*(fat + ThisFATEntOffset) = (fat[ThisFATEntOffset] & 0x0F) | entry << 4;
+		*(fat + ThisFATEntOffset + 1) = entry >> 4;
+	} else {
+		*(fat + ThisFATEntOffset) = entry;
+		*(fat + ThisFATEntOffset + 1) = (fat[ThisFATEntOffset + 1] & 0xF0) | ((entry >> 8) & 0x0F);
+	}
+	set_sector(fat, info.fat_offset * info.sector_size, 1);
+	free(fat);
+	return 0;
+}
+
+/**
+ * fat16_set_fat_entry - Set FAT Entry to any cluster
+ * @clu:                 index of the cluster want to check
+ * @entry:               any cluster index
+ *
+ * @retrun:              0
+ */
+static int fat16_set_fat_entry(uint32_t clu, uint32_t entry)
+{
+	uint32_t FATOffset = clu * sizeof(uint16_t);
+	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
+
+	uint16_t *fat;
+	fat = malloc(info.sector_size);
+	get_sector(fat, info.fat_offset * info.sector_size, 1);
+	*(fat + ThisFATEntOffset) = (uint16_t)entry;
+	set_sector(fat, info.fat_offset * info.sector_size, 1);
+	free(fat);
+	return 0;
+}
+
+/**
+ * fat32_set_fat_entry - Set FAT Entry to any cluster
+ * @clu:                 index of the cluster want to check
+ * @entry:               any cluster index
+ *
+ * @retrun:              0
+ */
+static int fat32_set_fat_entry(uint32_t clu, uint32_t entry)
+{
+	uint32_t FATOffset = clu * sizeof(uint32_t);
+	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
+
+	uint32_t *fat;
+	fat = malloc(info.sector_size);
+	get_sector(fat, info.fat_offset * info.sector_size, 1);
+	*(fat + ThisFATEntOffset) = entry & 0x0FFFFFFF;
+	set_sector(fat, info.fat_offset * info.sector_size, 1);
+	free(fat);
+	return 0;
+}
+
+/**
  * fat12_get_fat_entry - Get cluster is continuous
  * @clu:                 index of the cluster want to check
  *
@@ -326,6 +400,35 @@ int fat_print_bootsec(void)
 			ret = -1;
 	}
 	free(b);
+	return ret;
+}
+
+/**
+ * fat_set_fat_entry -  Set FAT Entry to any cluster
+ * @index:              index of the cluster want to check
+ * @entry:              any cluster index
+ *
+ * @retrun:             0
+ *                      -1 (invalid image)
+ */
+int fat_set_fat_entry(uint32_t clu, uint32_t entry)
+{
+	int ret = 0;
+
+	switch (info.fstype) {
+		case FAT12_FILESYSTEM:
+			fat12_set_fat_entry(clu, entry);
+			break;
+		case FAT16_FILESYSTEM:
+			fat16_set_fat_entry(clu, entry);
+			break;
+		case FAT32_FILESYSTEM:
+			fat32_set_fat_entry(clu, entry);
+			break;
+		default:
+			pr_err("Expected FAT filesystem, But this is not FAT filesystem.\n");
+			ret = -1;
+	}
 	return ret;
 }
 
