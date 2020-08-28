@@ -6,10 +6,10 @@
 /* Boot sector function prototype */
 static int fat_load_bootsec(struct fat_bootsec *);
 static int fat_validate_bootsec(struct fat_bootsec *);
-/* FAT-entry function prototype */
 static int fat16_print_bootsec(struct fat_bootsec *);
 static int fat32_print_bootsec(struct fat_bootsec *);
 static int fat32_print_fsinfo(struct fat32_fsinfo *);
+/* FAT-entry function prototype */
 /* Directory chain function prototype */
 /* File function prototype */
 /* Operations function prototype */
@@ -123,11 +123,6 @@ static int fat_validate_bootsec(struct fat_bootsec *b)
 	return ret;
 }
 
-/*************************************************************************************************/
-/*                                                                                               */
-/* FAT-ENTRY FUNCTION                                                                            */
-/*                                                                                               */
-/*************************************************************************************************/
 /**
  * fat16_print_bootsec - print boot sector in FAT12/16
  * @b:         boot sector pointer in FAT
@@ -214,6 +209,17 @@ static int fat32_print_fsinfo(struct fat32_fsinfo *fsi)
 	return 0;
 }
 
+/*************************************************************************************************/
+/*                                                                                               */
+/* FAT-ENTRY FUNCTION                                                                            */
+/*                                                                                               */
+/*************************************************************************************************/
+
+/*************************************************************************************************/
+/*                                                                                               */
+/* OPERATIONS FUNCTION                                                                           */
+/*                                                                                               */
+/*************************************************************************************************/
 /**
  * fat_print_bootsec - print boot sector in FAT12/16/32
  * @b:         boot sector pointer in FAT
