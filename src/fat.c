@@ -27,6 +27,7 @@ static void fat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
 /* Operations function prototype */
 int fat_print_bootsec(void);
+int fat_print_vollabel(void);
 int fat_readdir(struct directory *, size_t, uint32_t);
 int fat_clean_dchain(uint32_t);
 int fat_set_fat_entry(uint32_t, uint32_t);
@@ -34,6 +35,7 @@ int fat_get_fat_entry(uint32_t, uint32_t *);
 
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
+	.info = fat_print_vollabel,
 	.readdir = fat_readdir,
 	.clean = fat_clean_dchain,
 	.setfat = fat_set_fat_entry,
@@ -672,6 +674,18 @@ int fat_print_bootsec(void)
 	}
 	free(b);
 	return ret;
+}
+
+/**
+ * fat_print_fsinfo - print filesystem information in FAT
+ *
+ * @return        0 (success)
+ */
+int fat_print_vollabel(void)
+{
+	pr_msg("volume Label: ");
+	pr_msg("%s\n", (char *)info.vol_label);
+	return 0;
 }
 
 /**
