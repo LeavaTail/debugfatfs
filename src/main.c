@@ -103,7 +103,7 @@ int get_sector(void *data, off_t index, size_t count)
 
 	pr_debug("Get: Sector from %lx to %lx\n", index , index + (count * sector_size) - 1);
 	if ((pread(info.fd, data, count * sector_size, index)) < 0) {
-		pr_err("can't read %s.", info.name);
+		pr_err("read: %s\n", strerror(errno));
 		return -1;
 	}
 	return 0;
@@ -126,7 +126,7 @@ int set_sector(void *data, off_t index, size_t count)
 
 	pr_debug("Set: Sector from %lx to %lx\n", index , index + (count * sector_size) - 1);
 	if ((pwrite(info.fd, data, count * sector_size, index)) < 0) {
-		pr_err("can't write %s.", info.name);
+		pr_err("write: %s\n", strerror(errno));
 		return -1;
 	}
 	return 0;
@@ -278,12 +278,12 @@ static int get_device_info(uint32_t attr)
 	struct stat s;
 
 	if ((fd = open(info.name, attr & OPTION_READONLY ? O_RDONLY : O_RDWR)) < 0) {
-		pr_err("can't open %s.", info.name);
+		pr_err("open: %s\n", strerror(errno));
 		return -1;
 	}
 
 	if (fstat(fd, &s) < 0) {
-		pr_err("can't get stat %s.", info.name);
+		pr_err("stat: %s\n", strerror(errno));
 		close(fd);
 		return -1;
 	}
@@ -328,7 +328,7 @@ static int pseudo_check_filesystem(struct pseudo_bootsec *boot)
 
 	count = pread(info.fd, boot, SECSIZE, 0);
 	if (count < 0){
-		pr_err("can't read %s.", info.name);
+		pr_err("read: %s\n", strerror(errno));
 		return -1;
 	}
 
@@ -528,7 +528,7 @@ int main(int argc, char *argv[])
 	output = stdout;
 	if (attr & OPTION_OUTPUT) {
 		if ((output = fopen(outfile, "w")) == NULL) {
-			pr_err("can't open %s.", optarg);
+			pr_err("open: %s\n", strerror(errno));
 			goto info_release;
 		}
 	}
@@ -551,7 +551,7 @@ int main(int argc, char *argv[])
 	/* Command line: -s, -l option */
 	if ((attr & OPTION_SAVE) || (attr & OPTION_LOAD)) {
 		if ((bfile = fopen(backup, "ab+")) == NULL) {
-			pr_err("can't open %s.", optarg);
+			pr_err("open: %s\n", strerror(errno));
 			goto device_close;
 		}
 		s = malloc(sizeof(char) * info.sector_size);
