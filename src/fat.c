@@ -697,8 +697,8 @@ int fat_readdir(struct directory *dir, size_t count, uint32_t clu)
 		tmp = tmp->next;
 		f = (struct fat_fileinfo *)(tmp->data);
 		if (!f->namelen) {
-			dir[i].name = malloc(sizeof(unsigned char) * 12);
-			strncpy((char *)dir[i].name, (char *)f->name, sizeof(unsigned char) * 12);
+			dir[i].name = calloc(11 + 1, sizeof(unsigned char));
+			strncpy((char *)dir[i].name, (char *)f->name, sizeof(unsigned char) * 11);
 			dir[i].namelen = 11;
 		} else {
 			dir[i].name = malloc(sizeof(uint32_t) * (f->namelen + 1));
