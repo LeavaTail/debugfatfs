@@ -22,6 +22,8 @@ static int fat_check_dchain(uint32_t);
 static int fat_get_index(uint32_t);
 static int fat_traverse_directory(uint32_t);
 /* File function prototype */
+static void fat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
+static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
 /* Operations function prototype */
 int fat_print_bootsec(void);
 int fat_readdir(struct directory *, size_t, uint32_t);
@@ -518,6 +520,40 @@ static int fat_traverse_directory(uint32_t clu)
 out:
 	free(data);
 	return 0;
+}
+
+/*************************************************************************************************/
+/*                                                                                               */
+/* FILE FUNCTION                                                                                 */
+/*                                                                                               */
+/*************************************************************************************************/
+/**
+ * fat_convert_uniname       function to get filename
+ * @uniname:                 filename dentry in UTF-16
+ * @name_len:                filename length
+ * @name:                    filename in UTF-8 (output)
+ */
+static void fat_convert_uniname(uint16_t *uniname, uint64_t name_len, unsigned char *name)
+{
+	utf16s_to_utf8s(uniname, name_len, name);
+}
+
+/**
+ * exfat_convert_unixname    function to get timestamp in file
+ * @t:                       output pointer
+ * @time:                    Timestamp Field in File Directory Entry
+ * @subsec:                  10msincrement Field in File Directory Entry
+ * @tz:                      UtcOffset in File Directory Entry
+ */
+static void fat_convert_unixtime(struct tm *t, uint16_t date, uint16_t time, uint8_t subsec)
+{
+	t->tm_year = (date >> FAT_YEAR) & 0x7f;
+	t->tm_mon  = (date >> FAT_MONTH) & 0x0f;
+	t->tm_mday = (date >> FAT_DAY) & 0x1f;
+	t->tm_hour = (time >> EXFAT_HOUR) & 0x0f;
+	t->tm_min  = (time >> EXFAT_MINUTE) & 0x3f;
+	t->tm_sec  = (time & 0x1f) * 2;
+	t->tm_sec += subsec / 100;
 }
 
 /*************************************************************************************************/
