@@ -3,6 +3,7 @@
 #include "debugfatfs.h"
 
 /* Generic function prototype */
+static uint32_t fat_concat_cluster(uint32_t, void **, size_t);
 /* Boot sector function prototype */
 static int fat_load_bootsec(struct fat_bootsec *);
 static int fat_validate_bootsec(struct fat_bootsec *);
@@ -34,6 +35,35 @@ static const struct operations fat_ops = {
 /* GENERIC FUNCTION                                                                              */
 /*                                                                                               */
 /*************************************************************************************************/
+/**
+ * fat_concat_cluster   - Contatenate cluster @data with next_cluster
+ * @clu:                  index of the cluster
+ * @data:                 The cluster
+ * @size:                 allocated size to store cluster data
+ *
+ * @retrun:        next cluster (@clu has next cluster)
+ *                 0            (@clu doesn't have next cluster, or failed to realloc)
+ */
+static uint32_t fat_concat_cluster(uint32_t clu, void **data, size_t size)
+{
+	uint32_t ret;
+	void *tmp;
+	fat_get_fat_entry(clu, &ret);
+
+	if (ret) {
+		tmp = realloc(*data, size + info.cluster_size);
+		if (tmp) {
+			*data = tmp;
+			get_cluster(tmp + size, ret);
+			pr_debug("Concatenate cluster #%u with #%u\n", clu, ret);
+		} else {
+			pr_err("Failed to Get new memory.\n");
+			ret = 0;
+		}
+	}
+	return ret;
+}
+
 /**
  * fat_check_filesystem - Whether or not VFAT filesystem
  * @index:         index of the cluster want to check
