@@ -488,6 +488,8 @@ static int fat_traverse_directory(uint32_t clu)
 			/* Empty entry */
 			if (ord == 0x00)
 				goto out;
+			if (ord == 0xe5)
+				continue;
 			/* First entry should be checked */
 			switch (attr) {
 				case ATTR_LONG_FILE_NAME:
