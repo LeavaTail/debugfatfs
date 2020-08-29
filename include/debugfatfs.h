@@ -88,6 +88,7 @@ extern FILE *output;
 #define JMPBOOTSIZE			3
 #define ORMNAMESIZE			8
 #define VOLUME_LABEL_MAX	11
+#define LONGNAME_MAX		13
 #define ENTRY_NAME_MAX		15
 #define MAX_NAME_LENGTH		255
 
@@ -245,9 +246,40 @@ struct exfat_bootsec {
 	unsigned char BootSignature[2];
 };
 
+struct fat_dentry {
+	union {
+		/* Directory Structure */
+		struct {
+			unsigned char DIR_Name[11];
+			uint8_t DIR_Attr;
+			uint8_t DIR_NTRes;
+			uint8_t DIR_CrtTimeTenth;
+			uint16_t DIR_CrtTime;
+			uint16_t DIR_CrtDate;
+			uint16_t DIR_LstAccDate;
+			uint16_t DIR_FstClusHI;
+			uint16_t DIR_WrtTime;
+			uint16_t DIR_WrtDate;
+			uint16_t DIR_FstClusLO;
+			uint32_t DIR_FileSize;
+		} __attribute__((packed)) dir;
+		/* Long File Name */
+		struct {
+			uint8_t LDIR_Ord;
+			uint16_t LDIR_Name1[5];
+			uint8_t LDIR_Attr;
+			uint8_t LDIR_Type;
+			uint8_t LDIR_Chksum;
+			uint16_t LDIR_Name2[6];
+			uint16_t DIR_FstClusLO;
+			uint16_t LDIR_Name3[2];
+		} __attribute__((packed)) lfn;
+	} __attribute__((packed)) dentry;
+} __attribute__ ((packed));
+
 struct exfat_dentry {
 	uint8_t EntryType;
-	union dentry {
+	union {
 		/* Allocation Bitmap Directory Entry */
 		struct {
 			uint8_t BitmapFlags;
@@ -343,13 +375,16 @@ struct operations {
 	int (*remove)(const char *, uint32_t, int);
 };
 
+/* FAT/exFAT File Attributes */
+#define ATTR_READ_ONLY			0x01
+#define ATTR_HIDDEN				0x02
+#define ATTR_SYSTEM				0x04
+#define ATTR_VOLUME_ID			0x08
+#define ATTR_DIRECTORY			0x10
+#define ATTR_ARCHIVE			0x20
+#define ATTR_LONG_FILE_NAME		(ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID)
 /* FAT dentry type */
-#define ATTR_READ_ONLY		0x01
-#define ATTR_HIDDEN			0x02
-#define ATTR_SYSTEM			0x04
-#define ATTR_VOLUME_ID		0x08
-#define ATTR_DIRECTORY		0x10
-#define ATTR_ARCHIVE		0x20
+#define LAST_LONG_ENTRY		0x40
 /* exFAT dentry type */
 #define DENTRY_UNUSED		0x00
 #define DENTRY_BITMAP		0x81
@@ -369,6 +404,9 @@ struct operations {
 #define EXFAT_INUSE				0x80
 
 /* TimeStamp */
+#define FAT_DAY			0
+#define FAT_MONTH		5
+#define FAT_YEAR		9
 #define EXFAT_DSEC		0
 #define EXFAT_MINUTE	5
 #define EXFAT_HOUR		11
