@@ -28,12 +28,14 @@ static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
 /* Operations function prototype */
 int fat_print_bootsec(void);
 int fat_readdir(struct directory *, size_t, uint32_t);
+int fat_clean_dchain(uint32_t);
 int fat_set_fat_entry(uint32_t, uint32_t);
 int fat_get_fat_entry(uint32_t, uint32_t *);
 
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
 	.readdir = fat_readdir,
+	.clean = fat_clean_dchain,
 	.setfat = fat_set_fat_entry,
 	.getfat = fat_get_fat_entry,
 };
@@ -697,6 +699,36 @@ int fat_readdir(struct directory *dir, size_t count, uint32_t clu)
 
 	return i;
 }
+
+/**
+ * fat_clean_dchain              function to clean opeartions
+ * @index:                       directory chain index
+ *
+ * @return        0 (success)
+ *               -1 (already released)
+ */
+int fat_clean_dchain(uint32_t index)
+{
+	node2_t *tmp;
+	struct fat_fileinfo *f;
+
+	if ((!info.root[index])) {
+		pr_warn("index %d was already released.\n", index);
+		return -1;
+	}
+
+	tmp = info.root[index];
+
+	while (tmp->next != NULL) {
+		tmp = tmp->next;
+		f = (struct fat_fileinfo *)tmp->data;
+		free(f->uniname);
+		f->uniname = NULL;
+	}
+	free_list2(info.root[index]);
+	return 0;
+}
+
 /**
  * fat_set_fat_entry -  Set FAT Entry to any cluster
  * @index:              index of the cluster want to check
