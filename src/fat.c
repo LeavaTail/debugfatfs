@@ -20,14 +20,17 @@ static uint32_t fat32_get_fat_entry(uint32_t);
 /* Directory chain function prototype */
 static int fat_check_dchain(uint32_t);
 static int fat_get_index(uint32_t);
+static int fat_traverse_directory(uint32_t);
 /* File function prototype */
 /* Operations function prototype */
 int fat_print_bootsec(void);
+int fat_readdir(struct directory *, size_t, uint32_t);
 int fat_set_fat_entry(uint32_t, uint32_t);
 int fat_get_fat_entry(uint32_t, uint32_t *);
 
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
+	.readdir = fat_readdir,
 	.setfat = fat_set_fat_entry,
 	.getfat = fat_get_fat_entry,
 };
@@ -445,6 +448,78 @@ static int fat_get_index(uint32_t clu)
 	return i;
 }
 
+/**
+ * fat_traverse_directory - function to traverse one directory
+ * @clu:                    index of the cluster want to check
+ *
+ * @return                  0 (success)
+ *                         -1 (failed to read)
+ */
+static int fat_traverse_directory(uint32_t clu)
+{
+	int i, j;
+	uint8_t ord = 0;
+	uint16_t uniname[MAX_NAME_LENGTH] = {0};
+	size_t index = fat_get_index(clu);
+	struct fat_fileinfo *f = (struct fat_fileinfo *)info.root[index]->data;
+	size_t size = info.cluster_size;
+	size_t entries = size / sizeof(struct fat_dentry);
+	size_t namelen = 0;
+	void *data;
+	struct fat_dentry d, lfn;
+
+	if (f->datalen > 0) {
+		pr_debug("Directory %s was already traversed.\n", f->name);
+		return 0;
+	}
+	data = malloc(size);
+	get_cluster(data, clu);
+	do {
+		for (i = 0; i < entries; i++) {
+			namelen = 0;
+			lfn = ((struct fat_dentry *)data)[i];
+			/* Empty entry */
+			if (lfn.dentry.lfn.LDIR_Ord == 0x00)
+				goto out;
+			/* First entry should be checked */
+			if (lfn.dentry.dir.DIR_Attr & ATTR_LONG_FILE_NAME) { /* LFN entry */
+				ord = lfn.dentry.lfn.LDIR_Ord & ~LAST_LONG_ENTRY;
+				if (i + ord >= entries) {
+					clu = fat_concat_cluster(clu, &data, size);
+					size += info.cluster_size;
+					entries = size / sizeof(struct exfat_dentry);
+				}
+				for (j = 0; j < ord; j++) {
+					lfn = ((struct fat_dentry *)data)[i + ord - j - 1];
+					memcpy(uniname + j * LONGNAME_MAX,
+							(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name1,
+							5 * sizeof(uint16_t));
+					memcpy(uniname + j * LONGNAME_MAX + 5,
+							(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name2,
+							6 * sizeof(uint16_t));
+					memcpy(uniname + j * LONGNAME_MAX + 11,
+							(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name3,
+							2 * sizeof(uint16_t));
+					namelen += LONGNAME_MAX;
+				}
+				d = ((struct fat_dentry *)data)[i + ord];
+				i += ord;
+			} else {                                             /* SFN entry */
+				d = ((struct fat_dentry *)data)[i];
+			}
+		}
+		clu = fat_concat_cluster(clu, &data, size);
+		if (!clu)
+			break;
+
+		size += info.cluster_size;
+		entries = size / sizeof(struct exfat_dentry);
+	} while (1);
+out:
+	free(data);
+	return 0;
+}
+
 /*************************************************************************************************/
 /*                                                                                               */
 /* OPERATIONS FUNCTION                                                                           */
@@ -494,6 +569,20 @@ int fat_print_bootsec(void)
 	return ret;
 }
 
+/**
+ * fat_readdir -   function interface to read a directory
+ * @dir:           directory entry list (Output)
+ * @count:         Allocated space in @dir
+ * @clu:           Directory cluster index
+ *
+ * @return         >= 0 (Number of entry)
+ *                  < 0 (Number of entry can't read)
+ */
+int fat_readdir(struct directory *dir, size_t count, uint32_t clu)
+{
+	fat_traverse_directory(clu);
+
+}
 /**
  * fat_set_fat_entry -  Set FAT Entry to any cluster
  * @index:              index of the cluster want to check
