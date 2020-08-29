@@ -22,6 +22,7 @@ static int fat_check_dchain(uint32_t);
 static int fat_get_index(uint32_t);
 static int fat_traverse_directory(uint32_t);
 /* File function prototype */
+static void fat_create_fileinfo(node2_t *, uint32_t, struct fat_dentry *, uint16_t *, size_t);
 static void fat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
 /* Operations function prototype */
@@ -509,6 +510,7 @@ static int fat_traverse_directory(uint32_t clu)
 			} else {                                             /* SFN entry */
 				d = ((struct fat_dentry *)data)[i];
 			}
+			fat_create_fileinfo(info.root[index], clu, &d, uniname, namelen);
 		}
 		clu = fat_concat_cluster(clu, &data, size);
 		if (!clu)
@@ -527,6 +529,58 @@ out:
 /* FILE FUNCTION                                                                                 */
 /*                                                                                               */
 /*************************************************************************************************/
+/**
+ * fat_create_file_entry - Create file infomarion
+ * @head:       Directory chain head
+ * @clu:        parent Directory cluster index
+ * @file:       file dentry
+ * @uniname:    Long File name
+ * @namelen:    Long File name length
+ */
+static void fat_create_fileinfo(node2_t *head, uint32_t clu,
+		struct fat_dentry *file, uint16_t *uniname, size_t namelen)
+{
+	int index, next_clu = 0;
+	struct fat_fileinfo *f;
+
+	next_clu |= (file->dentry.dir.DIR_FstClusHI << 16) | file->dentry.dir.DIR_FstClusLO;
+	f = malloc(sizeof(struct fat_fileinfo));
+	strncpy((char *)f->name, (char *)file->dentry.dir.DIR_Name, 11);
+	f->uniname = malloc(namelen * UTF8_MAX_CHARSIZE + 1);
+	memset(f->uniname, '\0', namelen * UTF8_MAX_CHARSIZE + 1);
+	fat_convert_uniname(uniname, namelen, f->uniname);
+
+	f->namelen = strlen((char *)f->uniname);
+	f->datalen = file->dentry.dir.DIR_FileSize;
+	f->attr = file->dentry.dir.DIR_Attr;
+
+	fat_convert_unixtime(&f->ctime, file->dentry.dir.DIR_CrtDate,
+			file->dentry.dir.DIR_CrtTime,
+			file->dentry.dir.DIR_CrtTimeTenth);
+	fat_convert_unixtime(&f->mtime, file->dentry.dir.DIR_WrtDate,
+			file->dentry.dir.DIR_WrtTime,
+			0);
+	fat_convert_unixtime(&f->atime, file->dentry.dir.DIR_LstAccDate,
+			0,
+			0);
+	append_node2(head, next_clu, f);
+	 ((struct exfat_fileinfo *)(head->data))->datalen++;
+
+	/* If this entry is Directory, prepare to create next chain */
+	if ((f->attr & ATTR_DIRECTORY) && (!fat_check_dchain(next_clu))) {
+		struct fat_fileinfo *d = malloc(sizeof(struct fat_fileinfo));
+		strncpy((char *)d->name, (char *)f->name, 11);
+		d->uniname = malloc(f->namelen + 1);
+		strncpy((char *)d->uniname, (char *)f->uniname, f->namelen + 1);
+		d->namelen = namelen;
+		d->datalen = 0;
+		d->attr = file->dentry.dir.DIR_Attr;
+
+		index = fat_get_index(next_clu);
+		info.root[index] = init_node2(next_clu, head);
+	}
+}
+
 /**
  * fat_convert_uniname       function to get filename
  * @uniname:                 filename dentry in UTF-16
