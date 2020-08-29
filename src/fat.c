@@ -463,7 +463,7 @@ static int fat_get_index(uint32_t clu)
 static int fat_traverse_directory(uint32_t clu)
 {
 	int i, j;
-	uint8_t ord = 0;
+	uint8_t ord = 0, attr = 0;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	size_t index = fat_get_index(clu);
 	struct fat_fileinfo *f = (struct fat_fileinfo *)info.root[index]->data;
@@ -482,35 +482,40 @@ static int fat_traverse_directory(uint32_t clu)
 	do {
 		for (i = 0; i < entries; i++) {
 			namelen = 0;
-			lfn = ((struct fat_dentry *)data)[i];
+			d = ((struct fat_dentry *)data)[i];
+			attr = d.dentry.lfn.LDIR_Attr;
+			ord = d.dentry.lfn.LDIR_Ord;
 			/* Empty entry */
-			if (lfn.dentry.lfn.LDIR_Ord == 0x00)
+			if (ord == 0x00)
 				goto out;
 			/* First entry should be checked */
-			if (lfn.dentry.dir.DIR_Attr & ATTR_LONG_FILE_NAME) { /* LFN entry */
-				ord = lfn.dentry.lfn.LDIR_Ord & ~LAST_LONG_ENTRY;
-				if (i + ord >= entries) {
-					clu = fat_concat_cluster(clu, &data, size);
-					size += info.cluster_size;
-					entries = size / sizeof(struct exfat_dentry);
-				}
-				for (j = 0; j < ord; j++) {
-					lfn = ((struct fat_dentry *)data)[i + ord - j - 1];
-					memcpy(uniname + j * LONGNAME_MAX,
-							(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name1,
-							5 * sizeof(uint16_t));
-					memcpy(uniname + j * LONGNAME_MAX + 5,
-							(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name2,
-							6 * sizeof(uint16_t));
-					memcpy(uniname + j * LONGNAME_MAX + 11,
-							(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name3,
-							2 * sizeof(uint16_t));
-					namelen += LONGNAME_MAX;
-				}
-				d = ((struct fat_dentry *)data)[i + ord];
-				i += ord;
-			} else {                                             /* SFN entry */
-				d = ((struct fat_dentry *)data)[i];
+			switch (attr) {
+				case ATTR_LONG_FILE_NAME:
+					ord &= ~LAST_LONG_ENTRY;
+					if (i + ord >= entries) {
+						clu = fat_concat_cluster(clu, &data, size);
+						size += info.cluster_size;
+						entries = size / sizeof(struct exfat_dentry);
+					}
+					for (j = 0; j < ord; j++) {
+						lfn = ((struct fat_dentry *)data)[i + ord - j - 1];
+						memcpy(uniname + j * LONGNAME_MAX,
+								(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name1,
+								5 * sizeof(uint16_t));
+						memcpy(uniname + j * LONGNAME_MAX + 5,
+								(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name2,
+								6 * sizeof(uint16_t));
+						memcpy(uniname + j * LONGNAME_MAX + 11,
+								(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name3,
+								2 * sizeof(uint16_t));
+						namelen += LONGNAME_MAX;
+					}
+					d = ((struct fat_dentry *)data)[i + ord];
+					i += ord;
+					break;
+				default:
+					d = ((struct fat_dentry *)data)[i];
+					break;
 			}
 			fat_create_fileinfo(info.root[index], clu, &d, uniname, namelen);
 		}
