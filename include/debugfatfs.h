@@ -148,6 +148,17 @@ struct directory {
 
 #define DIRECTORY_FILES		1024
 
+struct fat_fileinfo {
+	unsigned char name[11];
+	unsigned char *uniname;
+	size_t namelen;
+	size_t datalen;
+	uint16_t attr;
+	struct tm ctime;
+	struct tm atime;
+	struct tm mtime;
+};
+
 struct exfat_fileinfo {
 	unsigned char *name;
 	size_t namelen;

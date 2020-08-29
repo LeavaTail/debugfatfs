@@ -76,6 +76,7 @@ static uint32_t fat_concat_cluster(uint32_t clu, void **data, size_t size)
 int fat_check_filesystem(struct pseudo_bootsec *boot)
 {
 	struct fat_bootsec *b = (struct fat_bootsec *)boot;
+	struct fat_fileinfo *f;
 	uint16_t RootDirSectors = ((b->BPB_RootEntCnt * 32) +
 			(b->BPB_BytesPerSec - 1)) / b->BPB_BytesPerSec;
 	uint32_t FATSz;
@@ -114,6 +115,13 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 	if (info.fstype == FAT32_FILESYSTEM)
 		info.root_offset = b->reserved_info.fat32_reserved_info.BPB_RootClus;
 
+	f = malloc(sizeof(struct fat_fileinfo));
+	strncpy((char *)f->name, "/", strlen("/") + 1);
+	f->uniname = NULL;
+	f->namelen = 1;
+	f->datalen = 0;
+	f->attr = ATTR_DIRECTORY;
+	info.root[0] = init_node2(info.root_offset, f);
 	info.ops = &fat_ops;
 	return 1;
 }
