@@ -14,10 +14,10 @@
  * Program Name, version, author.
  * displayed when 'usage' and 'version'
  */
-#define PROGRAM_NAME	"debugfatfs"
-#define PROGRAM_VERSION	"0.1"
-#define PROGRAM_AUTHOR	"LeavaTail"
-#define COPYRIGHT_YEAR	"2020"
+#define PROGRAM_NAME     "debugfatfs"
+#define PROGRAM_VERSION  "0.1"
+#define PROGRAM_AUTHOR   "LeavaTail"
+#define COPYRIGHT_YEAR   "2020"
 
 /**
  * Debug code
@@ -29,68 +29,68 @@ extern FILE *output;
 #define PRINT_INFO     3
 #define PRINT_DEBUG    4
 
-#define print(level, fmt, ...)								\
-	do {													\
-		if (print_level >= level) {							\
-			if (level == PRINT_DEBUG)						\
-			fprintf( output, "(%s:%u): " fmt,				\
-					__func__, __LINE__, ##__VA_ARGS__);		\
-			else 											\
-			fprintf( output, "" fmt, ##__VA_ARGS__); 		\
-		}													\
+#define print(level, fmt, ...) \
+	do { \
+		if (print_level >= level) { \
+			if (level == PRINT_DEBUG) \
+			fprintf( output, "(%s:%u): " fmt, \
+					__func__, __LINE__, ##__VA_ARGS__); \
+			else \
+			fprintf( output, "" fmt, ##__VA_ARGS__); \
+		} \
 	} while (0) \
 
-#define pr_err(fmt, ...)  print(PRINT_ERR, fmt, ##__VA_ARGS__)
+#define pr_err(fmt, ...)   print(PRINT_ERR, fmt, ##__VA_ARGS__)
 #define pr_warn(fmt, ...)  print(PRINT_WARNING, fmt, ##__VA_ARGS__)
 #define pr_info(fmt, ...)  print(PRINT_INFO, fmt, ##__VA_ARGS__)
-#define pr_debug(fmt, ...)  print(PRINT_DEBUG, fmt, ##__VA_ARGS__)
-#define pr_msg(fmt, ...)  fprintf(output, fmt, ##__VA_ARGS__)
+#define pr_debug(fmt, ...) print(PRINT_DEBUG, fmt, ##__VA_ARGS__)
+#define pr_msg(fmt, ...)   fprintf(output, fmt, ##__VA_ARGS__)
 
-#define SECSIZE 512
-#define DENTRY_LISTSIZE 1024
-#define PATHNAME_MAX 4096
+#define SECSIZE          512
+#define DENTRY_LISTSIZE  1024
+#define PATHNAME_MAX     4096
 
 /*
  * FAT definition
  */
-#define FAT16_CLUSTERS	4096
-#define FAT32_CLUSTERS	65526
-#define VOLIDSIZE		4
-#define VOLLABSIZE		11
-#define FILSYSTYPESIZE	8
-#define BOOTCODESIZE	448
-#define BOOTSIGNSIZE	2
-#define FATSZ32SIZE		4
-#define EXTFLAGSSIZE	2
-#define FSVERSIZE		2
-#define ROOTCLUSSIZE	4
-#define FSINFOSIZE		2
-#define BKBOOTSECSIZE	2
-#define RESERVEDSIZE	12
-#define BOOTCODE32SIZE	420
-#define FSIRESV1SIZE	480
-#define FSIRESV2SIZE	12
+#define FAT16_CLUSTERS  4096
+#define FAT32_CLUSTERS  65526
+#define VOLIDSIZE       4
+#define VOLLABSIZE      11
+#define FILSYSTYPESIZE  8
+#define BOOTCODESIZE    448
+#define BOOTSIGNSIZE    2
+#define FATSZ32SIZE     4
+#define EXTFLAGSSIZE    2
+#define FSVERSIZE       2
+#define ROOTCLUSSIZE    4
+#define FSINFOSIZE      2
+#define BKBOOTSECSIZE   2
+#define RESERVEDSIZE    12
+#define BOOTCODE32SIZE  420
+#define FSIRESV1SIZE    480
+#define FSIRESV2SIZE    12
 /*
  * exFAT definition
  */
-#define ACTIVEFAT		0x0001
-#define VOLUMEDIRTY		0x0002
-#define MEDIAFAILURE	0x0004
-#define CLEARTOZERO		0x0008
+#define ACTIVEFAT     0x0001
+#define VOLUMEDIRTY   0x0002
+#define MEDIAFAILURE  0x0004
+#define CLEARTOZERO   0x0008
 
-#define EXFAT_FIRST_CLUSTER	2
-#define EXFAT_BADCLUSTER	0xFFFFFFF7
-#define EXFAT_LASTCLUSTER	0xFFFFFFFF
+#define EXFAT_FIRST_CLUSTER  2
+#define EXFAT_BADCLUSTER     0xFFFFFFF7
+#define EXFAT_LASTCLUSTER    0xFFFFFFFF
 
 /*
  * FAT/exFAT definition
  */
-#define JMPBOOTSIZE			3
-#define ORMNAMESIZE			8
-#define VOLUME_LABEL_MAX	11
-#define LONGNAME_MAX		13
-#define ENTRY_NAME_MAX		15
-#define MAX_NAME_LENGTH		255
+#define JMPBOOTSIZE       3
+#define ORMNAMESIZE       8
+#define VOLUME_LABEL_MAX  11
+#define LONGNAME_MAX      13
+#define ENTRY_NAME_MAX    15
+#define MAX_NAME_LENGTH   255
 
 enum FStype
 {
@@ -125,15 +125,15 @@ struct device_info {
 	const struct operations *ops;
 };
 
-#define OPTION_ALL			(1 << 0)
-#define OPTION_CLUSTER		(1 << 2)
-#define OPTION_INTERACTIVE	(1 << 3)
-#define OPTION_OUTPUT		(1 << 4)
-#define OPTION_SECTOR		(1 << 5)
-#define OPTION_UPPER		(1 << 6)
-#define OPTION_SAVE			(1 << 7)
-#define OPTION_LOAD			(1 << 8)
-#define OPTION_READONLY		(1 << 9)
+#define OPTION_ALL          (1 << 0)
+#define OPTION_CLUSTER      (1 << 2)
+#define OPTION_INTERACTIVE  (1 << 3)
+#define OPTION_OUTPUT       (1 << 4)
+#define OPTION_SECTOR       (1 << 5)
+#define OPTION_UPPER        (1 << 6)
+#define OPTION_SAVE         (1 << 7)
+#define OPTION_LOAD         (1 << 8)
+#define OPTION_READONLY     (1 << 9)
 
 struct directory {
 	unsigned char *name;
@@ -146,7 +146,7 @@ struct directory {
 	uint16_t hash;
 };
 
-#define DIRECTORY_FILES		1024
+#define DIRECTORY_FILES  1024
 
 struct fat_fileinfo {
 	unsigned char name[11];
@@ -194,7 +194,7 @@ struct fat_bootsec {
 	union reserved {
 		struct {
 			unsigned char BS_DrvNum;
-			uint8_t  BS_Reserved1;	
+			uint8_t  BS_Reserved1;
 			unsigned char BS_BootSig;
 			unsigned char BS_VolID[VOLIDSIZE];
 			unsigned char BS_VolLab[VOLLABSIZE];
@@ -224,13 +224,13 @@ struct fat_bootsec {
 } __attribute__((packed)) ;
 
 struct fat32_fsinfo {
-  u_int32_t FSI_LeadSig;
-  unsigned char FSI_Reserved1[FSIRESV1SIZE];
-  u_int32_t FSI_StrucSig;
-  u_int32_t FSI_Free_Count;
-  u_int32_t FSI_Nxt_Free;
-  unsigned char FSI_Reserved2[FSIRESV2SIZE];
-  u_int32_t FSI_TrailSig;
+	u_int32_t FSI_LeadSig;
+	unsigned char FSI_Reserved1[FSIRESV1SIZE];
+	u_int32_t FSI_StrucSig;
+	u_int32_t FSI_Free_Count;
+	u_int32_t FSI_Nxt_Free;
+	unsigned char FSI_Reserved2[FSIRESV2SIZE];
+	u_int32_t FSI_TrailSig;
 };
 
 struct exfat_bootsec {
@@ -387,43 +387,43 @@ struct operations {
 };
 
 /* FAT/exFAT File Attributes */
-#define ATTR_READ_ONLY			0x01
-#define ATTR_HIDDEN				0x02
-#define ATTR_SYSTEM				0x04
-#define ATTR_VOLUME_ID			0x08
-#define ATTR_DIRECTORY			0x10
-#define ATTR_ARCHIVE			0x20
-#define ATTR_LONG_FILE_NAME		(ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID)
+#define ATTR_READ_ONLY       0x01
+#define ATTR_HIDDEN          0x02
+#define ATTR_SYSTEM          0x04
+#define ATTR_VOLUME_ID       0x08
+#define ATTR_DIRECTORY       0x10
+#define ATTR_ARCHIVE         0x20
+#define ATTR_LONG_FILE_NAME  (ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID)
 /* FAT dentry type */
-#define LAST_LONG_ENTRY		0x40
+#define LAST_LONG_ENTRY      0x40
 /* exFAT dentry type */
-#define DENTRY_UNUSED		0x00
-#define DENTRY_BITMAP		0x81
-#define DENTRY_UPCASE		0x82
-#define DENTRY_VOLUME		0x83
-#define DENTRY_FILE			0x85
-#define DENTRY_GUID			0xA0
-#define DENTRY_STREAM		0xC0
-#define DENTRY_NAME			0xC1
-#define DENTRY_VENDOR		0xE0
-#define DENTRY_VENDOR_ALLOC	0xE1
+#define DENTRY_UNUSED        0x00
+#define DENTRY_BITMAP        0x81
+#define DENTRY_UPCASE        0x82
+#define DENTRY_VOLUME        0x83
+#define DENTRY_FILE          0x85
+#define DENTRY_GUID          0xA0
+#define DENTRY_STREAM        0xC0
+#define DENTRY_NAME          0xC1
+#define DENTRY_VENDOR        0xE0
+#define DENTRY_VENDOR_ALLOC  0xE1
 
 /* exFAT EntryType */
-#define EXFAT_TYPECODE			0x1F
-#define EXFAT TYPEIMPORTANCE	0x20
-#define EXFAT_CATEGORY			0x40
-#define EXFAT_INUSE				0x80
+#define EXFAT_TYPECODE       0x1F
+#define EXFAT TYPEIMPORTANCE 0x20
+#define EXFAT_CATEGORY       0x40
+#define EXFAT_INUSE          0x80
 
 /* TimeStamp */
-#define FAT_DAY			0
-#define FAT_MONTH		5
-#define FAT_YEAR		9
-#define EXFAT_DSEC		0
-#define EXFAT_MINUTE	5
-#define EXFAT_HOUR		11
-#define EXFAT_DAY		16
-#define EXFAT_MONTH		21
-#define EXFAT_YEAR		25
+#define FAT_DAY      0
+#define FAT_MONTH    5
+#define FAT_YEAR     9
+#define EXFAT_DSEC   0
+#define EXFAT_MINUTE 5
+#define EXFAT_HOUR   11
+#define EXFAT_DAY    16
+#define EXFAT_MONTH  21
+#define EXFAT_YEAR   25
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -439,7 +439,7 @@ struct query {
 	char **select;
 };
 
-#define QUERY_BUFFER_SIZE	36
+#define QUERY_BUFFER_SIZE 36
 
 extern struct device_info info;
 
