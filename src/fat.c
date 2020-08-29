@@ -670,8 +670,32 @@ int fat_print_bootsec(void)
  */
 int fat_readdir(struct directory *dir, size_t count, uint32_t clu)
 {
-	fat_traverse_directory(clu);
+	int i;
+	node2_t *tmp;
+	struct fat_fileinfo *f;
 
+	fat_traverse_directory(clu);
+	i = fat_get_index(clu);
+	tmp = info.root[i];
+
+	for (i = 0; i < count && tmp->next != NULL; i++) {
+		tmp = tmp->next;
+		f = (struct fat_fileinfo *)(tmp->data);
+		dir[i].name = malloc(sizeof(uint32_t) * (f->namelen + 1));
+		strncpy((char *)dir[i].name, (char *)f->uniname, sizeof(uint32_t) * (f->namelen + 1));
+		dir[i].namelen = f->namelen;
+		dir[i].datalen = f->datalen;
+		dir[i].attr = f->attr;
+		dir[i].ctime = f->ctime;
+		dir[i].atime = f->atime;
+		dir[i].mtime = f->mtime;
+	}
+	/* If Dentry remains, Return error */
+	if (tmp->next != NULL) {
+		for (i = 0; tmp->next != NULL; i--, tmp = tmp->next);
+	}
+
+	return i;
 }
 /**
  * fat_set_fat_entry -  Set FAT Entry to any cluster
