@@ -32,8 +32,7 @@ static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, st
 static uint16_t exfat_calculate_checksum(unsigned char *, unsigned char);
 static void exfat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
-static void exfat_convert_unixtime(struct tm *, char *,
-		uint32_t, uint8_t, uint8_t);
+static void exfat_convert_unixtime(struct tm *, uint32_t, uint8_t, uint8_t);
 static int exfat_query_timestamp(struct tm *, uint32_t *, uint8_t *, uint8_t *);
 
 /* Operations function prototype */
@@ -640,13 +639,13 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 	f->attr = file->dentry.file.FileAttributes;
 	f->hash = stream->dentry.stream.NameHash;
 
-	exfat_convert_unixtime(&f->ctime, "Create", file->dentry.file.CreateTimestamp,
+	exfat_convert_unixtime(&f->ctime, file->dentry.file.CreateTimestamp,
 			file->dentry.file.Create10msIncrement,
 			file->dentry.file.CreateUtcOffset);
-	exfat_convert_unixtime(&f->mtime, "Modify", file->dentry.file.LastModifiedTimestamp,
+	exfat_convert_unixtime(&f->mtime, file->dentry.file.LastModifiedTimestamp,
 			file->dentry.file.LastModified10msIncrement,
 			file->dentry.file.LastModifiedUtcOffset);
-	exfat_convert_unixtime(&f->atime, "Access", file->dentry.file.LastAccessedTimestamp,
+	exfat_convert_unixtime(&f->atime, file->dentry.file.LastAccessedTimestamp,
 			0,
 			file->dentry.file.LastAccessdUtcOffset);
 	append_node2(head, next_index, f);
@@ -721,13 +720,11 @@ static uint16_t exfat_calculate_namehash(uint16_t *name, uint8_t len)
 /**
  * exfat_convert_unixname    function to get timestamp in file
  * @t:                       output pointer
- * @str                      additional any messages
  * @time:                    Timestamp Field in File Directory Entry
  * @subsec:                  10msincrement Field in File Directory Entry
  * @tz:                      UtcOffset in File Directory Entry
  */
-static void exfat_convert_unixtime(struct tm *t, char *str,
-		uint32_t time, uint8_t subsec, uint8_t tz)
+static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, uint8_t tz)
 {
 	t->tm_year = (time >> EXFAT_YEAR) & 0x7f;
 	t->tm_mon  = (time >> EXFAT_MONTH) & 0x0f;
