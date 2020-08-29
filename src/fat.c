@@ -492,6 +492,12 @@ static int fat_traverse_directory(uint32_t clu)
 				continue;
 			/* First entry should be checked */
 			switch (attr) {
+				case ATTR_VOLUME_ID:
+					info.vol_length = 11;
+					info.vol_label = calloc(11 + 1, sizeof(unsigned char));
+					memcpy(info.vol_label, d.dentry.dir.DIR_Name,
+							sizeof(unsigned char) * 11);
+					continue;
 				case ATTR_LONG_FILE_NAME:
 					ord &= ~LAST_LONG_ENTRY;
 					if (i + ord >= entries) {
