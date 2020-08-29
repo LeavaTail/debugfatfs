@@ -18,6 +18,8 @@ static uint32_t fat12_get_fat_entry(uint32_t);
 static uint32_t fat16_get_fat_entry(uint32_t);
 static uint32_t fat32_get_fat_entry(uint32_t);
 /* Directory chain function prototype */
+static int fat_check_dchain(uint32_t);
+static int fat_get_index(uint32_t);
 /* File function prototype */
 /* Operations function prototype */
 int fat_print_bootsec(void);
@@ -384,6 +386,57 @@ static uint32_t fat32_get_fat_entry(uint32_t clu)
 	free(fat);
 	return ret;
 }
+
+/*************************************************************************************************/
+/*                                                                                               */
+/* DIRECTORY CHAIN FUNCTION                                                                      */
+/*                                                                                               */
+/*************************************************************************************************/
+/**
+ * fat_check_dchain -   check whether @index has already loaded
+ * @clu:                index of the cluster
+ *
+ * @retrun:        1 (@clu has loaded)
+ *                 0 (@clu hasn't loaded)
+ */
+static int fat_check_dchain(uint32_t clu)
+{
+	int i;
+	for (i = 0; info.root[i] && i < info.root_size; i++) {
+		if (info.root[i]->index == clu)
+			return 1;
+	}
+	return 0;
+}
+
+/**
+ * fat_get_index        get directory chain index by argument
+ * @clu:                index of the cluster
+ *
+ * @return:             directory chain index
+ *                      Start of unused area (if doesn't lookup directory cache)
+ */
+static int fat_get_index(uint32_t clu)
+{
+	int i;
+	for (i = 0; i < info.root_size && info.root[i]; i++) {
+		if (info.root[i]->index == clu)
+			return i;
+	}
+
+	info.root_size += DENTRY_LISTSIZE;
+	node2_t **tmp = realloc(info.root, sizeof(node2_t *) * info.root_size);
+	if (tmp) {
+		info.root = tmp;
+		info.root[i] = NULL;
+	} else {
+		pr_warn("Can't expand directory chain.\n");
+		delete_node2(info.root[--i]);
+	}
+
+	return i;
+}
+
 /*************************************************************************************************/
 /*                                                                                               */
 /* OPERATIONS FUNCTION                                                                           */
