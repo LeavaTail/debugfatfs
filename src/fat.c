@@ -581,7 +581,7 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 			0,
 			0);
 	append_node2(head, next_clu, f);
-	 ((struct exfat_fileinfo *)(head->data))->datalen++;
+	 ((struct fat_fileinfo *)(head->data))->datalen++;
 
 	/* If this entry is Directory, prepare to create next chain */
 	if ((f->attr & ATTR_DIRECTORY) && (!fat_check_dchain(next_clu))) {
