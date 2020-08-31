@@ -562,6 +562,7 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 
 	next_clu |= (file->dentry.dir.DIR_FstClusHI << 16) | file->dentry.dir.DIR_FstClusLO;
 	f = malloc(sizeof(struct fat_fileinfo));
+	memset(f->name, '\0', 12);
 	strncpy((char *)f->name, (char *)file->dentry.dir.DIR_Name, 11);
 	f->uniname = malloc(namelen * UTF8_MAX_CHARSIZE + 1);
 	memset(f->uniname, '\0', namelen * UTF8_MAX_CHARSIZE + 1);
