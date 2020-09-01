@@ -28,6 +28,7 @@ static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
 /* Operations function prototype */
 int fat_print_bootsec(void);
 int fat_print_vollabel(void);
+int fat_lookup(uint32_t, char *);
 int fat_readdir(struct directory *, size_t, uint32_t);
 int fat_clean_dchain(uint32_t);
 int fat_set_fat_entry(uint32_t, uint32_t);
@@ -36,6 +37,7 @@ int fat_get_fat_entry(uint32_t, uint32_t *);
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
 	.info = fat_print_vollabel,
+	.lookup =  fat_lookup,
 	.readdir = fat_readdir,
 	.clean = fat_clean_dchain,
 	.setfat = fat_set_fat_entry,
@@ -687,6 +689,89 @@ int fat_print_vollabel(void)
 	pr_msg("volume Label: ");
 	pr_msg("%s\n", (char *)info.vol_label);
 	return 0;
+}
+
+/**
+ * fat_lookup         - function interface to lookup pathname
+ * @clu:                directory cluster index
+ * @name:               file name
+ *
+ * @return:              cluster index
+ *                       0 (Not found)
+ */
+int fat_lookup(uint32_t clu, char *name)
+{
+	int index, i = 0, depth = 0;
+	bool found = false;
+	char *path[MAX_NAME_LENGTH] = {};
+	char fullpath[PATHNAME_MAX + 1] = {};
+	node2_t *tmp;
+	struct fat_fileinfo *f;
+
+	if (!name) {
+		pr_err("invalid pathname.\n");
+		return -1;
+	}
+
+	/* Absolute path */
+	if (name[0] == '/') {
+		pr_debug("\"%s\" is Absolute path, so change current directory(%u) to root(%u)\n",
+				name, clu, info.root_offset);
+		clu = info.root_offset;
+	}
+
+	/* Separate pathname by slash */
+	strncpy(fullpath, name, PATHNAME_MAX);
+	path[depth] = strtok(fullpath, "/");
+	while (path[depth] != NULL) {
+		if (depth >= MAX_NAME_LENGTH) {
+			pr_warn("Pathname is too depth. (> %d)\n", MAX_NAME_LENGTH);
+			return -1;
+		}
+		path[++depth] = strtok(NULL, "/");
+	};
+
+	for (i = 0; path[i] && i < depth + 1; i++) {
+		pr_debug("Lookup %s to %d\n", path[i], clu);
+		found = false;
+		index = fat_get_index(clu);
+		f = (struct fat_fileinfo *)info.root[index]->data;
+		if ((!info.root[index]) || (f->namelen == 0)) {
+			pr_debug("Directory hasn't load yet, or This Directory doesn't exist in filesystem.\n");
+			fat_traverse_directory(clu);
+			index = fat_get_index(clu);
+			if (!info.root[index]) {
+				pr_warn("This Directory doesn't exist in filesystem.\n");
+				return 0;
+			}
+		}
+
+		tmp = info.root[index];
+		while (tmp->next != NULL) {
+			tmp = tmp->next;
+			f = (struct fat_fileinfo *)tmp->data;
+			if (f->namelen) {
+				if (!strncmp(path[i], (char *)f->uniname, strlen(path[i]))) {
+					clu = tmp->index;
+					found = true;
+					break;
+				}
+			} else {
+				if (!strncmp(path[i], (char *)f->name, strlen(path[i]))) {
+					clu = tmp->index;
+					found = true;
+					break;
+				}
+			}
+		}
+
+		if (!found) {
+			pr_warn("'%s': No such file or directory.\n", name);
+			return 0;
+		}
+	}
+
+	return clu;
 }
 
 /**
