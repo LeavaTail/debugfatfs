@@ -18,6 +18,7 @@ static uint32_t fat12_get_fat_entry(uint32_t);
 static uint32_t fat16_get_fat_entry(uint32_t);
 static uint32_t fat32_get_fat_entry(uint32_t);
 /* Directory chain function prototype */
+static void fat_print_dchain(void);
 static int fat_check_dchain(uint32_t);
 static int fat_get_index(uint32_t);
 static int fat_traverse_directory(uint32_t);
@@ -412,6 +413,29 @@ static uint32_t fat32_get_fat_entry(uint32_t clu)
 /* DIRECTORY CHAIN FUNCTION                                                                      */
 /*                                                                                               */
 /*************************************************************************************************/
+/**
+ * fat_print_dchain - print directory chain
+ */
+static void fat_print_dchain(void)
+{
+	int i;
+	node2_t *tmp;
+	struct fat_fileinfo *f;
+
+	for (i = 0; i < info.root_size && info.root[i]; i++) {
+		tmp = info.root[i];
+		f = (struct fat_fileinfo *)info.root[i]->data;
+		pr_msg("%-16s(%s) [%u] | ", f->name, f->uniname, tmp->index);
+		while (tmp->next != NULL) {
+			tmp = tmp->next;
+			f = (struct fat_fileinfo *)tmp->data;
+			pr_msg("%s(%s) [%u] ", f->name, f->uniname, tmp->index);
+		}
+		pr_msg("\n");
+	}
+	pr_msg("\n");
+}
+
 /**
  * fat_check_dchain -   check whether @index has already loaded
  * @clu:                index of the cluster
