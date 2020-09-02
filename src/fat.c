@@ -31,6 +31,7 @@ int fat_print_bootsec(void);
 int fat_print_vollabel(void);
 int fat_lookup(uint32_t, char *);
 int fat_readdir(struct directory *, size_t, uint32_t);
+int fat_reload_directory(uint32_t);
 int fat_clean_dchain(uint32_t);
 int fat_set_fat_entry(uint32_t, uint32_t);
 int fat_get_fat_entry(uint32_t, uint32_t *);
@@ -40,6 +41,7 @@ static const struct operations fat_ops = {
 	.info = fat_print_vollabel,
 	.lookup =  fat_lookup,
 	.readdir = fat_readdir,
+	.reload = fat_reload_directory,
 	.clean = fat_clean_dchain,
 	.setfat = fat_set_fat_entry,
 	.getfat = fat_get_fat_entry,
@@ -841,6 +843,21 @@ int fat_readdir(struct directory *dir, size_t count, uint32_t clu)
 	}
 
 	return i;
+}
+
+/**
+ * fat_reload_directory - function interface to read directories
+ * @clu                     cluster index
+ */
+int fat_reload_directory(uint32_t clu)
+{
+	int index = fat_get_index(clu);
+	struct fat_fileinfo *f = NULL;
+
+	fat_clean_dchain(index);
+	f = ((struct fat_fileinfo *)(info.root[index])->data);
+	f->datalen = 0;
+	return fat_traverse_directory(clu);
 }
 
 /**
