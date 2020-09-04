@@ -32,9 +32,14 @@ int fat_print_vollabel(void);
 int fat_lookup(uint32_t, char *);
 int fat_readdir(struct directory *, size_t, uint32_t);
 int fat_reload_directory(uint32_t);
+int fat_convert_character(const char *, size_t, char *);
 int fat_clean_dchain(uint32_t);
 int fat_set_fat_entry(uint32_t, uint32_t);
 int fat_get_fat_entry(uint32_t, uint32_t *);
+int fat_alloc_cluster(uint32_t);
+int fat_release_cluster(uint32_t);
+int fat_create(const char *, uint32_t, int);
+int fat_remove(const char *, uint32_t, int);
 
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
@@ -42,9 +47,14 @@ static const struct operations fat_ops = {
 	.lookup =  fat_lookup,
 	.readdir = fat_readdir,
 	.reload = fat_reload_directory,
+	.convert = fat_convert_character,
 	.clean = fat_clean_dchain,
 	.setfat = fat_set_fat_entry,
 	.getfat = fat_get_fat_entry,
+	.alloc = fat_alloc_cluster,
+	.release = fat_release_cluster,
+	.create = fat_create,
+	.remove = fat_remove,
 };
 
 /*************************************************************************************************/
@@ -861,6 +871,21 @@ int fat_reload_directory(uint32_t clu)
 }
 
 /**
+ * fat_convert_character - Convert character by upcase-table
+ * @src:           Target characters in UTF-8
+ * @len:           Target characters length
+ * @dist:          convert result in UTF-8 (Output)
+ *
+ * return:     0  (succeeded in obtaining filesystem)
+ *             -1 (failed)
+ */
+int fat_convert_character(const char *src, size_t len, char *dist)
+{
+	pr_warn("FAT: convert function isn't implemented.\n");
+	return 0;
+}
+
+/**
  * fat_clean_dchain              function to clean opeartions
  * @index:                       directory chain index
  *
@@ -947,3 +972,55 @@ int fat_get_fat_entry(uint32_t clu, uint32_t *entry)
 	return ret;
 }
 
+/**
+ * fat_alloc_cluster   - function to allocate cluster
+ * @index:               cluster index
+ *
+ * @return                0 (success)
+ */
+int fat_alloc_cluster(uint32_t clu)
+{
+	pr_warn("FAT: alloc function isn't implemented.\n");
+	return 0;
+}
+
+/**
+ * fat_release_cluster - function to release cluster
+ * @index:               cluster index
+ *
+ * @return                0 (success)
+ *                       -1 (failed)
+ */
+int fat_release_cluster(uint32_t clu)
+{
+	pr_warn("FAT: release function isn't implemented.\n");
+	return 0;
+}
+
+/**
+ * fat_create   -  function interface to create entry
+ * @name:          Filename in UTF-8
+ * @index:         Current Directory Index
+ * @opt:           create option
+ *
+ * @return        0 (Success)
+ */
+int fat_create(const char *name, uint32_t clu, int opt)
+{
+	pr_warn("FAT: create function isn't implemented.\n");
+	return 0;
+}
+
+/**
+ * fat_remove   -  function interface to remove entry
+ * @name:          Filename in UTF-8
+ * @index:         Current Directory Index
+ * @opt:           create option
+ *
+ * @return        0 (Success)
+ */
+int fat_remove(const char *name, uint32_t clu, int opt)
+{
+	pr_warn("FAT: remove function isn't implemented.\n");
+	return 0;
+}
