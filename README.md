@@ -1,4 +1,6 @@
 # debugfatfs
+![C/C++ CI](https://github.com/LeavaTail/debugfatfs/workflows/C/C++%20CI/badge.svg)
+
 FAT/exFAT file system debugger.
 
 ## Table of Contents
