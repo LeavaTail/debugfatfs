@@ -101,7 +101,7 @@ int get_sector(void *data, off_t index, size_t count)
 {
 	size_t sector_size = info.sector_size;
 
-	pr_debug("Get: Sector from %lx to %lx\n", index , index + (count * sector_size) - 1);
+	pr_debug("Get: Sector from 0x%lx to 0x%lx\n", index , index + (count * sector_size) - 1);
 	if ((pread(info.fd, data, count * sector_size, index)) < 0) {
 		pr_err("read: %s\n", strerror(errno));
 		return -1;
@@ -124,7 +124,7 @@ int set_sector(void *data, off_t index, size_t count)
 {
 	size_t sector_size = info.sector_size;
 
-	pr_debug("Set: Sector from %lx to %lx\n", index , index + (count * sector_size) - 1);
+	pr_debug("Set: Sector from 0x%lx to 0x%lx\n", index, index + (count * sector_size) - 1);
 	if ((pwrite(info.fd, data, count * sector_size, index)) < 0) {
 		pr_err("write: %s\n", strerror(errno));
 		return -1;
@@ -397,7 +397,7 @@ int query_param(const struct query q, void *param, unsigned int def, size_t size
 	pr_msg("%s\n", q.name);
 	for (i = 0; i < q.len; i++)
 		pr_msg("%s\n", q.select[i]);
-	pr_msg("Select (Default %0x): ", def);
+	pr_msg("Select (Default 0x%0x): ", def);
 	fflush(stdout);
 
 	if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))

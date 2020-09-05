@@ -177,17 +177,17 @@ static int fat_validate_bootsec(struct fat_bootsec *b)
 	uint8_t cluster = b->BPB_SecPerClus;
 
 	if (!b->BPB_RevdSecCnt) {
-		pr_debug("invalid reserved sectors: %x\n", b->BPB_RevdSecCnt);
+		pr_debug("invalid reserved sectors: 0x%x\n", b->BPB_RevdSecCnt);
 		ret = 0;
 	}
 
 	if (!b->BPB_NumFATs) {
-		pr_debug("invalid FAT structure: %x\n", b->BPB_NumFATs);
+		pr_debug("invalid FAT structure: 0x%x\n", b->BPB_NumFATs);
 		ret = 0;
 	}
 
 	if (media != 0xf0 && media < 0xF8) {
-		pr_debug("invalid Media value: %x\n", b->BPB_Media);
+		pr_debug("invalid Media value: 0x%x\n", b->BPB_Media);
 		ret = 0;
 	}
 
@@ -218,7 +218,7 @@ static int fat16_print_bootsec(struct fat_bootsec *b)
 
 	pr_msg("%-28s\t: ", "Volume ID");
 	for (i = 0; i < VOLIDSIZE; i++)
-		pr_msg("%x", b->reserved_info.fat16_reserved_info.BS_VolID[i]);
+		pr_msg("0x%x", b->reserved_info.fat16_reserved_info.BS_VolID[i]);
 	pr_msg("\n");
 
 	pr_msg("%-28s\t: ", "Volume Label");
@@ -242,7 +242,7 @@ static int fat32_print_bootsec(struct fat_bootsec *b)
 
 	pr_msg("%-28s\t: ", "Volume ID");
 	for (i = 0; i < VOLIDSIZE; i++)
-		pr_msg("%x", b->reserved_info.fat32_reserved_info.BS_VolID[i]);
+		pr_msg("0x%x", b->reserved_info.fat32_reserved_info.BS_VolID[i]);
 	pr_msg("\n");
 
 	pr_msg("%-28s\t: ", "Volume Label");
@@ -250,13 +250,13 @@ static int fat32_print_bootsec(struct fat_bootsec *b)
 		pr_msg("%c", b->reserved_info.fat32_reserved_info.BS_VolLab[i]);
 	pr_msg("\n");
 
-	pr_msg("%-28s\t: %8x\n", "Sectors Per FAT",
+	pr_msg("%-28s\t: 0x%8x\n", "Sectors Per FAT",
 			b->reserved_info.fat32_reserved_info.BPB_FATSz32);
-	pr_msg("%-28s\t: %8x (sector)\n", "The first sector of the Root",
+	pr_msg("%-28s\t: 0x%8x (sector)\n", "The first sector of the Root",
 			b->reserved_info.fat32_reserved_info.BPB_RootClus);
-	pr_msg("%-28s\t: %8x (sector)\n", "FSINFO sector",
+	pr_msg("%-28s\t: 0x%8x (sector)\n", "FSINFO sector",
 			b->reserved_info.fat32_reserved_info.BPB_FSInfo);
-	pr_msg("%-28s\t: %8x (sector)\n", "Backup Boot sector",
+	pr_msg("%-28s\t: 0x%8x (sector)\n", "Backup Boot sector",
 			b->reserved_info.fat32_reserved_info.BPB_BkBootSec);
 	return 0;
 }

@@ -263,14 +263,14 @@ static int exfat_save_bitmap(uint32_t clu, uint32_t value)
 	byte = clu / CHAR_BIT;
 	offset = clu % CHAR_BIT;
 
-	pr_debug("index %u: allocation bitmap is %x ->", clu, info.alloc_table[byte]);
+	pr_debug("index %u: allocation bitmap is 0x%x ->", clu, info.alloc_table[byte]);
 	mask <<= offset;
 	if (value)
 		info.alloc_table[byte] |= mask;
 	else
 		info.alloc_table[byte] &= mask;
 
-	pr_debug("%x\n", info.alloc_table[byte]);
+	pr_debug("0x%x\n", info.alloc_table[byte]);
 	return 0;
 }
 
@@ -322,7 +322,7 @@ static uint32_t exfat_check_fat_entry(uint32_t clu)
 		pr_debug("cluster: %u is invalid.\n", clu);
 	} else {
 		ret = fat[offset];
-		pr_debug("cluster: %u has chain. next is %x.\n", clu, fat[offset]);
+		pr_debug("cluster: %u has chain. next is 0x%x.\n", clu, fat[offset]);
 	}
 
 	free(fat);
@@ -356,7 +356,7 @@ static uint32_t exfat_update_fat_entry(uint32_t clu, uint32_t entry)
 	fat[offset] = entry;
 
 	set_sector(fat, fat_index, 1);
-	pr_debug("Rewrite Entry(%u) %x to %x.\n", clu, ret, fat[offset]);
+	pr_debug("Rewrite Entry(%u) 0x%x to 0x%x.\n", clu, ret, fat[offset]);
 
 	free(fat);
 	return ret;
@@ -500,7 +500,7 @@ static int exfat_traverse_directory(uint32_t clu)
 				case DENTRY_UNUSED:
 					goto out;
 				case DENTRY_BITMAP:
-					pr_debug("Get: allocation table: cluster %x, size: %lx\n",
+					pr_debug("Get: allocation table: cluster 0x%x, size: 0x%lx\n",
 							d.dentry.bitmap.FirstCluster,
 							d.dentry.bitmap.DataLength);
 					info.alloc_table = malloc(info.cluster_size);
@@ -511,7 +511,7 @@ static int exfat_traverse_directory(uint32_t clu)
 					info.upcase_size = d.dentry.upcase.DataLength;
 					len = (info.cluster_size / info.upcase_size) + 1;
 					info.upcase_table = malloc(info.cluster_size * len);
-					pr_debug("Get: Up-case table: cluster %x, size: %x\n",
+					pr_debug("Get: Up-case table: cluster 0x%x, size: 0x%x\n",
 							d.dentry.upcase.FirstCluster,
 							d.dentry.upcase.DataLength);
 					get_clusters(info.upcase_table, d.dentry.upcase.FirstCluster, len);
@@ -520,7 +520,7 @@ static int exfat_traverse_directory(uint32_t clu)
 					info.vol_length = d.dentry.vol.CharacterCount;
 					if (info.vol_length) {
 						info.vol_label = malloc(sizeof(uint16_t) * info.vol_length);
-						pr_debug("Get: Volume label: size: %x\n",
+						pr_debug("Get: Volume label: size: 0x%x\n",
 								d.dentry.vol.CharacterCount);
 						memcpy(info.vol_label, d.dentry.vol.VolumeLabel,
 								sizeof(uint16_t) * info.vol_length);
@@ -536,7 +536,7 @@ static int exfat_traverse_directory(uint32_t clu)
 
 					next = ((struct exfat_dentry *)data)[i + 1];
 					while ((!(next.EntryType & EXFAT_INUSE)) && (next.EntryType != DENTRY_UNUSED)) {
-						pr_debug("This entry was deleted (%x).\n", next.EntryType);
+						pr_debug("This entry was deleted (0x%x).\n", next.EntryType);
 						if (++i + remaining >= entries) {
 							clu = exfat_concat_cluster(clu, &data, size);
 							size += info.cluster_size;
@@ -551,7 +551,7 @@ static int exfat_traverse_directory(uint32_t clu)
 
 					name = ((struct exfat_dentry *)data)[i + 2];
 					while ((!(name.EntryType & EXFAT_INUSE)) && (name.EntryType != DENTRY_UNUSED)) {
-						pr_debug("This entry was deleted (%x).\n", name.EntryType);
+						pr_debug("This entry was deleted (0x%x).\n", name.EntryType);
 						if (++i + remaining >= entries - 1) {
 							clu = exfat_concat_cluster(clu, &data, size);
 							size += info.cluster_size;
@@ -804,13 +804,13 @@ int exfat_print_bootsec(void)
 	struct exfat_bootsec *b = malloc(sizeof(struct exfat_bootsec));
 
 	exfat_load_bootsec(b);
-	pr_msg("%-28s\t: %8lx (sector)\n", "media-relative sector offset",
+	pr_msg("%-28s\t: 0x%8lx (sector)\n", "media-relative sector offset",
 			b->PartitionOffset);
-	pr_msg("%-28s\t: %8x (sector)\n", "Offset of the First FAT",
+	pr_msg("%-28s\t: 0x%8x (sector)\n", "Offset of the First FAT",
 			b->FatOffset);
 	pr_msg("%-28s\t: %8u (sector)\n", "Length of FAT table",
 			b->FatLength);
-	pr_msg("%-28s\t: %8x (sector)\n", "Offset of the Cluster Heap",
+	pr_msg("%-28s\t: 0x%8x (sector)\n", "Offset of the Cluster Heap",
 			b->ClusterHeapOffset);
 	pr_msg("%-28s\t: %8u (cluster)\n", "The number of clusters",
 			b->ClusterCount);
