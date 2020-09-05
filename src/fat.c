@@ -21,7 +21,6 @@ static uint32_t fat16_get_fat_entry(uint32_t);
 static uint32_t fat32_get_fat_entry(uint32_t);
 
 /* Directory chain function prototype */
-static void fat_print_dchain(void);
 static int fat_check_dchain(uint32_t);
 static int fat_get_index(uint32_t);
 static int fat_traverse_directory(uint32_t);
@@ -430,6 +429,7 @@ static uint32_t fat32_get_fat_entry(uint32_t clu)
 /* DIRECTORY CHAIN FUNCTION                                                                      */
 /*                                                                                               */
 /*************************************************************************************************/
+#if 0
 /**
  * fat_print_dchain - print directory chain
  */
@@ -452,7 +452,7 @@ static void fat_print_dchain(void)
 	}
 	pr_msg("\n");
 }
-
+#endif
 /**
  * fat_check_dchain -   check whether @index has already loaded
  * @clu:                index of the cluster
@@ -516,7 +516,7 @@ static int fat_traverse_directory(uint32_t clu)
 	size_t entries = size / sizeof(struct fat_dentry);
 	size_t namelen = 0;
 	void *data;
-	struct fat_dentry d, lfn;
+	struct fat_dentry d;
 
 	if (f->datalen > 0) {
 		pr_debug("Directory %s was already traversed.\n", f->name);
@@ -551,7 +551,6 @@ static int fat_traverse_directory(uint32_t clu)
 						entries = size / sizeof(struct exfat_dentry);
 					}
 					for (j = 0; j < ord; j++) {
-						lfn = ((struct fat_dentry *)data)[i + ord - j - 1];
 						memcpy(uniname + j * LONGNAME_MAX,
 								(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name1,
 								5 * sizeof(uint16_t));

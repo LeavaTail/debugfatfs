@@ -11,21 +11,17 @@ static uint32_t exfat_concat_cluster(uint32_t, void **, size_t);
 static int exfat_load_bootsec(struct exfat_bootsec *);
 static void exfat_print_upcase(void);
 static void exfat_print_label(void);
-static int exfat_load_bitmap(uint32_t);
 static int exfat_save_bitmap(uint32_t, uint32_t);
 
 /* FAT-entry function prototype */
-static bool exfat_check_allocated(uint32_t);
 static uint32_t exfat_check_fat_entry(uint32_t);
 static uint32_t exfat_update_fat_entry(uint32_t, uint32_t);
 
 /* Directory chain function prototype */
-static void exfat_print_dchain(void);
 static int exfat_check_dchain(uint32_t);
 static int exfat_get_index(uint32_t);
 static int exfat_get_freed_index(uint32_t *);
 static int exfat_traverse_directory(uint32_t);
-static int exfat_traverse_directories(uint32_t, uint32_t);
 
 /* File function prototype */
 static void exfat_create_fileinfo(node2_t *,
@@ -215,7 +211,7 @@ static void exfat_print_label(void)
 	pr_msg("%s\n", name);
 	free(name);
 }
-
+#if 0
 /**
  * exfat_load_bitmap - function to load allocation table
  * @clu:                          cluster index
@@ -241,7 +237,7 @@ static int exfat_load_bitmap(uint32_t clu)
 	entry = info.alloc_table[byte];
 	return (entry >> offset) & 0x01;
 }
-
+#endif
 /**
  * exfat_save_bitmap - function to save allocation table
  * @clu:                          cluster index
@@ -280,20 +276,6 @@ static int exfat_save_bitmap(uint32_t clu, uint32_t value)
 /* FAT-ENTRY FUNCTION                                                                            */
 /*                                                                                               */
 /*************************************************************************************************/
-/**
- * exfat_check_allocated    Whether or not cluster is allocated
- * @index:         index of the cluster want to check
- *
- * @return         true  (allocated cluster)
- *                 false (not allocated)
- */
-static bool exfat_check_allocated(uint32_t clu)
-{
-	if (exfat_load_bitmap(clu) == 1)
-		return true;
-	return false;
-}
-
 /**
  * exfat_check_fat_entry - Whether or not cluster is continuous
  * @clu:                  index of the cluster want to check
@@ -368,6 +350,7 @@ static uint32_t exfat_update_fat_entry(uint32_t clu, uint32_t entry)
 /* DIRECTORY CHAIN FUNCTION                                                                      */
 /*                                                                                               */
 /*************************************************************************************************/
+#if 0
 /**
  * exfat_print_dchain - print directory chain
  */
@@ -390,7 +373,7 @@ static void exfat_print_dchain(void)
 	}
 	pr_msg("\n");
 }
-
+#endif
 /**
  * exfat_check_dchain - check whether @index has already loaded
  * @clu:                         index of the cluster
@@ -591,25 +574,6 @@ static int exfat_traverse_directory(uint32_t clu)
 	} while (1);
 out:
 	free(data);
-	return 0;
-}
-
-/**
- * exfat_traverse_directories - function to traverse directories
- * @from            cluster index to start search
- * @to              cluster index to end search
- *
- * @return        0 (success)
- *               -1 (failed to read)
- */
-static int exfat_traverse_directories(uint32_t from, uint32_t to)
-{
-	int i;
-
-	for (i = 0; info.root[i] && i < info.root_size; i++) {
-		if ((info.root[i]->index >= from) && (info.root[i]->index <= to))
-			exfat_traverse_directory(info.root[from++]->index);
-	}
 	return 0;
 }
 
