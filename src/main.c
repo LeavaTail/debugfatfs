@@ -44,9 +44,8 @@ static struct option const longopts[] =
 
 /**
  * usage - print out usage.
- * @status: Status code
  */
-static void usage()
+static void usage(void)
 {
 	fprintf(stderr, "Usage: %s [OPTION]... FILE\n", PROGRAM_NAME);
 	fprintf(stderr, "dump FAT/exFAT filesystem information.\n");
@@ -502,7 +501,7 @@ int main(int argc, char *argv[])
 				print_level = PRINT_INFO;
 				break;
 			case GETOPT_HELP_CHAR:
-				usage(EXIT_SUCCESS);
+				usage();
 				exit(EXIT_SUCCESS);
 			case GETOPT_VERSION_CHAR:
 				version(PROGRAM_NAME, PROGRAM_VERSION, PROGRAM_AUTHOR);
