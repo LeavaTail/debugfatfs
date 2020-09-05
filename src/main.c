@@ -77,8 +77,7 @@ static void usage(void)
  * @version:      program version
  * @author:       program authoer
  */
-static void version(const char *command_name, const char *version,
-		const char *author)
+static void version(const char *command_name, const char *version, const char *author)
 {
 	fprintf(stdout, "%s %s\n", command_name, version);
 	fprintf(stdout, "\n");

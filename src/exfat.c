@@ -28,7 +28,8 @@ static int exfat_traverse_directory(uint32_t);
 static int exfat_traverse_directories(uint32_t, uint32_t);
 
 /* File function prototype */
-static void exfat_create_fileinfo(node2_t *, uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
+static void exfat_create_fileinfo(node2_t *,
+		uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
 static uint16_t exfat_calculate_checksum(unsigned char *, unsigned char);
 static void exfat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
@@ -566,8 +567,11 @@ static int exfat_traverse_directory(uint32_t clu)
 
 					name_len = next.dentry.stream.NameLength;
 					for (j = 0; j < remaining - 1; j++) {
-						name_len = MIN(ENTRY_NAME_MAX, next.dentry.stream.NameLength - j * ENTRY_NAME_MAX);
-						memcpy(uniname + j * ENTRY_NAME_MAX, (((struct exfat_dentry *)data)[i + 2 + j]).dentry.name.FileName, name_len * sizeof(uint16_t));
+						name_len = MIN(ENTRY_NAME_MAX,
+								next.dentry.stream.NameLength - j * ENTRY_NAME_MAX);
+						memcpy(uniname + j * ENTRY_NAME_MAX,
+								(((struct exfat_dentry *)data)[i + 2 + j]).dentry.name.FileName,
+								name_len * sizeof(uint16_t));
 					}
 					exfat_create_fileinfo(info.root[index], clu,
 							&d, &next, uniname);
@@ -1180,7 +1184,8 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 		case DENTRY_NAME:
 			for (namei = 0; namei < count - 1; namei++) {
 				name_len = MIN(ENTRY_NAME_MAX, len - namei * ENTRY_NAME_MAX);
-				memcpy(d->dentry.name.FileName, uniname + namei * name_len, name_len * sizeof(uint16_t));
+				memcpy(d->dentry.name.FileName,
+						uniname + namei * name_len, name_len * sizeof(uint16_t));
 				d = ((struct exfat_dentry *)data) + lasti + namei;
 				d->EntryType = DENTRY_NAME;
 			}
@@ -1190,7 +1195,8 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	}
 	if (attr) {
 		d = ((struct exfat_dentry *)data) + i;
-		d->dentry.file.SetChecksum = exfat_calculate_checksum(data+ i * sizeof(struct exfat_dentry), count);
+		d->dentry.file.SetChecksum =
+			exfat_calculate_checksum(data+ i * sizeof(struct exfat_dentry), count);
 	}
 	set_cluster(data, clu);
 	free(data);
