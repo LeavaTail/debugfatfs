@@ -4,12 +4,14 @@
 
 /* Generic function prototype */
 static uint32_t fat_concat_cluster(uint32_t, void **, size_t);
+
 /* Boot sector function prototype */
 static int fat_load_bootsec(struct fat_bootsec *);
 static int fat_validate_bootsec(struct fat_bootsec *);
 static int fat16_print_bootsec(struct fat_bootsec *);
 static int fat32_print_bootsec(struct fat_bootsec *);
 static int fat32_print_fsinfo(struct fat32_fsinfo *);
+
 /* FAT-entry function prototype */
 static int fat12_set_fat_entry(uint32_t, uint32_t);
 static int fat16_set_fat_entry(uint32_t, uint32_t);
@@ -17,15 +19,18 @@ static int fat32_set_fat_entry(uint32_t, uint32_t);
 static uint32_t fat12_get_fat_entry(uint32_t);
 static uint32_t fat16_get_fat_entry(uint32_t);
 static uint32_t fat32_get_fat_entry(uint32_t);
+
 /* Directory chain function prototype */
 static void fat_print_dchain(void);
 static int fat_check_dchain(uint32_t);
 static int fat_get_index(uint32_t);
 static int fat_traverse_directory(uint32_t);
+
 /* File function prototype */
 static void fat_create_fileinfo(node2_t *, uint32_t, struct fat_dentry *, uint16_t *, size_t);
 static void fat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
+
 /* Operations function prototype */
 int fat_print_bootsec(void);
 int fat_print_vollabel(void);

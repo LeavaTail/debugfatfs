@@ -231,7 +231,7 @@ void hexdump(FILE *out, void *data, size_t size)
 		putchar(' ');
 		for (byte = 0; byte < 0x10; byte++) {
 			char ch = ((unsigned char *)data)[line * 0x10 + byte];
-			pr_msg("%c", isprint(ch)? ch: '.');
+			pr_msg("%c", isprint(ch) ? ch : '.');
 		}
 		pr_msg("\n");
 	}
@@ -406,32 +406,31 @@ int query_param(const struct query q, void *param, unsigned int def, size_t size
 		case 1:
 			if (buf[0] == '\n')
 				*(uint8_t *)param = def;
-			else 
+			else
 				sscanf(buf, "%02hhx", (uint8_t *)param);
 			break;
 		case 2:
 			if (buf[0] == '\n')
 				*(uint16_t *)param = def;
-			else 
+			else
 				sscanf(buf, "%04hx", (uint16_t *)param);
 			break;
 		case 4:
 			if (buf[0] == '\n')
 				*(uint32_t *)param = def;
-			else 
+			else
 				sscanf(buf, "%08x", (uint32_t *)param);
 			break;
 		case 8:
 			if (buf[0] == '\n')
 				*(uint64_t *)param = def;
-			else 
+			else
 				sscanf(buf, "%016lx", (uint64_t *)param);
 			break;
 		default:
 			pr_warn("size should be param length.\n");
 			return -1;
 	}
-	
 	return 0;
 }
 
