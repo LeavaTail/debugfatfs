@@ -24,3 +24,8 @@ debugfatfs
 src/.deps
 src/.dirstamp
 src/*.o
+
+# tests
+*.img
+test-driver
+test-suite.log

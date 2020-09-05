@@ -1,6 +1,11 @@
 bin_PROGRAMS = debugfatfs
 debugfatfs_SOURCES = src/main.c src/nls.c src/shell.c src/fat.c src/exfat.c
 man_MANS = debugfatfs.8
+TESTS = tests/00_init.sh \
+        tests/01_simple_check_fat.sh \
+        tests/02_simple_check_exfat.sh \
+        tests/03_simple_check_other.sh
+
 EXTRA_DIST = include
 
 AM_CPPFLAGS = -I$(top_srcdir)/include
