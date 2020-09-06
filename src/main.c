@@ -387,48 +387,52 @@ int print_cluster(uint32_t index)
  * @return        0 (success)
  *               -1 (failed)
  */
-int query_param(const struct query q, void *param, unsigned int def, size_t size)
+int query_param(const struct query q, void *param, unsigned int def, size_t size, int quiet)
 {
 	int i;
 	char buf[QUERY_BUFFER_SIZE] = {};
 
-	pr_msg("%s\n", q.name);
-	for (i = 0; i < q.len; i++)
-		pr_msg("%s\n", q.select[i]);
-	pr_msg("Select (Default 0x%0x): ", def);
-	fflush(stdout);
+	if (!quiet) {
+		pr_msg("%s\n", q.name);
+		for (i = 0; i < q.len; i++)
+			pr_msg("%s\n", q.select[i]);
+		pr_msg("Select (Default 0x%0x): ", def);
+		fflush(stdout);
 
-	if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
-		return -1;
+		if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
+			return -1;
 
-	pr_msg("\n");
+		pr_msg("\n");
+	}
+
 	switch (size) {
 		case 1:
-			if (buf[0] == '\n')
+			if (quiet || buf[0] == '\n')
 				*(uint8_t *)param = def;
 			else
 				sscanf(buf, "%02hhx", (uint8_t *)param);
 			break;
 		case 2:
-			if (buf[0] == '\n')
+			if (quiet || buf[0] == '\n')
 				*(uint16_t *)param = def;
 			else
 				sscanf(buf, "%04hx", (uint16_t *)param);
 			break;
 		case 4:
-			if (buf[0] == '\n')
+			if (quiet || buf[0] == '\n')
 				*(uint32_t *)param = def;
 			else
 				sscanf(buf, "%08x", (uint32_t *)param);
 			break;
 		case 8:
-			if (buf[0] == '\n')
+			if (quiet || buf[0] == '\n')
 				*(uint64_t *)param = def;
 			else
 				sscanf(buf, "%016lx", (uint64_t *)param);
 			break;
 		default:
-			memcpy(param, buf, size);
+			if (!quiet)
+				memcpy(param, buf, size);
 			break;
 	}
 	return 0;
