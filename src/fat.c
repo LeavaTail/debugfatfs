@@ -254,13 +254,13 @@ static int fat32_print_bootsec(struct fat_bootsec *b)
 		pr_msg("%c", b->reserved_info.fat32_reserved_info.BS_VolLab[i]);
 	pr_msg("\n");
 
-	pr_msg("%-28s\t: 0x%8x\n", "Sectors Per FAT",
+	pr_msg("%-28s\t: 0x%08x\n", "Sectors Per FAT",
 			b->reserved_info.fat32_reserved_info.BPB_FATSz32);
-	pr_msg("%-28s\t: 0x%8x (sector)\n", "The first sector of the Root",
+	pr_msg("%-28s\t: 0x%08x (sector)\n", "The first sector of the Root",
 			b->reserved_info.fat32_reserved_info.BPB_RootClus);
-	pr_msg("%-28s\t: 0x%8x (sector)\n", "FSINFO sector",
+	pr_msg("%-28s\t: 0x%08x (sector)\n", "FSINFO sector",
 			b->reserved_info.fat32_reserved_info.BPB_FSInfo);
-	pr_msg("%-28s\t: 0x%8x (sector)\n", "Backup Boot sector",
+	pr_msg("%-28s\t: 0x%08x (sector)\n", "Backup Boot sector",
 			b->reserved_info.fat32_reserved_info.BPB_BkBootSec);
 	return 0;
 }
@@ -276,8 +276,8 @@ static int fat32_print_fsinfo(struct fat32_fsinfo *fsi)
 			(fsi->FSI_TrailSig != 0xAA550000))
 		pr_warn("FSinfo is expected specific sigunature, But this is difference.\n");
 
-	pr_msg("%-28s\t: %8u (cluster)\n", "free cluster count", fsi->FSI_Free_Count);
-	pr_msg("%-28s\t: %8u (cluster)\n", "first available cluster", fsi->FSI_Nxt_Free);
+	pr_msg("%-28s\t: %10u (cluster)\n", "free cluster count", fsi->FSI_Free_Count);
+	pr_msg("%-28s\t: %10u (cluster)\n", "first available cluster", fsi->FSI_Nxt_Free);
 	return 0;
 }
 
@@ -687,12 +687,12 @@ int fat_print_bootsec(void)
 	struct fat_bootsec *b = malloc(sizeof(struct fat_bootsec));
 
 	fat_load_bootsec(b);
-	pr_msg("%-28s\t: %8u (byte)\n", "Bytes per Sector", b->BPB_BytesPerSec);
-	pr_msg("%-28s\t: %8u (sector)\n", "Sectors per cluster", b->BPB_SecPerClus);
-	pr_msg("%-28s\t: %8u (sector)\n", "Reserved Sector", b->BPB_RevdSecCnt);
-	pr_msg("%-28s\t: %8u\n", "FAT count", b->BPB_NumFATs);
-	pr_msg("%-28s\t: %8u\n", "Root Directory entry count", b->BPB_RootEntCnt);
-	pr_msg("%-28s\t: %8u (sector)\n", "Sector count in Volume", b->BPB_TotSec16);
+	pr_msg("%-28s\t: %10u (byte)\n", "Bytes per Sector", b->BPB_BytesPerSec);
+	pr_msg("%-28s\t: %10u (sector)\n", "Sectors per cluster", b->BPB_SecPerClus);
+	pr_msg("%-28s\t: %10u (sector)\n", "Reserved Sector", b->BPB_RevdSecCnt);
+	pr_msg("%-28s\t: %10u\n", "FAT count", b->BPB_NumFATs);
+	pr_msg("%-28s\t: %10u\n", "Root Directory entry count", b->BPB_RootEntCnt);
+	pr_msg("%-28s\t: %10u (sector)\n", "Sector count in Volume", b->BPB_TotSec16);
 
 	switch (info.fstype) {
 		case FAT12_FILESYSTEM:
