@@ -53,15 +53,19 @@ $ sudo debugfatfs -i /dev/sdc1
 Welcome to debugfatfs 0.1 (Interactive Mode)
 
 /> ls
--HSD-    32768 2020-09-04 15:10:24 System Volume Information
----D-    32768 2020-09-04 15:13:37 新しいフォルダー
----D-    32768 2020-09-04 15:14:06 NEW_DIRECTORY
----D-    32768 2020-09-04 15:14:23 Directory
+-HSD-    32768 2020-09-04 15:10:24 System Volume Information 
+---D-    32768 2020-09-04 15:13:37 新しいフォルダー 
+---D-    32768 2020-09-04 15:14:06 NEW_DIRECTORY 
+---D-    32768 2020-09-04 15:14:23 Directory 
 
-/> cd DIRECTORY
-/DIRECTORY> ls
+/> cd Directory
+/Directory> ls
 
-/DIRECTORY> exit
+/Directory> create NEW_TEXT.TXT
+/Directory> ls
+----A        0 2020-09-06 19:20:23 NEW_TEXT.TXT 
+
+/Directory> exit
 Goodbye!
 ```
 
