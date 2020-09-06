@@ -701,6 +701,23 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
 	t->tm_min  = (time >> EXFAT_MINUTE) & 0x3f;
 	t->tm_sec  = (time & 0x1f) * 2;
 	t->tm_sec += subsec / 100;
+	/* OffsetValid */
+	if (tz & 0x80) {
+		int ex_min = 0;
+		int ex_hour = 0;
+		char offset = tz & 0x7f;
+		/* negative value */
+		if (offset & 0x40) {
+			offset = ((~offset) + 1) & 0x7f;
+			ex_min = ((offset % 4) * 15) * -1;
+			ex_hour = (offset / 4) * -1;
+		} else {
+			ex_min = (offset % 4) * 15;
+			ex_hour = offset / 4;
+		}
+		t->tm_hour += ex_hour;
+		t->tm_min  += ex_min;
+	}
 }
 
 /**
