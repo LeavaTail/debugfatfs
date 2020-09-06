@@ -6,6 +6,7 @@ FAT/exFAT file system debugger.
 ## Table of Contents
 - [Description](#Description)
 - [Example](#Example)
+- [Usage](#Usage)
 - [Requirement](#Requirement)
 - [Install](#Install)
 - [Authors](#Authors)
@@ -70,7 +71,19 @@ Goodbye!
 ```
 
 ## Usage
-Interactive mode can these command.
+debugfatfs support support these optoin. (Please look at man-page)
+* **-a**, **--all** --- Trverse all directories
+* **-b**, **--byte**=*offset* --- dump the any byte after dump filesystem information
+* **-c**, **--cluster**=*index* --- dump the cluster index after dump filesystem information
+* **-i**, **--interactive** --- prompt the user operate filesystem
+* **-l**, **--load**=*file* --- Load Main boot region and FAT region from file
+* **-o**, **--output**=*file* --- send output to file rather than stdout
+* **-r**, **--ro** --- read only mode
+* **-s**, **--save**=*file* --- Save Main boot region and FAT region in file
+* **-u**, **--upper** --- convert into uppercase latter by up-case Table
+* **-v**, **--verbose** --- Version mode
+
+And, debugfatfs with interactive mode support these command.
 * **ls** --- list current directory contents
 * **cd** *path* --- change directory
 * **alloc** *cluster* --- allocate cluster
