@@ -428,8 +428,8 @@ int query_param(const struct query q, void *param, unsigned int def, size_t size
 				sscanf(buf, "%016lx", (uint64_t *)param);
 			break;
 		default:
-			pr_warn("size should be param length.\n");
-			return -1;
+			memcpy(param, buf, size);
+			break;
 	}
 	return 0;
 }

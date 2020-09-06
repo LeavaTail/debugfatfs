@@ -80,6 +80,7 @@ static const struct query create_prompt[] = {
 	{"Valid Data Length", 0, NULL},
 	{"First Cluster", 0, NULL},
 	{"Data Length", 0, NULL},
+	{"Anything", 0, NULL},
 };
 
 /*************************************************************************************************/
@@ -1223,6 +1224,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			}
 			break;
 		default:
+			query_param(create_prompt[10], d, 0x00, 32);
 			break;
 	}
 	if (attr) {
