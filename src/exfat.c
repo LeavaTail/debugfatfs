@@ -31,6 +31,7 @@ static void exfat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
 static void exfat_convert_unixtime(struct tm *, uint32_t, uint8_t, uint8_t);
 static int exfat_query_timestamp(struct tm *, uint32_t *, uint8_t *);
+static int exfat_query_timezone(int, uint8_t *);
 
 /* Operations function prototype */
 int exfat_print_bootsec(void);
@@ -773,6 +774,47 @@ static int exfat_query_timestamp(struct tm *t,
 	return 0;
 }
 
+/**
+ * exfat_query_timezone  - Prompt user for timestamp
+ * @diff:                  difference localtime and UTCtime
+ * @tz:                    offset from UTC Field (Output)
+ *
+ * @return        0 (Success)
+ */
+static int exfat_query_timezone(int diff, uint8_t *tz)
+{
+	char buf[QUERY_BUFFER_SIZE] = {};
+	char op = (*tz & 0x40) ? '-' : '+';
+	char min = 0, hour = 0;
+
+	pr_msg("Timezone\n");
+	pr_msg("Select (Default: %c%02d:%02d): ",
+			op,
+			diff / 60,
+			diff % 60);
+	fflush(stdout);
+
+	if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
+		return -1;
+
+	if (buf[0] != '\n') {
+		sscanf(buf, "%c%02hhd%02hhd",
+				&op,
+				&hour,
+				&min);
+		*tz = hour * 4 + min / 15;
+
+		if (op == '-') {
+			*tz = ~(*tz) + 1;
+		} else if (op != '+' && op != ' ') {
+			pr_debug("Invalid operation. you can use only ('+' or '-').\n");
+			*tz = 0;
+		}
+	}
+
+	pr_msg("\n");
+	return 0;
+}
 /*************************************************************************************************/
 /*                                                                                               */
 /* OPERATIONS FUNCTION                                                                           */
@@ -1136,6 +1178,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			query_param(create_prompt[2], &(d->dentry.file.SecondaryCount), count, 1);
 			query_param(create_prompt[3], &(d->dentry.file.Reserved1), 0x0, 2);
 			exfat_query_timestamp(local, &stamp, &subsec);
+			exfat_query_timezone(diff, &tz);
 			d->dentry.file.CreateTimestamp = stamp;
 			d->dentry.file.LastAccessedTimestamp = stamp;
 			d->dentry.file.LastModifiedTimestamp = stamp;
