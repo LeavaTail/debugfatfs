@@ -713,10 +713,12 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
  * @return        0 (Success)
  */
 static int exfat_query_timestamp(struct tm *t,
-		uint32_t *time, uint8_t *subsec, uint8_t *tz)
+		uint32_t *timestamp, uint8_t *subsec, uint8_t *tz)
 {
 	char buf[QUERY_BUFFER_SIZE] = {};
-	pr_msg("Timestamp\n");
+	time_t local = mktime(t);
+	double diff = difftime(time(NULL), local);
+	pr_msg("Timestamp (UTC)\n");
 	pr_msg("Select (Default: %d-%02d-%02d %02d:%02d:%02d.%02d): ",
 			t->tm_year + 1900,
 			t->tm_mon + 1,
@@ -745,13 +747,14 @@ static int exfat_query_timestamp(struct tm *t,
 
 	pr_msg("\n");
 
-	*time |= ((t->tm_year - 80) << EXFAT_YEAR);
-	*time |= ((t->tm_mon + 1) << EXFAT_MONTH);
-	*time |= (t->tm_mday << EXFAT_DAY);
-	*time |= (t->tm_hour << EXFAT_HOUR);
-	*time |= (t->tm_min << EXFAT_MINUTE);
-	*time |= t->tm_sec / 2;
+	*timestamp |= ((t->tm_year - 80) << EXFAT_YEAR);
+	*timestamp |= ((t->tm_mon + 1) << EXFAT_MONTH);
+	*timestamp |= (t->tm_mday << EXFAT_DAY);
+	*timestamp |= (t->tm_hour << EXFAT_HOUR);
+	*timestamp |= (t->tm_min << EXFAT_MINUTE);
+	*timestamp |= t->tm_sec / 2;
 	*subsec += ((t->tm_sec % 2) * 100);
+	*tz = (char)(diff / (60 * 15));
 
 	return 0;
 }
