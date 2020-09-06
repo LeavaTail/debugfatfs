@@ -69,6 +69,18 @@ Welcome to debugfatfs 0.1 (Interactive Mode)
 Goodbye!
 ```
 
+## Usage
+Interactive mode can these command.
+* **ls** --- list current directory contents
+* **cd** *path* --- change directory
+* **alloc** *cluster* --- allocate cluster
+* **release** *cluster* --- release cluster
+* **fat** *index* *[entry]* --- change File Allocation Table entry
+* **create** *[option]* *file* --- create directory entry
+* **remove** *file* --- remove directory entry
+* **help** --- display this help
+* **exit** --- exit interactive mode
+
 ## Requirements
 * [autoconf](http://www.gnu.org/software/autoconf/)
 * [automake](https://www.gnu.org/software/automake/)
