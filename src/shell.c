@@ -223,6 +223,8 @@ static int cmd_fat(int argc, char **argv, char **envp)
  * @envp:            environment pointer
  *
  * @return           0 (success)
+ *
+ * TODO: implement getopt function
  */
 static int cmd_create(int argc, char **argv, char **envp)
 {
@@ -231,7 +233,19 @@ static int cmd_create(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
+			if (!strcmp(argv[1], "-i")) {
+				fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+				return 0;
+			}
 			info.ops->create(argv[1], cluster, 0);
+			info.ops->reload(cluster);
+			break;
+		case 3:
+			if (strcmp(argv[1], "-i")) {
+				fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+				return 0;
+			}
+			info.ops->create(argv[1], cluster, INTERACTIVE_COMMAND);
 			info.ops->reload(cluster);
 			break;
 		default:
