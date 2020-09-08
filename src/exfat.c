@@ -94,8 +94,8 @@ static const struct query create_prompt[] = {
  * @data:                 The cluster
  * @size:                 allocated size to store cluster data
  *
- * @retrun:        next cluster (@clu has next cluster)
- *                 0            (@clu doesn't have next cluster, or failed to realloc)
+ * @retrun:               next cluster (@clu has next cluster)
+ *                        0            (@clu doesn't have next cluster, or failed to realloc)
  */
 static uint32_t exfat_concat_cluster(uint32_t clu, void **data, size_t size)
 {
@@ -119,11 +119,10 @@ static uint32_t exfat_concat_cluster(uint32_t clu, void **data, size_t size)
 
 /**
  * exfat_check_filesystem - Whether or not exFAT filesystem
- * @boot:      boot sector pointer
- * @ops:       filesystem operations
+ * @boot:                   boot sector pointer
  *
- * @return:     1 (Image is exFAT filesystem)
- *              0 (Image isn't exFAT filesystem)
+ * @return:                 1 (Image is exFAT filesystem)
+ *                          0 (Image isn't exFAT filesystem)
  */
 int exfat_check_filesystem(struct pseudo_bootsec *boot)
 {
@@ -165,10 +164,10 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot)
 /*************************************************************************************************/
 /**
  * exfat_load_bootsec - load boot sector
- * @b:          boot sector pointer in exFAT
+ * @b:                  boot sector pointer in exFAT
  *
- * @return        0 (success)
- *               -1 (failed to read)
+ * @return              0 (success)
+ *                     -1 (failed to read)
  */
 static int exfat_load_bootsec(struct exfat_bootsec *b)
 {
@@ -242,11 +241,11 @@ static int exfat_load_bitmap(uint32_t clu)
 #endif
 /**
  * exfat_save_bitmap - function to save allocation table
- * @clu:                          cluster index
- * @value:                        Bit
+ * @clu:               cluster index
+ * @value:             Bit
  *
- * @return                        0 (success)
- *                               -1 (failed)
+ * @return             0 (success)
+ *                    -1 (failed)
  */
 static int exfat_save_bitmap(uint32_t clu, uint32_t value)
 {
@@ -282,8 +281,8 @@ static int exfat_save_bitmap(uint32_t clu, uint32_t value)
  * exfat_check_fat_entry - Whether or not cluster is continuous
  * @clu:                  index of the cluster want to check
  *
- * @retrun:        next cluster (@clu has next cluster)
- *                 0            (@clu doesn't have next cluster)
+ * @retrun:                next cluster (@clu has next cluster)
+ *                         0            (@clu doesn't have next cluster)
  */
 static uint32_t exfat_check_fat_entry(uint32_t clu)
 {
@@ -316,10 +315,10 @@ static uint32_t exfat_check_fat_entry(uint32_t clu)
 
 /**
  * exfat_update_fat_entry - Update FAT Entry to any cluster
- * @clu:                 index of the cluster want to check
- * @entry:                 any cluster index
+ * @clu:                    index of the cluster want to check
+ * @entry:                  any cluster index
  *
- * @retrun:                previous FAT entry
+ * @retrun:                 previous FAT entry
  */
 static uint32_t exfat_update_fat_entry(uint32_t clu, uint32_t entry)
 {
@@ -378,10 +377,10 @@ static void exfat_print_dchain(void)
 #endif
 /**
  * exfat_check_dchain - check whether @index has already loaded
- * @clu:                         index of the cluster
+ * @clu:                index of the cluster
  *
- * @retrun:        1 (@clu has loaded)
- *                 0 (@clu hasn't loaded)
+ * @retrun:             1 (@clu has loaded)
+ *                      0 (@clu hasn't loaded)
  */
 static int exfat_check_dchain(uint32_t clu)
 {
@@ -394,11 +393,11 @@ static int exfat_check_dchain(uint32_t clu)
 }
 
 /**
- * exfat_get_index      get directory chain index by argument
- * @clu:                index of the cluster
+ * exfat_get_index - get directory chain index by argument
+ * @clu:             index of the cluster
  *
- * @return:             directory chain index
- *                      Start of unused area (if doesn't lookup directory cache)
+ * @return:          directory chain index
+ *                   Start of unused area (if doesn't lookup directory cache)
  */
 static int exfat_get_index(uint32_t clu)
 {
@@ -422,11 +421,11 @@ static int exfat_get_index(uint32_t clu)
 }
 
 /**
- * exfat_get_freed_index          get unused cluster index by allocation bitmap
- * @clup:                         cluster index pointer (Output)
+ * exfat_get_freed_index - get unused cluster index by allocation bitmap
+ * @clup:                  cluster index pointer (Output)
  *
- * @return                        0 (found unused allocation cluster)
- *                               -1 (failed)
+ * @return                 0 (found unused allocation cluster)
+ *                        -1 (failed)
  */
 static int exfat_get_freed_index(uint32_t *clup)
 {
@@ -452,10 +451,10 @@ static int exfat_get_freed_index(uint32_t *clup)
 
 /**
  * exfat_traverse_directory - function to traverse one directory
- * @clu:                          index of the cluster want to check
+ * @clu:                      index of the cluster want to check
  *
- * @return        0 (success)
- *               -1 (failed to read)
+ * @return                    0 (success)
+ *                           -1 (failed to read)
  */
 static int exfat_traverse_directory(uint32_t clu)
 {
@@ -586,11 +585,11 @@ out:
 /*************************************************************************************************/
 /**
  * exfat_create_file_entry - Create file infomarion
- * @head:       Directory chain head
- * @clu:        parent Directory cluster index
- * @file:       file dentry
- * @stream:     stream Extension dentry
- * @uniname:    File Name dentry
+ * @head:                    Directory chain head
+ * @clu:                     parent Directory cluster index
+ * @file:                    file dentry
+ * @stream:                  stream Extension dentry
+ * @uniname:                 File Name dentry
  */
 static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 		struct exfat_dentry *file, struct exfat_dentry *stream, uint16_t *uniname)
@@ -641,7 +640,7 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
  * @entry:                    points to an in-memory copy of the directory entry set
  * @count:                    the number of secondary directory entries
  *
- * @return                   Checksum
+ * @return                    Checksum
  */
 static uint16_t exfat_calculate_checksum(unsigned char *entry, unsigned char count)
 {
@@ -658,10 +657,10 @@ static uint16_t exfat_calculate_checksum(unsigned char *entry, unsigned char cou
 }
 
 /**
- * exfat_convert_uniname     function to get filename
- * @uniname:                 filename dentry in UTF-16
- * @name_len:                filename length
- * @name:                    filename in UTF-8 (output)
+ * exfat_convert_uniname - function to get filename
+ * @uniname:               filename dentry in UTF-16
+ * @name_len:              filename length
+ * @name:                  filename in UTF-8 (output)
  */
 static void exfat_convert_uniname(uint16_t *uniname, uint64_t name_len, unsigned char *name)
 {
@@ -673,7 +672,7 @@ static void exfat_convert_uniname(uint16_t *uniname, uint64_t name_len, unsigned
  * @name:                     points to an in-memory copy of the up-cased file name
  * @len:                      Name length
  *
- * @return                NameHash
+ * @return                    NameHash
  */
 static uint16_t exfat_calculate_namehash(uint16_t *name, uint8_t len)
 {
@@ -688,11 +687,11 @@ static uint16_t exfat_calculate_namehash(uint16_t *name, uint8_t len)
 }
 
 /**
- * exfat_convert_unixname    function to get timestamp in file
- * @t:                       output pointer
- * @time:                    Timestamp Field in File Directory Entry
- * @subsec:                  10msincrement Field in File Directory Entry
- * @tz:                      UtcOffset in File Directory Entry
+ * exfat_convert_unixname - function to get timestamp in file
+ * @t:                      output pointer
+ * @time:                   Timestamp Field in File Directory Entry
+ * @subsec:                 10msincrement Field in File Directory Entry
+ * @tz:                     UtcOffset in File Directory Entry
  */
 static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, uint8_t tz)
 {
@@ -724,12 +723,12 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
 
 /**
  * exfat_query_timestamp - Prompt user for timestamp
- * @tz:                    local timezone
- * @time:                  Time Field (Output)
+ * @t:                     local timezone
+ * @time:stamp             Time Field (Output)
  * @subsec:                Time subsecond Field (Output)
- * @tz:                    offset from UTC Field (Output)
+ * @quiet:                 set parameter without ask
  *
- * @return        0 (Success)
+ * @return                 0 (Success)
  */
 static int exfat_query_timestamp(struct tm *t,
 		uint32_t *timestamp, uint8_t *subsec, int quiet)
@@ -780,6 +779,7 @@ static int exfat_query_timestamp(struct tm *t,
  * exfat_query_timezone  - Prompt user for timestamp
  * @diff:                  difference localtime and UTCtime
  * @tz:                    offset from UTC Field (Output)
+ * @quiet:                 set parameter without ask
  *
  * @return        0 (Success)
  */
@@ -827,7 +827,6 @@ static int exfat_query_timezone(int diff, uint8_t *tz, int quiet)
 /*************************************************************************************************/
 /**
  * exfat_print_bootsec - print boot sector in exFAT
- * @b:          boot sector pointer in exFAT
  *
  * @return        0 (success)
  */
@@ -867,7 +866,7 @@ int exfat_print_bootsec(void)
 /**
  * exfat_print_fsinfo - print filesystem information in exFAT
  *
- * @return        0 (success)
+ * @return              0 (success)
  */
 int exfat_print_fsinfo(void)
 {
@@ -877,12 +876,12 @@ int exfat_print_fsinfo(void)
 }
 
 /**
- * exfat_lookup       - function interface to lookup pathname
- * @clu:                directory cluster index
- * @name:               file name
+ * exfat_lookup - function interface to lookup pathname
+ * @clu:          directory cluster index
+ * @name:         file name
  *
- * @return:              cluster index
- *                       0 (Not found)
+ * @return:       cluster index
+ *                0 (Not found)
  */
 int exfat_lookup(uint32_t clu, char *name)
 {
@@ -993,6 +992,9 @@ int exfat_readdir(struct directory *dir, size_t count, uint32_t clu)
 /**
  * exfat_reload_directory - function interface to read directories
  * @clu                     cluster index
+ *
+ * @return                  0 (success)
+ *                         -1 (failed to read)
  */
 int exfat_reload_directory(uint32_t clu)
 {
@@ -1007,12 +1009,12 @@ int exfat_reload_directory(uint32_t clu)
 
 /**
  * exfat_convert_character - Convert character by upcase-table
- * @src:           Target characters in UTF-8
- * @len:           Target characters length
- * @dist:          convert result in UTF-8 (Output)
+ * @src:                     Target characters in UTF-8
+ * @len:                     Target characters length
+ * @dist:                    convert result in UTF-8 (Output)
  *
- * return:     0  (succeeded in obtaining filesystem)
- *             -1 (failed)
+ * return:                   0  (succeeded in obtaining filesystem)
+ *                           -1 (failed)
  */
 int exfat_convert_character(const char *src, size_t len, char *dist)
 {
@@ -1048,11 +1050,11 @@ int exfat_convert_character(const char *src, size_t len, char *dist)
 }
 
 /**
- * exfat_clean_dchain            function to clean opeartions
- * @index:                       directory chain index
+ * exfat_clean_dchain - function to clean opeartions
+ * @index:              directory chain index
  *
- * @return        0 (success)
- *               -1 (already released)
+ * @return              0 (success)
+ *                     -1 (already released)
  */
 int exfat_clean_dchain(uint32_t index)
 {
@@ -1078,10 +1080,10 @@ int exfat_clean_dchain(uint32_t index)
 
 /**
  * exfat_set_fat_entry - Set FAT Entry to any cluster
- * @index:              index of the cluster want to check
- * @entry:              any cluster index
+ * @clu:                 index of the cluster want to check
+ * @entry:               any cluster index
  *
- * @retrun:             0
+ * @retrun:              0
  */
 int exfat_set_fat_entry(uint32_t clu, uint32_t entry)
 {
@@ -1091,10 +1093,10 @@ int exfat_set_fat_entry(uint32_t clu, uint32_t entry)
 
 /**
  * exfat_get_fat_entry - Get cluster is continuous
- * @index:              index of the cluster want to check
- * @entry:              any cluster index
+ * @clu:                 index of the cluster want to check
+ * @entry:               any cluster index
  *
- *                      0
+ *                       0
  */
 int exfat_get_fat_entry(uint32_t clu, uint32_t *entry)
 {
@@ -1104,7 +1106,7 @@ int exfat_get_fat_entry(uint32_t clu, uint32_t *entry)
 
 /**
  * exfat_alloc_cluster - function to allocate cluster
- * @index:               cluster index
+ * @clu:                 cluster index
  *
  * @return                0 (success)
  *                       -1 (failed)
@@ -1116,10 +1118,10 @@ int exfat_alloc_cluster(uint32_t clu)
 
 /**
  * exfat_release_cluster - function to release cluster
- * @index:                 cluster index
+ * @clu:                   cluster index
  *
- * @return                  0 (success)
- *                         -1 (failed)
+ * @return                 0 (success)
+ *                        -1 (failed)
  */
 int exfat_release_cluster(uint32_t clu)
 {
@@ -1129,12 +1131,10 @@ int exfat_release_cluster(uint32_t clu)
 /**
  * exfat_create -  function interface to create entry
  * @name:          Filename in UTF-8
- * @index:         Current Directory Index
+ * @clu:           Current Directory Index
  * @opt:           create option
  *
  * @return        0 (Success)
- *
- * NOTE: Tentative implemetation
  */
 int exfat_create(const char *name, uint32_t clu, int opt)
 {
@@ -1255,13 +1255,11 @@ out:
 /**
  * exfat_remove -  function interface to remove entry
  * @name:          Filename in UTF-8
- * @index:         Current Directory Index
+ * @clu:           Current Directory Index
  * @opt:           create option
  *
- * @return        0 (Success)
- * @return       -1 (Not found)
- *
- * NOTE: Tentative implemetation
+ * @return         0 (Success)
+ * @return        -1 (Not found)
  */
 int exfat_remove(const char *name, uint32_t clu, int opt)
 {
