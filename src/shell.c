@@ -117,6 +117,9 @@ static int cmd_cd(int argc, char **argv, char **envp)
 			break;
 	}
 
+	if (strcmp(path, "/"))
+		path = strcat(path, "/");
+
 	if (dir) {
 		cluster = dir;
 		set_env(envp, "PWD", path);
