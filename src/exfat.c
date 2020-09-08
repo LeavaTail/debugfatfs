@@ -631,7 +631,7 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 		d->hash = stream->dentry.stream.NameHash;
 
 		index = exfat_get_index(next_index);
-		info.root[index] = init_node2(next_index, head);
+		info.root[index] = init_node2(next_index, d);
 	}
 }
 
