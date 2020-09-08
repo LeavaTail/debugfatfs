@@ -736,34 +736,34 @@ static int exfat_query_timestamp(struct tm *t,
 	char buf[QUERY_BUFFER_SIZE] = {};
 
 	if (!quiet) {
-	pr_msg("Timestamp (UTC)\n");
-	pr_msg("Select (Default: %d-%02d-%02d %02d:%02d:%02d.%02d): ",
-			t->tm_year + 1900,
-			t->tm_mon + 1,
-			t->tm_mday,
-			t->tm_hour,
-			t->tm_min,
-			t->tm_sec,
-			0);
-	fflush(stdout);
+		pr_msg("Timestamp (UTC)\n");
+		pr_msg("Select (Default: %d-%02d-%02d %02d:%02d:%02d.%02d): ",
+				t->tm_year + 1900,
+				t->tm_mon + 1,
+				t->tm_mday,
+				t->tm_hour,
+				t->tm_min,
+				t->tm_sec,
+				0);
+		fflush(stdout);
 
-	if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
-		return -1;
+		if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
+			return -1;
 
-	if (buf[0] != '\n') {
-		sscanf(buf, "%d-%02d-%02d %02d:%02d:%02d.%02hhd",
-				&(t->tm_year),
-				&(t->tm_mon),
-				&(t->tm_mday),
-				&(t->tm_hour),
-				&(t->tm_min),
-				&(t->tm_sec),
-				subsec);
-		t->tm_year -= 1900;
-		t->tm_mon -= 1;
-	}
+		if (buf[0] != '\n') {
+			sscanf(buf, "%d-%02d-%02d %02d:%02d:%02d.%02hhd",
+					&(t->tm_year),
+					&(t->tm_mon),
+					&(t->tm_mday),
+					&(t->tm_hour),
+					&(t->tm_min),
+					&(t->tm_sec),
+					subsec);
+			t->tm_year -= 1900;
+			t->tm_mon -= 1;
+		}
 
-	pr_msg("\n");
+		pr_msg("\n");
 	}
 	*timestamp |= ((t->tm_year - 80) << EXFAT_YEAR);
 	*timestamp |= ((t->tm_mon + 1) << EXFAT_MONTH);
