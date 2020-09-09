@@ -224,9 +224,9 @@ static int fat16_print_bootsec(struct fat_bootsec *b)
 	if (strncmp(type, "FAT", 3))
 		pr_warn("BS_FilSysType is expected \"FAT     \", But this is %s\n", type);
 
-	pr_msg("%-28s\t: ", "Volume ID");
+	pr_msg("%-28s\t: 0x", "Volume ID");
 	for (i = 0; i < VOLIDSIZE; i++)
-		pr_msg("0x%x", b->reserved_info.fat16_reserved_info.BS_VolID[i]);
+		pr_msg("%x", b->reserved_info.fat16_reserved_info.BS_VolID[i]);
 	pr_msg("\n");
 
 	pr_msg("%-28s\t: ", "Volume Label");
