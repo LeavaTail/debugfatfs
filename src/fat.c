@@ -118,9 +118,13 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 
 	if (b->BPB_FATSz16 != 0) {
 		FATSz = b->BPB_FATSz16;
-		TotSec = b->BPB_TotSec16;
 	} else {
 		FATSz = b->reserved_info.fat32_reserved_info.BPB_FATSz32;
+	}
+
+	if (b->BPB_TotSec16 != 0) {
+		TotSec = b->BPB_TotSec16;
+	} else {
 		TotSec = b->BPB_TotSec32;
 	}
 
