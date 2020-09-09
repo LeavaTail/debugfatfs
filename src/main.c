@@ -295,8 +295,6 @@ static int get_device_info(uint32_t attr)
  * free_dentry_list - release list2_t
  *
  * @return        Number of lists freed
- *
- * TODO: Check for memory leaks
  */
 static int free_dentry_list(void)
 {
@@ -383,6 +381,7 @@ int print_cluster(uint32_t index)
  * @param:       parameter (output)
  * @def:         default parameter
  * @size:        byte size in @param
+ * @quiet:       set parameter without ask
  *
  * @return        0 (success)
  *               -1 (failed)
