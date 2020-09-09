@@ -991,8 +991,23 @@ int fat_get_fat_entry(uint32_t clu, uint32_t *entry)
  */
 int fat_alloc_cluster(uint32_t clu)
 {
-	pr_warn("FAT: alloc function isn't implemented.\n");
-	return 0;
+	int ret = 0;
+
+	switch (info.fstype) {
+		case FAT12_FILESYSTEM:
+			fat12_set_fat_entry(clu, 0x001);
+			break;
+		case FAT16_FILESYSTEM:
+			fat16_set_fat_entry(clu, 0x0001);
+			break;
+		case FAT32_FILESYSTEM:
+			fat32_set_fat_entry(clu, 0x00000001);
+			break;
+		default:
+			pr_err("Expected FAT filesystem, But this is not FAT filesystem.\n");
+			ret = -1;
+	}
+	return ret;
 }
 
 /**
@@ -1004,8 +1019,7 @@ int fat_alloc_cluster(uint32_t clu)
  */
 int fat_release_cluster(uint32_t clu)
 {
-	pr_warn("FAT: release function isn't implemented.\n");
-	return 0;
+	return fat_set_fat_entry(clu, 0x0);
 }
 
 /**
