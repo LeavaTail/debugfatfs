@@ -24,6 +24,7 @@ static uint32_t fat32_get_fat_entry(uint32_t);
 static int fat_check_dchain(uint32_t);
 static int fat_get_index(uint32_t);
 static int fat_traverse_directory(uint32_t);
+int fat_clean_dchain(uint32_t);
 
 /* File function prototype */
 static void fat_create_fileinfo(node2_t *, uint32_t, struct fat_dentry *, uint16_t *, size_t);
@@ -37,7 +38,7 @@ int fat_lookup(uint32_t, char *);
 int fat_readdir(struct directory *, size_t, uint32_t);
 int fat_reload_directory(uint32_t);
 int fat_convert_character(const char *, size_t, char *);
-int fat_clean_dchain(uint32_t);
+int fat_clean(uint32_t);
 int fat_set_fat_entry(uint32_t, uint32_t);
 int fat_get_fat_entry(uint32_t, uint32_t *);
 int fat_alloc_cluster(uint32_t);
@@ -52,7 +53,7 @@ static const struct operations fat_ops = {
 	.readdir = fat_readdir,
 	.reload = fat_reload_directory,
 	.convert = fat_convert_character,
-	.clean = fat_clean_dchain,
+	.clean = fat_clean,
 	.setfat = fat_set_fat_entry,
 	.getfat = fat_get_fat_entry,
 	.alloc = fat_alloc_cluster,
@@ -598,6 +599,35 @@ out:
 	return 0;
 }
 
+/**
+ * fat_clean_dchain - function to clean opeartions
+ * @index:            directory chain index
+ *
+ * @return            0 (success)
+ *                   -1 (already released)
+ */
+int fat_clean_dchain(uint32_t index)
+{
+	node2_t *tmp;
+	struct fat_fileinfo *f;
+
+	if ((!info.root[index])) {
+		pr_warn("index %d was already released.\n", index);
+		return -1;
+	}
+
+	tmp = info.root[index];
+
+	while (tmp->next != NULL) {
+		tmp = tmp->next;
+		f = (struct fat_fileinfo *)tmp->data;
+		free(f->uniname);
+		f->uniname = NULL;
+	}
+	free_list2(info.root[index]);
+	return 0;
+}
+
 /*************************************************************************************************/
 /*                                                                                               */
 /* FILE FUNCTION                                                                                 */
@@ -908,13 +938,13 @@ int fat_convert_character(const char *src, size_t len, char *dist)
 }
 
 /**
- * fat_clean_dchain - function to clean opeartions
- * @index:            directory chain index
+ * fat_clean - function to clean opeartions
+ * @index:     directory chain index
  *
- * @return            0 (success)
- *                   -1 (already released)
+ * @return     0 (success)
+ *            -1 (already released)
  */
-int fat_clean_dchain(uint32_t index)
+int fat_clean(uint32_t index)
 {
 	node2_t *tmp;
 	struct fat_fileinfo *f;
@@ -925,14 +955,13 @@ int fat_clean_dchain(uint32_t index)
 	}
 
 	tmp = info.root[index];
+	f = (struct fat_fileinfo *)tmp->data;
+	free(f->uniname);
+	f->uniname = NULL;
 
-	while (tmp->next != NULL) {
-		tmp = tmp->next;
-		f = (struct fat_fileinfo *)tmp->data;
-		free(f->uniname);
-		f->uniname = NULL;
-	}
-	free_list2(info.root[index]);
+	fat_clean_dchain(index);
+	free(tmp->data);
+	free(tmp);
 	return 0;
 }
 

@@ -301,14 +301,9 @@ static int free_dentry_list(void)
 {
 	int i;
 	for(i = 0; i < info.root_size && info.root[i]; i++) {
-		/* FIXME: There may be areas that have not been released. */
 		info.ops->clean(i);
 	}
-	if (*(info.root))
-		free((*(info.root))->data);
-	free(*(info.root));
 	free(info.root);
-
 	return i;
 }
 
