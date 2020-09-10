@@ -147,6 +147,8 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 	info.heap_offset = info.fat_offset + info.fat_length;
 	if (info.fstype == FAT32_FILESYSTEM)
 		info.root_offset = b->reserved_info.fat32_reserved_info.BPB_RootClus;
+	else
+		info.root_length = (32 * b->BPB_RootEntCnt + b->BPB_BytesPerSec - 1) / b->BPB_BytesPerSec;
 
 	f = malloc(sizeof(struct fat_fileinfo));
 	strncpy((char *)f->name, "/", strlen("/") + 1);
@@ -526,8 +528,17 @@ static int fat_traverse_directory(uint32_t clu)
 		pr_debug("Directory %s was already traversed.\n", f->name);
 		return 0;
 	}
-	data = malloc(size);
-	get_cluster(data, clu);
+
+	if (clu) {
+		data = malloc(size);
+		get_cluster(data, clu);
+	} else {
+		size = info.root_length * info.sector_size;
+		entries = size / sizeof(struct fat_dentry);
+		data = malloc(size);
+		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	}
+
 	do {
 		for (i = 0; i < entries; i++) {
 			namelen = 0;

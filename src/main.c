@@ -254,6 +254,7 @@ static void init_device_info(void)
 	info.fat_length = 0;
 	info.heap_offset = 0;
 	info.root_offset = 0;
+	info.root_length = 0;
 	info.alloc_table = NULL;
 	info.upcase_table = NULL;
 	info.upcase_size = 0;
