@@ -682,7 +682,7 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 		d->attr = file->dentry.dir.DIR_Attr;
 
 		index = fat_get_index(next_clu);
-		info.root[index] = init_node2(next_clu, head);
+		info.root[index] = init_node2(next_clu, d);
 	}
 }
 
