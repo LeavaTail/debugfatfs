@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <ctype.h>
 #include "debugfatfs.h"
 
 /* Generic function prototype */
@@ -30,6 +31,8 @@ int fat_clean_dchain(uint32_t);
 static void fat_create_fileinfo(node2_t *, uint32_t, struct fat_dentry *, uint16_t *, size_t);
 static void fat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
+static int fat_convert_shortname(uint16_t *, char *);
+static int fat_create_nameentry(const char *, char *, uint16_t *);
 
 /* Operations function prototype */
 int fat_print_bootsec(void);
@@ -695,6 +698,86 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 static void fat_convert_uniname(uint16_t *uniname, uint64_t name_len, unsigned char *name)
 {
 	utf16s_to_utf8s(uniname, name_len, name);
+}
+
+/**
+ * fat_convert_shortname - function to convert longname to shortname
+ * @longname:              filename dentry in UTF-16
+ * @name:                  filename in ascii (output)
+ *
+ * @return                 0 (Same as input name)
+ *                         1 (Difference from input data)
+ */
+static int fat_convert_shortname(uint16_t *longname, char *name)
+{
+	int ch;
+	/* Pick up Only ASCII code */
+	if (*longname < 0x0080) {
+		/* Upper character is directly set */
+		if(isupper(*longname)) {
+			*name = *longname;
+		/* otherwise (lower character or othse)  */
+		} else {
+			/* lower character case */
+			if ((ch = toupper(*longname)) != *longname) {
+				*name = ch;
+			} else {
+				*name = '_';
+			}
+			return 1;
+		}
+	} else {
+		*name = '_';
+		return 1;
+	}
+	return 0;
+}
+
+/**
+ * fat_create_nameentry - function to get filename
+ * @name:                 filename dentry in UTF-8
+ * @shortname:            filename in ASCII (output)
+ * @longname:             filename in UTF-16 (output)
+ *
+ * @return                0 (Only shortname)
+ *                      > 0 (longname length)
+ */
+static int fat_create_nameentry(const char *name, char *shortname, uint16_t *longname)
+{
+	int i, j;
+	bool changed = false;
+	size_t name_len;
+
+	memset(shortname, ' ', 8 + 3);
+	name_len = utf8s_to_utf16s((unsigned char *)name, strlen(name), longname);
+	for (i = 0, j = 0; i < 8 && longname[j] != '.'; i++, j++) {
+		if (i > name_len)
+			goto numtail;
+		if (fat_convert_shortname(&longname[j], &shortname[i]))
+			changed = true;
+	}
+	/* This is not 8.3 format */
+	if (longname[j] != '.') {
+		changed = true;
+		goto numtail;
+	}
+	j++;
+
+	/* Extension */
+	for (i = 8; i < 11; i++, j++) {
+		if (j > name_len)
+			goto numtail;
+		if (fat_convert_shortname(&longname[j], &shortname[i]))
+			changed = true;
+	}
+
+numtail:
+	if (changed) {
+		shortname[6] = '~';
+		shortname[7] = '1';
+		return name_len;
+	}
+	return 0;
 }
 
 /**
