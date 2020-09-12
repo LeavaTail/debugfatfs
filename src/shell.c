@@ -242,7 +242,7 @@ static int cmd_create(int argc, char **argv, char **envp)
 				fprintf(stdout, "%s: too many arguments.\n", argv[0]);
 				return 0;
 			}
-			info.ops->create(argv[1], cluster, INTERACTIVE_COMMAND);
+			info.ops->create(argv[2], cluster, INTERACTIVE_COMMAND);
 			info.ops->reload(cluster);
 			break;
 		default:
