@@ -1348,9 +1348,63 @@ create_short:
  * @opt:        create option
  *
  * @return      0 (Success)
+ *             -1 (Not found)
  */
 int fat_remove(const char *name, uint32_t clu, int opt)
 {
-	pr_warn("FAT: remove function isn't implemented.\n");
+	int i, j, ord;
+	void *data;
+	char shortname[11] = {0};
+	uint16_t longname[MAX_NAME_LENGTH] = {0};
+	size_t size = info.cluster_size;
+	uint8_t chksum = 0;
+	size_t entries = size / sizeof(struct fat_dentry);
+	struct fat_dentry *d;
+
+	/* convert UTF-8 to UTF16 */
+	fat_create_nameentry(name, shortname, longname);
+	chksum = fat_calculate_checksum((unsigned char *)shortname);
+
+	/* Lookup last entry */
+	if (clu) {
+		data = malloc(size);
+		get_cluster(data, clu);
+	} else {
+		size = info.root_length * info.sector_size;
+		entries = size / sizeof(struct fat_dentry);
+		data = malloc(size);
+		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	}
+
+	for (i = 0; i < entries; i++) {
+		d = ((struct fat_dentry *)data) + i;
+		if (d->dentry.lfn.LDIR_Ord == DENTRY_UNUSED)
+			goto out;
+
+		if (d->dentry.lfn.LDIR_Ord == DENTRY_DELETED)
+			continue;
+
+		if (d->dentry.lfn.LDIR_Attr == ATTR_LONG_FILE_NAME) {
+			ord = d->dentry.lfn.LDIR_Ord & (~LAST_LONG_ENTRY);
+			if (d->dentry.lfn.LDIR_Chksum != chksum) {
+				i += ord;
+				continue;
+			}
+			for (j = 0; j < ord; j++) {
+				d = ((struct fat_dentry *)data) + i;
+				d->dentry.lfn.LDIR_Ord = DENTRY_DELETED;
+			}
+		} else {
+			if (!strncmp(shortname, (char *)d->dentry.dir.DIR_Name, 11))
+				d->dentry.lfn.LDIR_Ord = DENTRY_DELETED;
+		}
+	}
+out:
+
+	if (clu)
+		set_cluster(data, clu);
+	else
+		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	free(data);
 	return 0;
 }

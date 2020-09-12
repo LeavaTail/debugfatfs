@@ -397,6 +397,7 @@ struct operations {
 #define ATTR_LONG_FILE_NAME  (ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID)
 /* FAT dentry type */
 #define LAST_LONG_ENTRY      0x40
+#define DENTRY_DELETED       0xE5
 /* exFAT dentry type */
 #define DENTRY_UNUSED        0x00
 #define DENTRY_BITMAP        0x81
