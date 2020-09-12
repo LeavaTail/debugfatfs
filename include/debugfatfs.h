@@ -283,7 +283,7 @@ struct fat_dentry {
 			uint8_t LDIR_Type;
 			uint8_t LDIR_Chksum;
 			uint16_t LDIR_Name2[6];
-			uint16_t DIR_FstClusLO;
+			uint16_t LDIR_FstClusLO;
 			uint16_t LDIR_Name3[2];
 		} __attribute__((packed)) lfn;
 	} __attribute__((packed)) dentry;
