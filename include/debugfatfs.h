@@ -115,6 +115,7 @@ struct device_info {
 	uint32_t fat_length;
 	uint32_t heap_offset;
 	uint32_t root_offset;
+	uint32_t root_length;
 	uint8_t *alloc_table;
 	uint16_t *upcase_table;
 	size_t upcase_size;
@@ -282,7 +283,7 @@ struct fat_dentry {
 			uint8_t LDIR_Type;
 			uint8_t LDIR_Chksum;
 			uint16_t LDIR_Name2[6];
-			uint16_t DIR_FstClusLO;
+			uint16_t LDIR_FstClusLO;
 			uint16_t LDIR_Name3[2];
 		} __attribute__((packed)) lfn;
 	} __attribute__((packed)) dentry;
@@ -396,6 +397,7 @@ struct operations {
 #define ATTR_LONG_FILE_NAME  (ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID)
 /* FAT dentry type */
 #define LAST_LONG_ENTRY      0x40
+#define DENTRY_DELETED       0xE5
 /* exFAT dentry type */
 #define DENTRY_UNUSED        0x00
 #define DENTRY_BITMAP        0x81

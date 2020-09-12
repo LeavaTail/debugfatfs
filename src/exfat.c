@@ -22,6 +22,7 @@ static int exfat_check_dchain(uint32_t);
 static int exfat_get_index(uint32_t);
 static int exfat_get_freed_index(uint32_t *);
 static int exfat_traverse_directory(uint32_t);
+static int exfat_clean_dchain(uint32_t);
 
 /* File function prototype */
 static void exfat_create_fileinfo(node2_t *,
@@ -40,7 +41,7 @@ int exfat_lookup(uint32_t, char *);
 int exfat_readdir(struct directory *, size_t, uint32_t);
 int exfat_reload_directory(uint32_t);
 int exfat_convert_character(const char *, size_t, char *);
-int exfat_clean_dchain(uint32_t);
+int exfat_clean(uint32_t);
 int exfat_set_fat_entry(uint32_t, uint32_t);
 int exfat_get_fat_entry(uint32_t, uint32_t *);
 int exfat_alloc_cluster(uint32_t);
@@ -55,7 +56,7 @@ static const struct operations exfat_ops = {
 	.readdir = exfat_readdir,
 	.reload = exfat_reload_directory,
 	.convert = exfat_convert_character,
-	.clean = exfat_clean_dchain,
+	.clean = exfat_clean,
 	.setfat = exfat_set_fat_entry,
 	.getfat = exfat_get_fat_entry,
 	.alloc = exfat_alloc_cluster,
@@ -578,6 +579,35 @@ out:
 	return 0;
 }
 
+/**
+ * exfat_clean_dchain - function to clean opeartions
+ * @index:              directory chain index
+ *
+ * @return              0 (success)
+ *                     -1 (already released)
+ */
+static int exfat_clean_dchain(uint32_t index)
+{
+	node2_t *tmp;
+	struct exfat_fileinfo *f;
+
+	if ((!info.root[index])) {
+		pr_warn("index %d was already released.\n", index);
+		return -1;
+	}
+
+	tmp = info.root[index];
+
+	while (tmp->next != NULL) {
+		tmp = tmp->next;
+		f = (struct exfat_fileinfo *)tmp->data;
+		free(f->name);
+		f->name = NULL;
+	}
+	free_list2(info.root[index]);
+	return 0;
+}
+
 /*************************************************************************************************/
 /*                                                                                               */
 /* FILE FUNCTION                                                                                 */
@@ -724,7 +754,7 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
 /**
  * exfat_query_timestamp - Prompt user for timestamp
  * @t:                     local timezone
- * @time:stamp             Time Field (Output)
+ * @timestamp:             Time Field (Output)
  * @subsec:                Time subsecond Field (Output)
  * @quiet:                 set parameter without ask
  *
@@ -1050,13 +1080,13 @@ int exfat_convert_character(const char *src, size_t len, char *dist)
 }
 
 /**
- * exfat_clean_dchain - function to clean opeartions
- * @index:              directory chain index
+ * exfat_clean - function to clean opeartions
+ * @index:       directory chain index
  *
- * @return              0 (success)
- *                     -1 (already released)
+ * @return       0 (success)
+ *              -1 (already released)
  */
-int exfat_clean_dchain(uint32_t index)
+int exfat_clean(uint32_t index)
 {
 	node2_t *tmp;
 	struct exfat_fileinfo *f;
@@ -1067,14 +1097,13 @@ int exfat_clean_dchain(uint32_t index)
 	}
 
 	tmp = info.root[index];
+	f = (struct exfat_fileinfo *)tmp->data;
+	free(f->name);
+	f->name = NULL;
 
-	while (tmp->next != NULL) {
-		tmp = tmp->next;
-		f = (struct exfat_fileinfo *)tmp->data;
-		free(f->name);
-		f->name = NULL;
-	}
-	free_list2(info.root[index]);
+	exfat_clean_dchain(index);
+	free(tmp->data);
+	free(tmp);
 	return 0;
 }
 

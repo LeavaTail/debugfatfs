@@ -254,6 +254,7 @@ static void init_device_info(void)
 	info.fat_length = 0;
 	info.heap_offset = 0;
 	info.root_offset = 0;
+	info.root_length = 0;
 	info.alloc_table = NULL;
 	info.upcase_table = NULL;
 	info.upcase_size = 0;
@@ -300,14 +301,9 @@ static int free_dentry_list(void)
 {
 	int i;
 	for(i = 0; i < info.root_size && info.root[i]; i++) {
-		/* FIXME: There may be areas that have not been released. */
 		info.ops->clean(i);
 	}
-	if (*(info.root))
-		free((*(info.root))->data);
-	free(*(info.root));
 	free(info.root);
-
 	return i;
 }
 
