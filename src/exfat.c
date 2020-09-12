@@ -754,7 +754,7 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
 /**
  * exfat_query_timestamp - Prompt user for timestamp
  * @t:                     local timezone
- * @time:stamp             Time Field (Output)
+ * @timestamp:             Time Field (Output)
  * @subsec:                Time subsecond Field (Output)
  * @quiet:                 set parameter without ask
  *
