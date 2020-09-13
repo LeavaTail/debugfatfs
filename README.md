@@ -50,7 +50,7 @@ System Volume Information 新しいフォルダー NEW_DIRECTORY Directory
 
 **Interactive mode**
 ```sh
-$ sudo debugfatfs -i /dev/sdc1
+$ sudo debugfatfs -iq /dev/sdc1
 Welcome to debugfatfs 0.1 (Interactive Mode)
 
 /> ls
@@ -78,6 +78,7 @@ debugfatfs support support these optoin. (Please look at man-page)
 * **-i**, **--interactive** --- prompt the user operate filesystem
 * **-l**, **--load**=*file* --- Load Main boot region and FAT region from file
 * **-o**, **--output**=*file* --- send output to file rather than stdout
+* **-q**, **--quiet** --- Not prompting the user in interactive mode
 * **-r**, **--ro** --- read only mode
 * **-s**, **--save**=*file* --- Save Main boot region and FAT region in file
 * **-u**, **--upper** --- convert into uppercase latter by up-case Table
@@ -89,7 +90,7 @@ And, debugfatfs with interactive mode support these command.
 * **alloc** *cluster* --- allocate cluster
 * **release** *cluster* --- release cluster
 * **fat** *index* *[entry]* --- change File Allocation Table entry
-* **create** *[option]* *file* --- create directory entry
+* **create** *file* --- create directory entry
 * **remove** *file* --- remove directory entry
 * **help** --- display this help
 * **exit** --- exit interactive mode

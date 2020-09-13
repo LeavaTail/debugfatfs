@@ -230,19 +230,10 @@ static int cmd_create(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
-			if (!strcmp(argv[1], "-i")) {
-				fprintf(stdout, "%s: too few arguments.\n", argv[0]);
-				return 0;
-			}
-			info.ops->create(argv[1], cluster, 0);
-			info.ops->reload(cluster);
-			break;
-		case 3:
-			if (strcmp(argv[1], "-i")) {
-				fprintf(stdout, "%s: too many arguments.\n", argv[0]);
-				return 0;
-			}
-			info.ops->create(argv[2], cluster, INTERACTIVE_COMMAND);
+			if (info.attr & OPTION_QUIET)
+				info.ops->create(argv[1], cluster, 0);
+			else
+				info.ops->create(argv[1], cluster, CMD_QUIET);
 			info.ops->reload(cluster);
 			break;
 		default:

@@ -1250,7 +1250,7 @@ int fat_release_cluster(uint32_t clu)
 int fat_create(const char *name, uint32_t clu, int opt)
 {
 	int i, j, namei;
-	int quiet = 1;
+	int quiet = 0;
 	int long_len = 0;
 	int count = 0;
 	char shortname[11] = {0};
@@ -1289,8 +1289,8 @@ int fat_create(const char *name, uint32_t clu, int opt)
 			break;
 	}
 
-	if (opt & INTERACTIVE_COMMAND)
-		quiet = 0;
+	if (opt & CMD_QUIET)
+		quiet = 1;
 
 	if (!long_len)
 		goto create_short;

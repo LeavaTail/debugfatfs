@@ -1168,7 +1168,7 @@ int exfat_release_cluster(uint32_t clu)
 int exfat_create(const char *name, uint32_t clu, int opt)
 {
 	int i, namei, lasti;
-	int quiet = 1;
+	int quiet = 0;
 	uint8_t attr = 0;
 	void *data;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
@@ -1204,8 +1204,8 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			break;
 	}
 
-	if (opt & INTERACTIVE_COMMAND)
-		quiet = 0;
+	if (opt & CMD_QUIET)
+		quiet = 1;
 
 	query_param(create_prompt[0], &(d->EntryType), 0x85, 1, quiet);
 	lasti = i;
