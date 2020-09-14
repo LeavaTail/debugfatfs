@@ -1293,7 +1293,7 @@ int fat_create(const char *name, uint32_t clu, int opt)
 			break;
 	}
 
-	if (opt & CMD_QUIET)
+	if (opt & OPTION_QUIET)
 		quiet = 1;
 
 	if (!long_len)

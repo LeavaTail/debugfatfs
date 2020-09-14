@@ -1204,7 +1204,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			break;
 	}
 
-	if (opt & CMD_QUIET)
+	if (opt & OPTION_QUIET)
 		quiet = 1;
 
 	query_param(create_prompt[0], &(d->EntryType), 0x85, 1, quiet);
