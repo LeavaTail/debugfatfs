@@ -151,7 +151,7 @@ struct directory {
 #define DIRECTORY_FILES  1024
 
 struct fat_fileinfo {
-	unsigned char name[12];
+	unsigned char name[13];
 	unsigned char *uniname;
 	size_t namelen;
 	size_t datalen;

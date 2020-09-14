@@ -686,13 +686,17 @@ int fat_clean_dchain(uint32_t index)
 static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 		struct fat_dentry *file, uint16_t *uniname, size_t namelen)
 {
-	int index, next_clu = 0;
+	int extension, index, next_clu = 0;
 	struct fat_fileinfo *f;
 
 	next_clu |= (file->dentry.dir.DIR_FstClusHI << 16) | file->dentry.dir.DIR_FstClusLO;
 	f = malloc(sizeof(struct fat_fileinfo));
-	memset(f->name, '\0', 12);
-	strncpy((char *)f->name, (char *)file->dentry.dir.DIR_Name, 11);
+	memset(f->name, '\0', 13);
+	strncpy((char *)f->name, (char *)file->dentry.dir.DIR_Name, 8);
+	extension = file->dentry.dir.DIR_Name[8] != ' ';
+	f->name[8] = '.';
+	strncpy((char *)f->name + 8 + extension, (char *)file->dentry.dir.DIR_Name + 8, 3);
+
 	f->uniname = malloc(namelen * UTF8_MAX_CHARSIZE + 1);
 	memset(f->uniname, '\0', namelen * UTF8_MAX_CHARSIZE + 1);
 	fat_convert_uniname(uniname, namelen, f->uniname);
@@ -1059,8 +1063,8 @@ int fat_readdir(struct directory *dir, size_t count, uint32_t clu)
 		tmp = tmp->next;
 		f = (struct fat_fileinfo *)(tmp->data);
 		if (!f->namelen) {
-			dir[i].name = calloc(11 + 1, sizeof(unsigned char));
-			strncpy((char *)dir[i].name, (char *)f->name, sizeof(unsigned char) * 11);
+			dir[i].name = calloc(12 + 1, sizeof(unsigned char));
+			strncpy((char *)dir[i].name, (char *)f->name, sizeof(unsigned char) * 12);
 			dir[i].namelen = 11;
 		} else {
 			dir[i].name = malloc(sizeof(uint32_t) * (f->namelen + 1));
