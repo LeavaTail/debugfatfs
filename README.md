@@ -31,42 +31,83 @@ debugfatfs can ontain these inforamtion.
 ## Example
 **Command line mode**
 ```sh
-$ sudo debugfatfs /dev/sdc1
-media-relative sector offset    : 0x00000800 (sector)
-Offset of the First FAT         : 0x00000080 (sector)
-Length of FAT table             :        320 (sector)
-Offset of the Cluster Heap      : 0x00000200 (sector)
-The number of clusters          :      32760 (cluster)
-The first cluster of the root   :          4 (cluster)
-Size of exFAT volumes           :    2097152 (sector)
+$ sudo debugfatfs -c 5 /dev/sdc1
+media-relative sector offset    : 0x00000000 (sector)
+Offset of the First FAT         : 0x00000800 (sector)
+Length of FAT table             :        200 (sector)
+Offset of the Cluster Heap      : 0x00001000 (sector)
+The number of clusters          :      24488 (cluster)
+The first cluster of the root   :          5 (cluster)
+Size of exFAT volumes           :     200000 (sector)
 Bytes per sector                :        512 (byte)
-Bytes per cluster               :      32768 (byte)
+Bytes per cluster               :       4096 (byte)
 The number of FATs              :          1
 The percentage of clusters      :          0 (%)
 
-Read "/" Directory (4 entries).
-System Volume Information 新しいフォルダー NEW_DIRECTORY Directory 
+Read "/" Directory (0 entries).
+
+Cluster #5:
+00000000:  83 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+00000010:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+00000020:  81 00 00 00 20 00 00 00 00 00 00 00 00 00 00 00  .... ...........
+00000030:  00 00 00 00 02 00 00 00 F5 0B 00 00 00 00 00 00  ................
+00000040:  82 00 00 00 0D D3 19 E6 F6 75 AE 03 01 00 00 00  .........u......
+00000050:  00 00 00 00 03 00 00 00 CC 16 00 00 00 00 00 00  ................
+00000060:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+*
+00000FF0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+
 ```
 
 **Interactive mode**
 ```sh
-$ sudo debugfatfs -iq /dev/sdc1
+$ sudo debugfatfs -i /dev/sdc2
 Welcome to debugfatfs 0.1 (Interactive Mode)
 
 /> ls
--HSD-    32768 2020-09-04 15:10:24 System Volume Information 
----D-    32768 2020-09-04 15:13:37 新しいフォルダー 
----D-    32768 2020-09-04 15:14:06 NEW_DIRECTORY 
----D-    32768 2020-09-04 15:14:23 Directory 
+-HSD-    32768 2020-09-13 24:29:39 System Volume Information 
+---DA    32768 2020-09-13 24:30:04 01_LONGNAME 
+---DA    32768 2020-09-13 24:30:04 02_UNICODE 
+---DA    32768 2020-09-13 24:30:04 03_DELETE 
+---DA    32768 2020-09-13 24:30:04 00_SIMPLE 
 
-/> cd Directory
-/Directory> ls
+/> create TESTFILE
+Entry Type
+  85  File
+  C0  Stream
+  C1  Filename
+Select (Default 0x85): 
 
-/Directory> create NEW_TEXT.TXT
-/Directory> ls
-----A        0 2020-09-06 19:20:23 NEW_TEXT.TXT 
+File Attributes
+  Bit0  ReadOnly
+  Bit1  Hidden
+  Bit2  System
+  Bit4  Directory
+  Bit5  Archive
+Select (Default 0x20): 
 
-/Directory> exit
+Secondary Count
+Select (Default 0x2): 
+
+Reserverd
+Select (Default 0x0): 
+
+Timestamp (UTC)
+Select (Default: 2020-09-14 14:27:32.00): 
+
+Timezone
+Select (Default: +09:00): 
+
+DO you want to create stream entry? (Default [y]/n): n
+File should have stream entry, but This don't have.
+/> ls
+-HSD-    32768 2020-09-13 24:29:39 System Volume Information 
+---DA    32768 2020-09-13 24:30:04 01_LONGNAME 
+---DA    32768 2020-09-13 24:30:04 02_UNICODE 
+---DA    32768 2020-09-13 24:30:04 03_DELETE 
+---DA    32768 2020-09-13 24:30:04 00_SIMPLE 
+
+/> exit
 Goodbye!
 ```
 
