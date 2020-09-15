@@ -65,13 +65,13 @@ $ sudo debugfatfs -i /dev/sdc2
 Welcome to debugfatfs 0.1 (Interactive Mode)
 
 /> ls
--HSD-    32768 2020-09-13 24:29:39 System Volume Information 
----DA    32768 2020-09-13 24:30:04 01_LONGNAME 
----DA    32768 2020-09-13 24:30:04 02_UNICODE 
----DA    32768 2020-09-13 24:30:04 03_DELETE 
----DA    32768 2020-09-13 24:30:04 00_SIMPLE 
+-HSD-    32768 2020-09-14 00:29:39 System Volume Information 
+---DA    32768 2020-09-14 00:30:04 01_LONGNAME 
+---DA    32768 2020-09-14 00:30:04 02_UNICODE 
+---DA    32768 2020-09-14 00:30:04 03_DELETE 
+---DA    32768 2020-09-14 00:30:04 00_SIMPLE 
 
-/> create TESTFILE
+/> create TEST
 Entry Type
   85  File
   C0  Stream
@@ -84,28 +84,23 @@ File Attributes
   Bit2  System
   Bit4  Directory
   Bit5  Archive
-Select (Default 0x20): 
+Select (Default 0x20): 3
 
 Secondary Count
 Select (Default 0x2): 
 
 Reserverd
-Select (Default 0x0): 
+Select (Default 0x0): 8
 
 Timestamp (UTC)
-Select (Default: 2020-09-14 14:27:32.00): 
+Select (Default: 2020-09-15 14:10:17.00): 
 
 Timezone
 Select (Default: +09:00): 
 
-DO you want to create stream entry? (Default [y]/n): n
+Do you want to create stream entry? (Default [y]/n): n
 File should have stream entry, but This don't have.
-/> ls
--HSD-    32768 2020-09-13 24:29:39 System Volume Information 
----DA    32768 2020-09-13 24:30:04 01_LONGNAME 
----DA    32768 2020-09-13 24:30:04 02_UNICODE 
----DA    32768 2020-09-13 24:30:04 03_DELETE 
----DA    32768 2020-09-13 24:30:04 00_SIMPLE 
+/> 
 
 /> exit
 Goodbye!
