@@ -1234,10 +1234,13 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			d->dentry.file.LastModifiedUtcOffset = tz | 0x80;
 
 			if (!quiet) {
+				char buf[4] = {0};
 				pr_msg("DO you want to create stream entry? (Default [y]/n): ");
 				fflush(stdout);
-				if (getchar() == 'n')
-					goto out;
+				if (fgets(buf, 4, stdin) != NULL) {
+					if (!strncmp(buf, "n", 1))
+						goto out;
+				}
 			}
 			lasti = i + 1;
 			d = ((struct exfat_dentry *)data) + lasti;
@@ -1256,10 +1259,13 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			query_param(create_prompt[9], &(d->dentry.stream.DataLength), 0x00, 8, quiet);
 
 			if (!quiet) {
+				char buf[4] = {0};
 				pr_msg("DO you want to create Name entry? (Default [y]/n): ");
 				fflush(stdout);
-				if (getchar() == 'n')
-					goto out;
+				if (fgets(buf, 4, stdin) != NULL) {
+					if (!strncmp(buf, "n", 1))
+						goto out;
+				}
 			}
 			lasti = i + 2;
 			d = ((struct exfat_dentry *)data) + lasti;

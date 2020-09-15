@@ -1300,10 +1300,13 @@ int fat_create(const char *name, uint32_t clu, int opt)
 		goto create_short;
 
 	if (!quiet) {
+		char buf[4] = {0};
 		pr_msg("DO you want to create Long File Name? (Default [y]/n): ");
 		fflush(stdout);
-		if (getchar() == 'n')
+		if (fgets(buf, 4, stdin) != NULL) {
+			if (!strncmp(buf, "n", 1))
 			goto create_short;
+		}
 	}
 
 	for (j = count; j != 0; j--) {
