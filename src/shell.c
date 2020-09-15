@@ -451,7 +451,8 @@ int shell(void)
 		get_env(envp, "PWD", buf);
 		fprintf(stdout, "%s> ", buf);
 		fflush(stdout);
-		read_cmd(buf);
+		if (read_cmd(buf))
+			break;
 		argc = decode_cmd(buf, argv, envp);
 		if (execute_cmd(argc, argv, envp))
 			break;
