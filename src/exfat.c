@@ -1235,7 +1235,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 
 			if (!quiet) {
 				char buf[4] = {0};
-				pr_msg("DO you want to create stream entry? (Default [y]/n): ");
+				pr_msg("Do you want to create stream entry? (Default [y]/n): ");
 				fflush(stdout);
 				if (fgets(buf, 4, stdin) != NULL) {
 					if (!strncmp(buf, "n", 1))
@@ -1260,7 +1260,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 
 			if (!quiet) {
 				char buf[4] = {0};
-				pr_msg("DO you want to create Name entry? (Default [y]/n): ");
+				pr_msg("Do you want to create Name entry? (Default [y]/n): ");
 				fflush(stdout);
 				if (fgets(buf, 4, stdin) != NULL) {
 					if (!strncmp(buf, "n", 1))
