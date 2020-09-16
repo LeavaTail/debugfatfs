@@ -734,9 +734,12 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
 	t->tm_sec += subsec / 100;
 	/* OffsetValid */
 	if (tz & 0x80) {
+		int ex_sec = 0;
 		int ex_min = 0;
 		int ex_hour = 0;
 		char offset = tz & 0x7f;
+		time_t tmp_time = mktime(t);
+		struct tm *t2;
 		/* negative value */
 		if (offset & 0x40) {
 			offset = ((~offset) + 1) & 0x7f;
@@ -746,8 +749,12 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
 			ex_min = (offset % 4) * 15;
 			ex_hour = offset / 4;
 		}
+		ex_sec = ex_min * 60 + ex_hour * 3600;
 		t->tm_hour += ex_hour;
 		t->tm_min  += ex_min;
+		tmp_time += ex_sec;
+		t2 = localtime(&tmp_time);
+		*t = *t2;
 	}
 }
 
@@ -1168,7 +1175,7 @@ int exfat_release_cluster(uint32_t clu)
 int exfat_create(const char *name, uint32_t clu, int opt)
 {
 	int i, namei, lasti;
-	int quiet = 1;
+	int quiet = 0;
 	uint8_t attr = 0;
 	void *data;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
@@ -1204,8 +1211,8 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			break;
 	}
 
-	if (opt & INTERACTIVE_COMMAND)
-		quiet = 0;
+	if (opt & OPTION_QUIET)
+		quiet = 1;
 
 	query_param(create_prompt[0], &(d->EntryType), 0x85, 1, quiet);
 	lasti = i;
@@ -1227,10 +1234,13 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			d->dentry.file.LastModifiedUtcOffset = tz | 0x80;
 
 			if (!quiet) {
-				pr_msg("DO you want to create stream entry? (Default [y]/n): ");
+				char buf[4] = {0};
+				pr_msg("Do you want to create stream entry? (Default [y]/n): ");
 				fflush(stdout);
-				if (getchar() == 'n')
-					goto out;
+				if (fgets(buf, 4, stdin) != NULL) {
+					if (!strncmp(buf, "n", 1))
+						goto out;
+				}
 			}
 			lasti = i + 1;
 			d = ((struct exfat_dentry *)data) + lasti;
@@ -1249,10 +1259,13 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			query_param(create_prompt[9], &(d->dentry.stream.DataLength), 0x00, 8, quiet);
 
 			if (!quiet) {
-				pr_msg("DO you want to create Name entry? (Default [y]/n): ");
+				char buf[4] = {0};
+				pr_msg("Do you want to create Name entry? (Default [y]/n): ");
 				fflush(stdout);
-				if (getchar() == 'n')
-					goto out;
+				if (fgets(buf, 4, stdin) != NULL) {
+					if (!strncmp(buf, "n", 1))
+						goto out;
+				}
 			}
 			lasti = i + 2;
 			d = ((struct exfat_dentry *)data) + lasti;

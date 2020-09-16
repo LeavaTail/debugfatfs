@@ -4,7 +4,7 @@
 #define CMD_MAXLEN 255
 #define CMD_DELIM " \t\r\n\a"
 
-#define INTERACTIVE_COMMAND 1
+#define CMD_QUIET  1
 
 struct command {
 	char *name;

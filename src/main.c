@@ -33,6 +33,7 @@ static struct option const longopts[] =
 	{"interactive", no_argument, NULL, 'i'},
 	{"load", required_argument, NULL, 'l'},
 	{"output", required_argument, NULL, 'o'},
+	{"quiet", no_argument, NULL, 'q'},
 	{"ro", no_argument, NULL, 'r'},
 	{"save", required_argument, NULL, 's'},
 	{"upper", required_argument, NULL, 'u'},
@@ -57,6 +58,7 @@ static void usage(void)
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -l, --load=file\tLoad Main boot region and FAT region from file.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
+	fprintf(stderr, "  -q, --quiet\tNot prompting the user in interactive mode. \n");
 	fprintf(stderr, "  -r, --ro\tread only mode. \n");
 	fprintf(stderr, "  -s, --save=file\tSave Main boot region and FAT region in file.\n");
 	fprintf(stderr, "  -u, --upper\tconvert into uppercase latter by up-case Table.\n");
@@ -220,10 +222,26 @@ int set_clusters(void *data, off_t index, size_t num)
  */
 void hexdump(FILE *out, void *data, size_t size)
 {
+	unsigned long skip = 0;
 	size_t line, byte = 0;
 	size_t count = size / 0x10;
+	const char zero[0x10] = {0};
 
 	for (line = 0; line < count; line++) {
+		if ((line != count - 1) && (!memcmp(data + line * 0x10, zero, 0x10))) {
+			switch (skip++) {
+				case 0:
+					break;
+				case 1:
+					pr_msg("*\n");
+					/* FALLTHROUGH */
+				default:
+					continue;
+			}
+		} else {
+			skip = 0;
+		}
+
 		pr_msg("%08lX:  ", line * 0x10);
 		for (byte = 0; byte < 0x10; byte++) {
 			pr_msg("%02X ", ((unsigned char *)data)[line * 0x10 + byte]);
@@ -458,7 +476,7 @@ int main(int argc, char *argv[])
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ab:c:il:o:rs:u:v",
+					"ab:c:il:o:qrs:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
@@ -485,6 +503,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'r':
 				attr |= OPTION_READONLY;
+				break;
+			case 'q':
+				attr |= OPTION_QUIET;
 				break;
 			case 's':
 				attr |= OPTION_SAVE;
