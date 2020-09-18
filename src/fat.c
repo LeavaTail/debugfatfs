@@ -31,7 +31,7 @@ int fat_clean_dchain(uint32_t);
 /* File function prototype */
 static void fat_create_fileinfo(node2_t *, uint32_t, struct fat_dentry *, uint16_t *, size_t);
 static void fat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
-static int fat_convert_shortname(uint16_t *, char *);
+static int fat_create_shortname(uint16_t *, char *);
 static int fat_create_nameentry(const char *, char *, uint16_t *);
 static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
 static int fat_query_timestamp(struct tm *, uint16_t *, uint16_t *, uint8_t *, int);
@@ -744,14 +744,14 @@ static void fat_convert_uniname(uint16_t *uniname, uint64_t name_len, unsigned c
 }
 
 /**
- * fat_convert_shortname - function to convert longname to shortname
+ * fat_create_shortname -  function to convert filename to shortname
  * @longname:              filename dentry in UTF-16
  * @name:                  filename in ascii (output)
  *
  * @return                 0 (Same as input name)
  *                         1 (Difference from input data)
  */
-static int fat_convert_shortname(uint16_t *longname, char *name)
+static int fat_create_shortname(uint16_t *longname, char *name)
 {
 	int ch;
 	/* Pick up Only ASCII code */
@@ -796,7 +796,7 @@ static int fat_create_nameentry(const char *name, char *shortname, uint16_t *lon
 	for (i = 0, j = 0; i < 8 && longname[j] != '.'; i++, j++) {
 		if (i > name_len)
 			goto numtail;
-		if (fat_convert_shortname(&longname[j], &shortname[i]))
+		if (fat_create_shortname(&longname[j], &shortname[i]))
 			changed = true;
 	}
 	/* This is not 8.3 format */
@@ -810,7 +810,7 @@ static int fat_create_nameentry(const char *name, char *shortname, uint16_t *lon
 	for (i = 8; i < 11; i++, j++) {
 		if (j > name_len)
 			goto numtail;
-		if (fat_convert_shortname(&longname[j], &shortname[i]))
+		if (fat_create_shortname(&longname[j], &shortname[i]))
 			changed = true;
 	}
 
