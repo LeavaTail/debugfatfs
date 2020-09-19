@@ -686,16 +686,13 @@ int fat_clean_dchain(uint32_t index)
 static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 		struct fat_dentry *file, uint16_t *uniname, size_t namelen)
 {
-	int extension, index, next_clu = 0;
+	int index, next_clu = 0;
 	struct fat_fileinfo *f;
 
 	next_clu |= (file->dentry.dir.DIR_FstClusHI << 16) | file->dentry.dir.DIR_FstClusLO;
 	f = malloc(sizeof(struct fat_fileinfo));
 	memset(f->name, '\0', 13);
-	strncpy((char *)f->name, (char *)file->dentry.dir.DIR_Name, 8);
-	extension = file->dentry.dir.DIR_Name[8] != ' ';
-	f->name[8] = '.';
-	strncpy((char *)f->name + 8 + extension, (char *)file->dentry.dir.DIR_Name + 8, 3);
+	f->namelen = fat_convert_shortname((char *)file->dentry.dir.DIR_Name, (char *)f->name);
 
 	f->uniname = malloc(namelen * UTF8_MAX_CHARSIZE + 1);
 	memset(f->uniname, '\0', namelen * UTF8_MAX_CHARSIZE + 1);
@@ -777,6 +774,36 @@ static int fat_create_shortname(uint16_t *longname, char *name)
 }
 
 /**
+ * fat_convert_shortname -  function to convert filename to shortname
+ * @shortname:              filename dentry in ASCII
+ * @name:                   filename in ascii (output)
+ *
+ * @return                  name length
+ */
+static int fat_convert_shortname(const char *shortname, char *name)
+{
+	int i, j;
+	/* filename */
+	for (i = 0, j = 0; i < 8; i++) {
+		if (!fat_validate_character(shortname[i])) {
+			name[j++] = shortname[i];
+		}
+	}
+
+	/* add file extension */
+	if (shortname[i] != ' ') {
+		name[j++] = '.';
+		for (i = 9; i < 11; i++) {
+			if (!fat_validate_character(shortname[i])) {
+				name[j++] = shortname[i];
+			}
+		}
+	}
+
+	return j;
+}
+
+/**
  * fat_create_nameentry - function to get filename
  * @name:                 filename dentry in UTF-8
  * @shortname:            filename in ASCII (output)
@@ -839,6 +866,25 @@ static void fat_convert_unixtime(struct tm *t, uint16_t date, uint16_t time, uin
 	t->tm_min  = (time >> EXFAT_MINUTE) & 0x3f;
 	t->tm_sec  = (time & 0x1f) * 2;
 	t->tm_sec += subsec / 100;
+}
+
+/**
+ * fat_validate_character- validate that character is ASCII as 8.3 format
+ * @ch:                    ASCII character
+ *
+ * @return                 0 (as 8.3 format)
+ *                         1 (not 8.3 format)
+ */
+static int fat_validate_character(const char ch)
+{
+	/* . " / \ [] : ; = ,  */
+	int i = 0, c;
+	char bad[] = {0x2e, 0x22, 0x2f, 0x5c, 0x5b, 0x5d, 0x3a, 0x3b, 0x3d, 0x2c, 0x20, 0x00};
+	while ((c = bad[i++]) != 0x00) {
+		if (ch == c)
+			return 1;
+	}
+	return 0;
 }
 
 /**
