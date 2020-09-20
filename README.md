@@ -44,8 +44,6 @@ Bytes per cluster               :       4096 (byte)
 The number of FATs              :          1
 The percentage of clusters      :          0 (%)
 
-Read "/" Directory (0 entries).
-
 Cluster #5:
 00000000:  83 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
 00000010:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................

@@ -462,7 +462,6 @@ int main(int argc, char *argv[])
 	int opt;
 	int longindex;
 	int ret = 0;
-	int entries = 0;
 	uint32_t attr = 0;
 	uint32_t cluster = 0;
 	uint32_t sector = 0;
@@ -473,7 +472,6 @@ int main(int argc, char *argv[])
 	char *s;
 	FILE *bfile = NULL;
 	struct pseudo_bootsec bootsec;
-	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
 					"ab:c:il:o:qrs:u:v",
@@ -594,30 +592,7 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		goto device_close;
 
-	dirs = malloc(sizeof(struct directory) * DIRECTORY_FILES);
-	ret = info.ops->readdir(dirs, DIRECTORY_FILES, info.root_offset);
-	if (ret < 0) {
-		/* Only once, expand dirs structure and execute readdir */
-		ret = abs(ret) + 1;
-		dirs_tmp = realloc(dirs, sizeof(struct directory) * (DIRECTORY_FILES + ret));
-		if (dirs_tmp) {
-			dirs = dirs_tmp;
-			ret = info.ops->readdir(dirs, DIRECTORY_FILES + ret, info.root_offset);
-			if (ret < 0)
-				goto out;
-		} else {
-			pr_err("Can't load Root directory because of failed to allocate space.\n");
-			goto out;
-		}
-	}
-
-	entries = ret;
-	pr_msg("Read \"/\" Directory (%d entries).\n", entries);
-	for (i = 0; i < entries; i++)
-		pr_msg("%s ", dirs[i].name);
-
-	pr_msg("\n");
-	ret = 0;
+	info.ops->readdir(NULL, 0, info.root_offset);
 
 	/* Command line: -a option */
 	if (attr & OPTION_ALL) {
@@ -646,9 +621,6 @@ int main(int argc, char *argv[])
 	}
 
 out:
-	for (i = 0; i < entries; i++)
-		free(dirs[i].name);
-	free(dirs);
 	free(info.vol_label);
 	free(info.upcase_table);
 	free(info.alloc_table);

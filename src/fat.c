@@ -31,9 +31,11 @@ int fat_clean_dchain(uint32_t);
 /* File function prototype */
 static void fat_create_fileinfo(node2_t *, uint32_t, struct fat_dentry *, uint16_t *, size_t);
 static void fat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
-static int fat_convert_shortname(uint16_t *, char *);
+static int fat_create_shortname(uint16_t *, char *);
+static int fat_convert_shortname(const char *, char *);
 static int fat_create_nameentry(const char *, char *, uint16_t *);
 static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
+static int fat_validate_character(const char);
 static int fat_query_timestamp(struct tm *, uint16_t *, uint16_t *, uint8_t *, int);
 
 /* Operations function prototype */
@@ -171,11 +173,15 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 	info.cluster_count = CountofClusters;
 	info.fat_offset = b->BPB_RevdSecCnt;
 	info.fat_length = b->BPB_NumFATs * FATSz;
-	info.heap_offset = info.fat_offset + info.fat_length;
-	if (info.fstype == FAT32_FILESYSTEM)
+	if (info.fstype == FAT32_FILESYSTEM) {
 		info.root_offset = b->reserved_info.fat32_reserved_info.BPB_RootClus;
-	else
+		info.root_length = info.cluster_size;
+		info.heap_offset = info.fat_offset + info.fat_length;
+	} else {
+		info.root_offset = 0;
 		info.root_length = (32 * b->BPB_RootEntCnt + b->BPB_BytesPerSec - 1) / b->BPB_BytesPerSec;
+		info.heap_offset = info.fat_offset + info.fat_length + info.root_length;
+	}
 
 	f = malloc(sizeof(struct fat_fileinfo));
 	strncpy((char *)f->name, "/", strlen("/") + 1);
@@ -686,16 +692,13 @@ int fat_clean_dchain(uint32_t index)
 static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 		struct fat_dentry *file, uint16_t *uniname, size_t namelen)
 {
-	int extension, index, next_clu = 0;
+	int index, next_clu = 0;
 	struct fat_fileinfo *f;
 
 	next_clu |= (file->dentry.dir.DIR_FstClusHI << 16) | file->dentry.dir.DIR_FstClusLO;
 	f = malloc(sizeof(struct fat_fileinfo));
 	memset(f->name, '\0', 13);
-	strncpy((char *)f->name, (char *)file->dentry.dir.DIR_Name, 8);
-	extension = file->dentry.dir.DIR_Name[8] != ' ';
-	f->name[8] = '.';
-	strncpy((char *)f->name + 8 + extension, (char *)file->dentry.dir.DIR_Name + 8, 3);
+	f->namelen = fat_convert_shortname((char *)file->dentry.dir.DIR_Name, (char *)f->name);
 
 	f->uniname = malloc(namelen * UTF8_MAX_CHARSIZE + 1);
 	memset(f->uniname, '\0', namelen * UTF8_MAX_CHARSIZE + 1);
@@ -744,14 +747,14 @@ static void fat_convert_uniname(uint16_t *uniname, uint64_t name_len, unsigned c
 }
 
 /**
- * fat_convert_shortname - function to convert longname to shortname
+ * fat_create_shortname -  function to convert filename to shortname
  * @longname:              filename dentry in UTF-16
  * @name:                  filename in ascii (output)
  *
  * @return                 0 (Same as input name)
  *                         1 (Difference from input data)
  */
-static int fat_convert_shortname(uint16_t *longname, char *name)
+static int fat_create_shortname(uint16_t *longname, char *name)
 {
 	int ch;
 	/* Pick up Only ASCII code */
@@ -777,6 +780,36 @@ static int fat_convert_shortname(uint16_t *longname, char *name)
 }
 
 /**
+ * fat_convert_shortname -  function to convert filename to shortname
+ * @shortname:              filename dentry in ASCII
+ * @name:                   filename in ascii (output)
+ *
+ * @return                  name length
+ */
+static int fat_convert_shortname(const char *shortname, char *name)
+{
+	int i, j;
+	/* filename */
+	for (i = 0, j = 0; i < 8; i++) {
+		if (!fat_validate_character(shortname[i])) {
+			name[j++] = shortname[i];
+		}
+	}
+
+	/* add file extension */
+	if (shortname[i] != ' ') {
+		name[j++] = '.';
+		for (i = 8; i < 11; i++) {
+			if (!fat_validate_character(shortname[i])) {
+				name[j++] = shortname[i];
+			}
+		}
+	}
+
+	return j;
+}
+
+/**
  * fat_create_nameentry - function to get filename
  * @name:                 filename dentry in UTF-8
  * @shortname:            filename in ASCII (output)
@@ -796,7 +829,7 @@ static int fat_create_nameentry(const char *name, char *shortname, uint16_t *lon
 	for (i = 0, j = 0; i < 8 && longname[j] != '.'; i++, j++) {
 		if (i > name_len)
 			goto numtail;
-		if (fat_convert_shortname(&longname[j], &shortname[i]))
+		if (fat_create_shortname(&longname[j], &shortname[i]))
 			changed = true;
 	}
 	/* This is not 8.3 format */
@@ -810,7 +843,7 @@ static int fat_create_nameentry(const char *name, char *shortname, uint16_t *lon
 	for (i = 8; i < 11; i++, j++) {
 		if (j > name_len)
 			goto numtail;
-		if (fat_convert_shortname(&longname[j], &shortname[i]))
+		if (fat_create_shortname(&longname[j], &shortname[i]))
 			changed = true;
 	}
 
@@ -839,6 +872,25 @@ static void fat_convert_unixtime(struct tm *t, uint16_t date, uint16_t time, uin
 	t->tm_min  = (time >> EXFAT_MINUTE) & 0x3f;
 	t->tm_sec  = (time & 0x1f) * 2;
 	t->tm_sec += subsec / 100;
+}
+
+/**
+ * fat_validate_character- validate that character is ASCII as 8.3 format
+ * @ch:                    ASCII character
+ *
+ * @return                 0 (as 8.3 format)
+ *                         1 (not 8.3 format)
+ */
+static int fat_validate_character(const char ch)
+{
+	/* " / \ [] : ; = ,  */
+	int i = 0, c;
+	char bad[] = {0x22, 0x2f, 0x5c, 0x5b, 0x5d, 0x3a, 0x3b, 0x3d, 0x2c, 0x20, 0x00};
+	while ((c = bad[i++]) != 0x00) {
+		if (ch == c)
+			return 1;
+	}
+	return 0;
 }
 
 /**
