@@ -799,7 +799,7 @@ static int fat_convert_shortname(const char *shortname, char *name)
 	/* add file extension */
 	if (shortname[i] != ' ') {
 		name[j++] = '.';
-		for (i = 9; i < 11; i++) {
+		for (i = 8; i < 11; i++) {
 			if (!fat_validate_character(shortname[i])) {
 				name[j++] = shortname[i];
 			}
