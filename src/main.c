@@ -179,7 +179,7 @@ int get_clusters(void *data, off_t index, size_t num)
 	off_t heap_start = info.heap_offset * info.sector_size;
 
 	if (index < 2 || index + num > info.cluster_count) {
-		pr_err("invalid cluster index %lu.", index);
+		pr_err("invalid cluster index %lu.\n", index);
 		return -1;
 	}
 
@@ -205,7 +205,7 @@ int set_clusters(void *data, off_t index, size_t num)
 	off_t heap_start = info.heap_offset * info.sector_size;
 
 	if (index < 2 || index + num > info.cluster_count) {
-		pr_err("invalid cluster index %lu.", index);
+		pr_err("invalid cluster index %lu.\n", index);
 		return -1;
 	}
 
