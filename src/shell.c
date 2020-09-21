@@ -120,7 +120,7 @@ static int cmd_cd(int argc, char **argv, char **envp)
 	if (strcmp(path, "/"))
 		path = strcat(path, "/");
 
-	if (dir) {
+	if (dir >= 0) {
 		cluster = dir;
 		set_env(envp, "PWD", path);
 	}
