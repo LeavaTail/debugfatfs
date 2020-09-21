@@ -306,7 +306,7 @@ static int cmd_remove(int argc, char **argv, char **envp)
 static int cmd_help(int argc, char **argv, char **envp)
 {
 	fprintf(stderr, "ls         list current directory contents.\n");
-	fprintf(stderr, "cd         tchange directory.\n");
+	fprintf(stderr, "cd         change directory.\n");
 	fprintf(stderr, "alloc      allocate cluster.\n");
 	fprintf(stderr, "release    release cluster.\n");
 	fprintf(stderr, "fat        change File Allocation Table entry\n");
