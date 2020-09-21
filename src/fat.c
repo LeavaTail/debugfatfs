@@ -406,8 +406,7 @@ static uint32_t fat12_get_fat_entry(uint32_t clu)
 	uint32_t ret = 0;
 	uint32_t FATOffset = clu + (clu / 2);
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
-
-	uint16_t *fat;
+	uint8_t *fat;
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	if (clu % 2) {
@@ -431,9 +430,7 @@ static uint32_t fat12_get_fat_entry(uint32_t clu)
 static uint32_t fat16_get_fat_entry(uint32_t clu)
 {
 	uint32_t ret = 0;
-	uint32_t FATOffset = clu * sizeof(uint16_t);
-	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
-
+	uint32_t ThisFATEntOffset = clu % info.sector_size;
 	uint16_t *fat;
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
@@ -452,9 +449,7 @@ static uint32_t fat16_get_fat_entry(uint32_t clu)
 static uint32_t fat32_get_fat_entry(uint32_t clu)
 {
 	uint32_t ret = 0;
-	uint32_t FATOffset = clu * sizeof(uint32_t);
-	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
-
+	uint32_t ThisFATEntOffset = clu % info.sector_size;
 	uint32_t *fat;
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
@@ -1060,7 +1055,7 @@ int fat_lookup(uint32_t clu, char *name)
 			index = fat_get_index(clu);
 			if (!info.root[index]) {
 				pr_warn("This Directory doesn't exist in filesystem.\n");
-				return 0;
+				return -1;
 			}
 		}
 
@@ -1085,7 +1080,7 @@ int fat_lookup(uint32_t clu, char *name)
 
 		if (!found) {
 			pr_warn("'%s': No such file or directory.\n", name);
-			return 0;
+			return -1;
 		}
 	}
 
