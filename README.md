@@ -121,6 +121,7 @@ debugfatfs support support these optoin. (Please look at man-page)
 And, debugfatfs with interactive mode support these command.
 * **ls** --- list current directory contents
 * **cd** *path* --- change directory
+* **cluster** *cluster* --- print cluster raw-data
 * **alloc** *cluster* --- allocate cluster
 * **release** *cluster* --- release cluster
 * **fat** *index* *[entry]* --- change File Allocation Table entry
