@@ -11,6 +11,7 @@ static int get_env(char **, char *, char *);
 
 static int cmd_ls(int, char **, char **);
 static int cmd_cd(int, char **, char **);
+static int cmd_cluster(int, char **, char **);
 static int cmd_alloc(int, char **, char **);
 static int cmd_release(int, char **, char **);
 static int cmd_fat(int, char **, char **);
@@ -25,6 +26,7 @@ static int cmd_exit(int, char **, char **);
 struct command cmd[] = {
 	{"ls", cmd_ls},
 	{"cd", cmd_cd},
+	{"cluster", cmd_cluster},
 	{"alloc", cmd_alloc},
 	{"release", cmd_release},
 	{"fat", cmd_fat},
@@ -120,9 +122,34 @@ static int cmd_cd(int argc, char **argv, char **envp)
 	if (strcmp(path, "/"))
 		path = strcat(path, "/");
 
-	if (dir) {
+	if (dir >= 0) {
 		cluster = dir;
 		set_env(envp, "PWD", path);
+	}
+
+	return 0;
+}
+
+/**
+ * cmd_cluster  - Get cluster raw data.
+ * @argc:         argument count
+ * @argv:         argument vetor
+ * @envp:         environment pointer
+ *
+ * @return        0 (success)
+ */
+static int cmd_cluster(int argc, char **argv, char **envp)
+{
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			print_cluster(strtoul(argv[1], NULL, 10));
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
 	}
 
 	return 0;
