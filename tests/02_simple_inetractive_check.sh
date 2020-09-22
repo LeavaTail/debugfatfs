@@ -44,12 +44,15 @@ function test_shell () {
 	"
 	echo ""
 	sync
+	sleep 5
 }
 
 function check_mount () {
 	mkdir -p mnt
 	sleep 5
 	sudo mount $1 mnt
+	mount
+	ls -l mnt/
 
 	if [ ! -e mnt/00_SIMPLE/SAMPLE00.TXT ]; then
 		echo "SAMPLE00.TXT should be exist."
