@@ -824,6 +824,8 @@ static int fat_create_nameentry(const char *name, char *shortname, uint16_t *lon
 	for (i = 0, j = 0; i < 8 && longname[j] != '.'; i++, j++) {
 		if (i > name_len)
 			goto numtail;
+		if (!longname[j])
+			goto numtail;
 		if (fat_create_shortname(&longname[j], &shortname[i]))
 			changed = true;
 	}
