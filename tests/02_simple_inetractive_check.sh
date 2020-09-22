@@ -43,10 +43,12 @@ function test_shell () {
 	send \"exit\n\"
 	"
 	echo ""
+	sync
 }
 
 function check_mount () {
 	mkdir -p mnt
+	sleep 5
 	sudo mount $1 mnt
 
 	if [ ! -e mnt/00_SIMPLE/SAMPLE00.TXT ]; then
@@ -64,7 +66,7 @@ function check_mount () {
 	fi
 
 	echo "create/remove command is fine."
-	sleep 1
+	sleep 5
 
 	sudo umount mnt
 	rmdir mnt
