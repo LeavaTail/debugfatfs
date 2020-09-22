@@ -52,11 +52,11 @@ function check_mount () {
 	sleep 5
 	sudo mount $1 mnt
 	mount
-	ls -l mnt/
+	ls -l mnt/00_SIMPLE
 
 	if [ ! -e mnt/00_SIMPLE/SAMPLE00.TXT ]; then
 		echo "SAMPLE00.TXT should be exist."
-		ls mnt
+		ls mnt/00_SIMPLE
 		sudo umount mnt
 		exit 1
 	fi
