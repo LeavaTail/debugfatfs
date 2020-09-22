@@ -42,10 +42,40 @@ function test_shell () {
 	expect \"/> \"
 	send \"exit\n\"
 	"
+	echo ""
+}
+
+function check_mount () {
+	mkdir -p mnt
+	sudo mount $1 mnt
+
+	if [ ! -e mnt/00_SIMPLE/SAMPLE00.TXT ]; then
+		echo "SAMPLE00.TXT should be exist."
+		ls mnt
+		sudo umount mnt
+		exit 1
+	fi
+
+	if [ -e mnt/00_SIMPLE/FILE.TXT ]; then
+		echo "FILE.TXT shouldn't be exist."
+		ls mnt/00_SIMPLE
+		sudo umount mnt
+		exit 1
+	fi
+
+	echo "create/remove command is fine."
+	sleep 1
+
+	sudo umount mnt
+	rmdir mnt
 }
 
 ### main function ###
 test_shell fat12.img
+check_mount fat12.img
 test_shell fat16.img
+check_mount fat16.img
 test_shell fat32.img
+check_mount fat32.img
 test_shell exfat.img
+check_mount exfat.img
