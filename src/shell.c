@@ -258,9 +258,9 @@ static int cmd_create(int argc, char **argv, char **envp)
 			break;
 		case 2:
 			if (info.attr & OPTION_QUIET)
-				info.ops->create(argv[1], cluster, 0);
+				info.ops->create(argv[1], cluster, OPTION_QUIET);
 			else
-				info.ops->create(argv[1], cluster, CMD_QUIET);
+				info.ops->create(argv[1], cluster, 0);
 			info.ops->reload(cluster);
 			break;
 		default:
