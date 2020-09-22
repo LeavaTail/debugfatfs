@@ -755,7 +755,7 @@ static int fat_create_shortname(uint16_t *longname, char *name)
 	/* Pick up Only ASCII code */
 	if (*longname < 0x0080) {
 		/* Upper character is directly set */
-		if(isupper(*longname)) {
+		if(isupper(*longname) || isdigit(*longname)) {
 			*name = *longname;
 		/* otherwise (lower character or othse)  */
 		} else {
