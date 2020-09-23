@@ -83,4 +83,3 @@ check_mount fat16.img
 test_shell fat32.img
 check_mount fat32.img
 test_shell exfat.img
-check_mount exfat.img
