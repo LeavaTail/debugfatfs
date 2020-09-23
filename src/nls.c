@@ -13,7 +13,6 @@
  * @d               UTF-32 character (output)
  *
  * @return:         Byte size in UTF-32
- * TODO: Take measures about Redundant UTF-8 Encoding
  */
 int utf8_to_utf32(unsigned char *u, uint32_t *d)
 {
@@ -52,8 +51,7 @@ int utf8_to_utf32(unsigned char *u, uint32_t *d)
  * @u               UTF-32 character
  * @d               UTF-8 character (output)
  *
- * @return:          Byte size in UTF-8
- * TODO: Take measures about Redundant UTF-8 Encoding
+ * @return:         Byte size in UTF-8
  */
 int utf32_to_utf8(uint32_t u, unsigned char *d)
 {
@@ -89,8 +87,7 @@ int utf32_to_utf8(uint32_t u, unsigned char *d)
  * @namelen           UTF-8 characters length
  * @dist              UTF-16 characters (output)
  *
- * @return:            byte size in UTF-16
- * TODO: Implement surrogate pair case
+ * @return:           byte size in UTF-16
  */
 int utf8s_to_utf16s(unsigned char *src, uint16_t namelen, uint16_t* dist)
 {
@@ -123,7 +120,6 @@ int utf8s_to_utf16s(unsigned char *src, uint16_t namelen, uint16_t* dist)
  * @dist              UTF-8 characters (output)
  *
  * @return:            byte size in UTF-8
- * TODO: Implement surrogate pair case
  */
 int utf16s_to_utf8s(uint16_t *src, uint16_t namelen, unsigned char* dist)
 {
