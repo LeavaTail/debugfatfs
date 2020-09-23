@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ *  Copyright (C) 2020 LeavaTail
+ */
 #ifndef _DEBUGFATFS_H
 #define _DEBUGFATFS_H
 
