@@ -258,9 +258,9 @@ static int cmd_create(int argc, char **argv, char **envp)
 			break;
 		case 2:
 			if (info.attr & OPTION_QUIET)
-				info.ops->create(argv[1], cluster, 0);
+				info.ops->create(argv[1], cluster, OPTION_QUIET);
 			else
-				info.ops->create(argv[1], cluster, CMD_QUIET);
+				info.ops->create(argv[1], cluster, 0);
 			info.ops->reload(cluster);
 			break;
 		default:
@@ -306,7 +306,8 @@ static int cmd_remove(int argc, char **argv, char **envp)
 static int cmd_help(int argc, char **argv, char **envp)
 {
 	fprintf(stderr, "ls         list current directory contents.\n");
-	fprintf(stderr, "cd         tchange directory.\n");
+	fprintf(stderr, "cd         change directory.\n");
+	fprintf(stderr, "cluster    print cluster raw-data.\n");
 	fprintf(stderr, "alloc      allocate cluster.\n");
 	fprintf(stderr, "release    release cluster.\n");
 	fprintf(stderr, "fat        change File Allocation Table entry\n");

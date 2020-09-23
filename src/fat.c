@@ -755,7 +755,7 @@ static int fat_create_shortname(uint16_t *longname, char *name)
 	/* Pick up Only ASCII code */
 	if (*longname < 0x0080) {
 		/* Upper character is directly set */
-		if(isupper(*longname)) {
+		if(isupper(*longname) || isdigit(*longname)) {
 			*name = *longname;
 		/* otherwise (lower character or othse)  */
 		} else {
@@ -823,6 +823,8 @@ static int fat_create_nameentry(const char *name, char *shortname, uint16_t *lon
 	name_len = utf8s_to_utf16s((unsigned char *)name, strlen(name), longname);
 	for (i = 0, j = 0; i < 8 && longname[j] != '.'; i++, j++) {
 		if (i > name_len)
+			goto numtail;
+		if (!longname[j])
 			goto numtail;
 		if (fat_create_shortname(&longname[j], &shortname[i]))
 			changed = true;
