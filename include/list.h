@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ *  Copyright (C) 2020 LeavaTail
+ */
 #ifndef _LIST2_H
 #define _LIST2_H
 

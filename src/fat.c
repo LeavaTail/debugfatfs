@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ *  Copyright (C) 2020 LeavaTail
+ */
 #include <stdio.h>
 #include <stdbool.h>
 #include <ctype.h>
