@@ -140,6 +140,7 @@ struct device_info {
 #define OPTION_SAVE         (1 << 7)
 #define OPTION_LOAD         (1 << 8)
 #define OPTION_READONLY     (1 << 9)
+#define OPTION_DIRECTORY    (1 << 10)
 
 struct directory {
 	unsigned char *name;
