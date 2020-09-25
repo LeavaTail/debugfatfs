@@ -922,7 +922,7 @@ int exfat_print_fsinfo(void)
  * @name:         file name
  *
  * @return:       cluster index
- *                0 (Not found)
+ *                -1 (Not found)
  */
 int exfat_lookup(uint32_t clu, char *name)
 {
@@ -967,7 +967,7 @@ int exfat_lookup(uint32_t clu, char *name)
 			index = exfat_get_index(clu);
 			if (!info.root[index]) {
 				pr_warn("This Directory doesn't exist in filesystem.\n");
-				return 0;
+				return -1;
 			}
 		}
 
@@ -984,7 +984,7 @@ int exfat_lookup(uint32_t clu, char *name)
 
 		if (!found) {
 			pr_warn("'%s': No such file or directory.\n", name);
-			return 0;
+			return -1;
 		}
 	}
 

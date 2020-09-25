@@ -1016,7 +1016,7 @@ int fat_print_vollabel(void)
  * @name:       file name
  *
  * @return:     cluster index
- *              0 (Not found)
+ *              -1 (Not found)
  */
 int fat_lookup(uint32_t clu, char *name)
 {
