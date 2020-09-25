@@ -652,7 +652,7 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 			0,
 			file->dentry.file.LastAccessdUtcOffset);
 	append_node2(head, next_index, f);
-	 ((struct exfat_fileinfo *)(head->data))->datalen++;
+	((struct exfat_fileinfo *)(head->data))->datalen++;
 
 	/* If this entry is Directory, prepare to create next chain */
 	if ((f->attr & ATTR_DIRECTORY) && (!exfat_check_dchain(next_index))) {
