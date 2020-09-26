@@ -633,6 +633,7 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 	size_t namelen = stream->dentry.stream.NameLength;
 
 	f = malloc(sizeof(struct exfat_fileinfo));
+	memset(f, '\0', sizeof(struct exfat_fileinfo));
 	f->name = malloc(namelen * UTF8_MAX_CHARSIZE + 1);
 	memset(f->name, '\0', namelen * UTF8_MAX_CHARSIZE + 1);
 
