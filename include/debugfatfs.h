@@ -447,7 +447,7 @@ struct query {
 	char **select;
 };
 
-#define QUERY_BUFFER_SIZE 36
+#define QUERY_BUFFER_SIZE 255
 
 extern struct device_info info;
 

@@ -1285,7 +1285,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			}
 			goto out;
 		default:
-			query_param(create_prompt[10], d, 0x00, 32, quiet);
+			query_param(create_prompt[10], &d->dentry, 0x00, 31, quiet);
 			goto out;
 	}
 	if (attr) {

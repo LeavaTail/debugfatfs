@@ -409,7 +409,7 @@ int print_cluster(uint32_t index)
 int query_param(const struct query q, void *param, unsigned int def, size_t size, int quiet)
 {
 	int i;
-	char buf[QUERY_BUFFER_SIZE] = {};
+	char buf[QUERY_BUFFER_SIZE] = {0};
 
 	if (!quiet) {
 		pr_msg("%s\n", q.name);
@@ -450,8 +450,12 @@ int query_param(const struct query q, void *param, unsigned int def, size_t size
 				sscanf(buf, "%016lx", (uint64_t *)param);
 			break;
 		default:
-			if (!quiet)
-				memcpy(param, buf, size);
+			if (quiet) {
+				memset(param, def, size);
+			} else {
+				for (i = 0; i < size; i++)
+					sscanf(buf + (i * 2), "%02hhx", ((uint8_t *)param) + i);
+			}
 			break;
 	}
 	return 0;
