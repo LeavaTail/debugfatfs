@@ -844,19 +844,28 @@ static int exfat_query_timezone(int diff, uint8_t *tz, int quiet)
 	if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
 		return -1;
 
-	if (buf[0] != '\n') {
-		sscanf(buf, "%c%02hhd%02hhd",
-				&op,
-				&hour,
-				&min);
-		*tz = hour * 4 + min / 15;
 
-		if (op == '-') {
+	if (buf[0] == '\n')
+		return 0;
+
+	sscanf(buf, "%c%02hhd%02hhd",
+			&op,
+			&hour,
+			&min);
+	*tz = (hour * 4 + min) / 15;
+
+	switch (op) {
+		case '-':
 			*tz = ~(*tz) + 1;
-		} else if (op != '+' && op != ' ') {
+			*tz &= 0x7f;
+			break;
+		case '+':
+		case ' ':
+			break;
+		default:
 			pr_debug("Invalid operation. you can use only ('+' or '-').\n");
 			*tz = 0;
-		}
+			break;
 	}
 
 	pr_msg("\n");
