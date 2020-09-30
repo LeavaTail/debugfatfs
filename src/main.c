@@ -34,6 +34,7 @@ static struct option const longopts[] =
 	{"all", no_argument, NULL, 'a'},
 	{"byte", required_argument, NULL, 'b'},
 	{"cluster", required_argument, NULL, 'c'},
+	{"directory", required_argument, NULL, 'd'},
 	{"interactive", no_argument, NULL, 'i'},
 	{"load", required_argument, NULL, 'l'},
 	{"output", required_argument, NULL, 'o'},
@@ -59,6 +60,7 @@ static void usage(void)
 	fprintf(stderr, "  -a, --all\tTrverse all directories.\n");
 	fprintf(stderr, "  -b, --byte=offset\tdump the any byte after dump filesystem information.\n");
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
+	fprintf(stderr, "  -d, --direcotry=path\tread directory entry from path.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -l, --load=file\tLoad Main boot region and FAT region from file.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
@@ -407,7 +409,7 @@ int print_cluster(uint32_t index)
 int query_param(const struct query q, void *param, unsigned int def, size_t size, int quiet)
 {
 	int i;
-	char buf[QUERY_BUFFER_SIZE] = {};
+	char buf[QUERY_BUFFER_SIZE] = {0};
 
 	if (!quiet) {
 		pr_msg("%s\n", q.name);
@@ -448,8 +450,12 @@ int query_param(const struct query q, void *param, unsigned int def, size_t size
 				sscanf(buf, "%016lx", (uint64_t *)param);
 			break;
 		default:
-			if (!quiet)
-				memcpy(param, buf, size);
+			if (quiet) {
+				memset(param, def, size);
+			} else {
+				for (i = 0; i < size; i++)
+					sscanf(buf + (i * 2), "%02hhx", ((uint8_t *)param) + i);
+			}
 			break;
 	}
 	return 0;
@@ -466,19 +472,23 @@ int main(int argc, char *argv[])
 	int opt;
 	int longindex;
 	int ret = 0;
+	int offset = 0;
+	int entries = 0;
 	uint32_t attr = 0;
 	uint32_t cluster = 0;
 	uint32_t sector = 0;
 	char *outfile = NULL;
 	char *backup = NULL;
+	char *dir = NULL;
 	char *input = NULL;
 	char out[MAX_NAME_LENGTH + 1] = {};
 	char *s;
 	FILE *bfile = NULL;
 	struct pseudo_bootsec bootsec;
+	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ab:c:il:o:qrs:u:v",
+					"ab:c:d:il:o:qrs:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
@@ -491,6 +501,10 @@ int main(int argc, char *argv[])
 			case 'c':
 				attr |= OPTION_CLUSTER;
 				cluster = strtoul(optarg, NULL, 0);
+				break;
+			case 'd':
+				attr |= OPTION_DIRECTORY;
+				dir = optarg;
 				break;
 			case 'i':
 				attr |= OPTION_INTERACTIVE;
@@ -596,7 +610,41 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		goto device_close;
 
-	info.ops->readdir(NULL, 0, info.root_offset);
+	offset = info.root_offset;
+
+	/* Command line: -d option */
+	if (attr & OPTION_DIRECTORY) {
+		dirs = calloc(DIRECTORY_FILES, sizeof(struct directory));
+		entries = DIRECTORY_FILES;
+		offset = info.ops->lookup(info.root_offset, dir);
+		if (offset < 0)
+			goto out;
+	}
+	ret = info.ops->readdir(dirs, entries, offset);
+	if (attr & OPTION_DIRECTORY) {
+		if (ret < 0) {
+			/* Only once, expand dirs structure and execute readdir */
+			ret = abs(ret) + 1;
+			dirs_tmp = realloc(dirs, sizeof(struct directory) * (DIRECTORY_FILES + ret));
+			if (dirs_tmp) {
+				dirs = dirs_tmp;
+				ret = info.ops->readdir(dirs, DIRECTORY_FILES + ret, offset);
+				if (ret < 0)
+					goto out;
+			} else {
+				pr_err("Can't load directory because of failed to allocate space.\n");
+				goto out;
+			}
+		}
+
+		entries = ret;
+		pr_msg("Read \"/\" Directory (%d entries).\n", entries);
+		for (i = 0; i < entries; i++)
+			pr_msg("%s ", dirs[i].name);
+
+		pr_msg("\n");
+	}
+	ret = 0;
 
 	/* Command line: -a option */
 	if (attr & OPTION_ALL) {
@@ -625,6 +673,11 @@ int main(int argc, char *argv[])
 	}
 
 out:
+	if (attr & OPTION_DIRECTORY) {
+		for (i = 0; i < entries; i++)
+			free(dirs[i].name);
+		free(dirs);
+	}
 	free(info.vol_label);
 	free(info.upcase_table);
 	free(info.alloc_table);

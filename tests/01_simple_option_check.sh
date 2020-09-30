@@ -10,6 +10,7 @@ function test_options () {
 	./debugfatfs -a $1
 	./debugfatfs -b 512 $1
 	./debugfatfs -c 4 $1
+	./debugfatfs -d /00_SIMPLE $1
 	./debugfatfs -o $OUTPUT $1
 	cat $OUTPUT
 	rm $OUTPUT

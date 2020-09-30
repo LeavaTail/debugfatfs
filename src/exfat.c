@@ -6,6 +6,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <time.h>
+
 #include "debugfatfs.h"
 
 /* Generic function prototype */
@@ -36,7 +38,8 @@ static void exfat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
 static void exfat_convert_unixtime(struct tm *, uint32_t, uint8_t, uint8_t);
 static int exfat_query_timestamp(struct tm *, uint32_t *, uint8_t *, int);
-static int exfat_query_timezone(int, uint8_t *, int);
+static int exfat_query_timezone(char *, uint8_t *, int);
+static int exfat_create_timezone(char *, uint8_t *);
 
 /* Operations function prototype */
 int exfat_print_bootsec(void);
@@ -633,6 +636,7 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 	size_t namelen = stream->dentry.stream.NameLength;
 
 	f = malloc(sizeof(struct exfat_fileinfo));
+	memset(f, '\0', sizeof(struct exfat_fileinfo));
 	f->name = malloc(namelen * UTF8_MAX_CHARSIZE + 1);
 	memset(f->name, '\0', namelen * UTF8_MAX_CHARSIZE + 1);
 
@@ -652,7 +656,7 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 			0,
 			file->dentry.file.LastAccessdUtcOffset);
 	append_node2(head, next_index, f);
-	 ((struct exfat_fileinfo *)(head->data))->datalen++;
+	((struct exfat_fileinfo *)(head->data))->datalen++;
 
 	/* If this entry is Directory, prepare to create next chain */
 	if ((f->attr & ATTR_DIRECTORY) && (!exfat_check_dchain(next_index))) {
@@ -824,7 +828,7 @@ static int exfat_query_timestamp(struct tm *t,
  *
  * @return        0 (Success)
  */
-static int exfat_query_timezone(int diff, uint8_t *tz, int quiet)
+static int exfat_query_timezone(char *zone, uint8_t *tz, int quiet)
 {
 	char buf[QUERY_BUFFER_SIZE] = {};
 	char op = (*tz & 0x40) ? '-' : '+';
@@ -834,31 +838,52 @@ static int exfat_query_timezone(int diff, uint8_t *tz, int quiet)
 		return 0;
 
 	pr_msg("Timezone\n");
-	pr_msg("Select (Default: %c%02d:%02d): ",
-			op,
-			diff / 60,
-			diff % 60);
+	pr_msg("Select (Default: %s): ", zone);
 	fflush(stdout);
 
 	if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
 		return -1;
 
-	if (buf[0] != '\n') {
-		sscanf(buf, "%c%02hhd%02hhd",
-				&op,
-				&hour,
-				&min);
-		*tz = hour * 4 + min / 15;
+	exfat_create_timezone(buf, tz);
+	pr_msg("\n");
+	return 0;
+}
 
-		if (op == '-') {
+/**
+ * exfat_create_timezone  - Prompt user for timestamp
+ * @buf:                    difference localtime and UTCtime
+ * @tz:                     offset from UTC Field (Output)
+ *
+ * @return                  0 (Success)
+ */
+static int exfat_create_timezone(char *buf, uint8_t *tz)
+{
+	char op = 0;
+	char min = 0, hour = 0;
+
+	if (buf[0] == '\n')
+		return 0;
+
+	sscanf(buf, "%c%02hhd%02hhd",
+			&op,
+			&hour,
+			&min);
+	*tz = (hour * 4 + min) / 15;
+
+	switch (op) {
+		case '-':
 			*tz = ~(*tz) + 1;
-		} else if (op != '+' && op != ' ') {
+			*tz &= 0x7f;
+			break;
+		case '+':
+		case ' ':
+			break;
+		default:
 			pr_debug("Invalid operation. you can use only ('+' or '-').\n");
 			*tz = 0;
-		}
+			break;
 	}
 
-	pr_msg("\n");
 	return 0;
 }
 /*************************************************************************************************/
@@ -922,7 +947,7 @@ int exfat_print_fsinfo(void)
  * @name:         file name
  *
  * @return:       cluster index
- *                0 (Not found)
+ *                -1 (Not found)
  */
 int exfat_lookup(uint32_t clu, char *name)
 {
@@ -961,13 +986,13 @@ int exfat_lookup(uint32_t clu, char *name)
 		found = false;
 		index = exfat_get_index(clu);
 		f = (struct exfat_fileinfo *)info.root[index]->data;
-		if ((!info.root[index]) || (f->namelen == 0)) {
+		if ((!info.root[index]) || (f->datalen == 0)) {
 			pr_debug("Directory hasn't load yet, or This Directory doesn't exist in filesystem.\n");
 			exfat_traverse_directory(clu);
 			index = exfat_get_index(clu);
 			if (!info.root[index]) {
 				pr_warn("This Directory doesn't exist in filesystem.\n");
-				return 0;
+				return -1;
 			}
 		}
 
@@ -984,7 +1009,7 @@ int exfat_lookup(uint32_t clu, char *name)
 
 		if (!found) {
 			pr_warn("'%s': No such file or directory.\n", name);
-			return 0;
+			return -1;
 		}
 	}
 
@@ -1195,9 +1220,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	struct exfat_dentry *d;
 	time_t t = time(NULL);
 	struct tm *local = localtime(&t);
-	int diff = local->tm_min + (local->tm_hour * 60);
-	struct tm *utc = gmtime(&t);
-	diff -= utc->tm_min + (utc->tm_hour * 60);
+	char buf[8] = {0};
 
 	/* convert UTF-8 to UTF16 */
 	len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
@@ -1205,7 +1228,8 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	namehash = exfat_calculate_namehash(uniname, len);
 
 	/* Set up timezone */
-	tz = (diff / 15) & 0x7f;
+	strftime(buf, 8, "%z", local);
+	exfat_create_timezone(buf, &tz);
 	/* Lookup last entry */
 	data = malloc(size);
 	get_cluster(data, clu);
@@ -1227,7 +1251,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			query_param(create_prompt[2], &(d->dentry.file.SecondaryCount), count, 1, quiet);
 			query_param(create_prompt[3], &(d->dentry.file.Reserved1), 0x0, 2, quiet);
 			exfat_query_timestamp(local, &stamp, &subsec, quiet);
-			exfat_query_timezone(diff, &tz, quiet);
+			exfat_query_timezone(buf, &tz, quiet);
 			d->dentry.file.CreateTimestamp = stamp;
 			d->dentry.file.LastAccessedTimestamp = stamp;
 			d->dentry.file.LastModifiedTimestamp = stamp;
@@ -1284,7 +1308,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			}
 			goto out;
 		default:
-			query_param(create_prompt[10], d, 0x00, 32, quiet);
+			query_param(create_prompt[10], &d->dentry, 0x00, 31, quiet);
 			goto out;
 	}
 	if (attr) {
