@@ -391,6 +391,7 @@ struct operations {
 	int (*release)(uint32_t);
 	int (*create)(const char *, uint32_t, int);
 	int (*remove)(const char *, uint32_t, int);
+	int (*trim)(uint32_t);
 };
 
 /* FAT/exFAT File Attributes */
