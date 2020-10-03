@@ -25,6 +25,7 @@ debugfatfs can ontain these inforamtion.
  * Create any directory entry (Only interactive mode)
  * Change any FAT entry (Only interactive mode)
  * Change any allocation bitmap (Only interactive mode)
+ * Trim deleted directory entry (Only interactive mode)
 
 :warning: debugfatfs can write filesystem image. If you don't want, Please add `-r`(read only) option.
 
@@ -202,6 +203,7 @@ And, debugfatfs with interactive mode support these command.
 * **fat** *index* *[entry]* --- change File Allocation Table entry
 * **create** *file* --- create directory entry
 * **remove** *file* --- remove directory entry
+* **trim** --- trim deleted dentry
 * **help** --- display this help
 * **exit** --- exit interactive mode
 

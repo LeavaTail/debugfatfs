@@ -339,6 +339,8 @@ static int cmd_help(int argc, char **argv, char **envp)
 	fprintf(stderr, "release    release cluster.\n");
 	fprintf(stderr, "fat        change File Allocation Table entry\n");
 	fprintf(stderr, "create     create directory entry.\n");
+	fprintf(stderr, "remove     remove directory entry.\n");
+	fprintf(stderr, "trim       trim deleted dentry.\n");
 	fprintf(stderr, "help       display this help.\n");
 	fprintf(stderr, "\n");
 	return 0;
