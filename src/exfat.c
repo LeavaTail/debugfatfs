@@ -824,17 +824,15 @@ static int exfat_query_timestamp(struct tm *t,
 
 /**
  * exfat_query_timezone  - Prompt user for timestamp
- * @diff:                  difference localtime and UTCtime
+ * @zone:                  timezone
  * @tz:                    offset from UTC Field (Output)
  * @quiet:                 set parameter without ask
  *
- * @return        0 (Success)
+ * @return                 0 (Success)
  */
 static int exfat_query_timezone(char *zone, uint8_t *tz, int quiet)
 {
 	char buf[QUERY_BUFFER_SIZE] = {};
-	char op = (*tz & 0x40) ? '-' : '+';
-	char min = 0, hour = 0;
 
 	if (quiet)
 		return 0;
