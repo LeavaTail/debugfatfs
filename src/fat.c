@@ -56,6 +56,7 @@ int fat_alloc_cluster(uint32_t);
 int fat_release_cluster(uint32_t);
 int fat_create(const char *, uint32_t, int);
 int fat_remove(const char *, uint32_t, int);
+int fat_trim(uint32_t);
 
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
@@ -71,6 +72,7 @@ static const struct operations fat_ops = {
 	.release = fat_release_cluster,
 	.create = fat_create,
 	.remove = fat_remove,
+	.trim = fat_trim,
 };
 
 static const struct query fat_create_prompt[] = {
@@ -1465,6 +1467,48 @@ out:
 		set_cluster(data, clu);
 	else
 		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	free(data);
+	return 0;
+}
+
+/**
+ * fat_trim -  function interface to trim cluster
+ * @clu:       Current Directory Index
+ *
+ * @return     0 (Success)
+ */
+int fat_trim(uint32_t clu)
+{
+	int i, j;
+	void *data;
+	size_t size = info.cluster_size;
+	size_t entries = size / sizeof(struct fat_dentry);
+	struct fat_dentry *src, *dist;
+
+	/* Lookup last entry */
+	data = malloc(size);
+	get_cluster(data, clu);
+
+	for (i = 0, j = 0; i < entries; i++) {
+		src = ((struct fat_dentry *)data) + i;
+		dist = ((struct fat_dentry *)data) + j;
+		if (!src->dentry.dir.DIR_Name[0])
+			break;
+
+		if (src->dentry.dir.DIR_Name[0] == DENTRY_DELETED)
+			continue;
+
+		if (i != j++)
+			memcpy(dist, src, sizeof(struct fat_dentry));
+	}
+
+	while (j < entries) {
+		dist = ((struct fat_dentry *)data) + j++;
+		memset(dist, 0, sizeof(struct fat_dentry));
+		dist->dentry.dir.DIR_Name[0] = DENTRY_DELETED;
+	}
+
+	set_cluster(data, clu);
 	free(data);
 	return 0;
 }

@@ -55,6 +55,7 @@ int exfat_alloc_cluster(uint32_t);
 int exfat_release_cluster(uint32_t);
 int exfat_create(const char *, uint32_t, int);
 int exfat_remove(const char *, uint32_t, int);
+int exfat_trim(uint32_t);
 
 static const struct operations exfat_ops = {
 	.statfs = exfat_print_bootsec,
@@ -70,6 +71,7 @@ static const struct operations exfat_ops = {
 	.release = exfat_release_cluster,
 	.create = exfat_create,
 	.remove = exfat_remove,
+	.trim = exfat_trim,
 };
 
 static const struct query create_prompt[] = {
@@ -822,17 +824,15 @@ static int exfat_query_timestamp(struct tm *t,
 
 /**
  * exfat_query_timezone  - Prompt user for timestamp
- * @diff:                  difference localtime and UTCtime
+ * @zone:                  timezone
  * @tz:                    offset from UTC Field (Output)
  * @quiet:                 set parameter without ask
  *
- * @return        0 (Success)
+ * @return                 0 (Success)
  */
 static int exfat_query_timezone(char *zone, uint8_t *tz, int quiet)
 {
 	char buf[QUERY_BUFFER_SIZE] = {};
-	char op = (*tz & 0x40) ? '-' : '+';
-	char min = 0, hour = 0;
 
 	if (quiet)
 		return 0;
@@ -1408,6 +1408,50 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 		}
 	}
 out:
+	set_cluster(data, clu);
+	free(data);
+	return 0;
+}
+
+/**
+ * exfat_trim -  function interface to trim cluster
+ * @clu:         Current Directory Index
+ *
+ * @return       0 (Success)
+ */
+int exfat_trim(uint32_t clu)
+{
+	int i, j;
+	uint8_t used = 0;
+	void *data;
+	size_t size = info.cluster_size;
+	size_t entries = size / sizeof(struct exfat_dentry);
+	struct exfat_dentry *src, *dist;
+
+	/* Lookup last entry */
+	data = malloc(size);
+	get_cluster(data, clu);
+
+	for (i = 0, j = 0; i < entries; i++) {
+		src = ((struct exfat_dentry *)data) + i;
+		dist = ((struct exfat_dentry *)data) + j;
+		if (!src->EntryType)
+			break;
+
+		used = src->EntryType & EXFAT_INUSE;
+		if (!used)
+			continue;
+
+		if (i != j++)
+			memcpy(dist, src, sizeof(struct exfat_dentry));
+	}
+
+	while (j < entries) {
+		dist = ((struct exfat_dentry *)data) + j++;
+		memset(dist, 0, sizeof(struct exfat_dentry));
+		dist->EntryType = 0x7f;
+	}
+
 	set_cluster(data, clu);
 	free(data);
 	return 0;

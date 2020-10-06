@@ -21,6 +21,7 @@ static int cmd_release(int, char **, char **);
 static int cmd_fat(int, char **, char **);
 static int cmd_create(int, char **, char **);
 static int cmd_remove(int, char **, char **);
+static int cmd_trim(int, char **, char **);
 static int cmd_help(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
@@ -36,6 +37,7 @@ struct command cmd[] = {
 	{"fat", cmd_fat},
 	{"create", cmd_create},
 	{"remove", cmd_remove},
+	{"trim", cmd_trim},
 	{"help", cmd_help},
 	{"exit", cmd_exit},
 };
@@ -300,6 +302,27 @@ static int cmd_remove(int argc, char **argv, char **envp)
 }
 
 /**
+ * cmd_trim -    Trim unsed dentry
+ * @argc:        argument count
+ * @argv:        argument vetor
+ * @envp:        environment pointer
+ *
+ * @return       0 (success)
+ */
+static int cmd_trim(int argc, char **argv, char **envp)
+{
+	switch (argc) {
+		case 1:
+			info.ops->trim(cluster);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
  * cmd_help  - display help
  * @argc:      argument count
  * @argv:      argument vector
@@ -316,6 +339,8 @@ static int cmd_help(int argc, char **argv, char **envp)
 	fprintf(stderr, "release    release cluster.\n");
 	fprintf(stderr, "fat        change File Allocation Table entry\n");
 	fprintf(stderr, "create     create directory entry.\n");
+	fprintf(stderr, "remove     remove directory entry.\n");
+	fprintf(stderr, "trim       trim deleted dentry.\n");
 	fprintf(stderr, "help       display this help.\n");
 	fprintf(stderr, "\n");
 	return 0;
