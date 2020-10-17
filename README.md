@@ -126,7 +126,7 @@ Timestamp (UTC)
 Select (Default: 2020-09-15 14:10:17.00): 
 
 Timezone
-Select (Default: +09:00): 
+Select (Default: +0900): 
 
 Do you want to create stream entry? (Default [y]/n): n
 File should have stream entry, but This don't have.
