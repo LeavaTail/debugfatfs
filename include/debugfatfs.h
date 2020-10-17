@@ -141,6 +141,7 @@ struct device_info {
 #define OPTION_LOAD         (1 << 8)
 #define OPTION_READONLY     (1 << 9)
 #define OPTION_DIRECTORY    (1 << 10)
+#define OPTION_FORCE        (1 << 11)
 
 struct directory {
 	unsigned char *name;

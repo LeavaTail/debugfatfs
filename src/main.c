@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <mntent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -35,6 +36,7 @@ static struct option const longopts[] =
 	{"byte", required_argument, NULL, 'b'},
 	{"cluster", required_argument, NULL, 'c'},
 	{"directory", required_argument, NULL, 'd'},
+	{"force", required_argument, NULL, 'f'},
 	{"interactive", no_argument, NULL, 'i'},
 	{"load", required_argument, NULL, 'l'},
 	{"output", required_argument, NULL, 'o'},
@@ -61,6 +63,7 @@ static void usage(void)
 	fprintf(stderr, "  -b, --byte=offset\tdump the any byte after dump filesystem information.\n");
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
 	fprintf(stderr, "  -d, --direcotry=path\tread directory entry from path.\n");
+	fprintf(stderr, "  -f, --fource\twrite foucibly even if filesystem image has already mounted.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -l, --load=file\tLoad Main boot region and FAT region from file.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
@@ -262,6 +265,25 @@ void hexdump(FILE *out, void *data, size_t size)
 }
 
 /**
+ * check_mounted_filesystem - check if the image has mounted
+ *
+ * @return                    0 (not mount)
+ *                            1 (already mounted)
+ */
+static int check_mounted_filesystem(void)
+{
+	FILE *fstab = setmntent("/etc/mtab", "r");
+	struct mntent *e = NULL;
+	const char *devname = NULL;
+
+	while ((e = getmntent(fstab)) != NULL) {
+		if (!strcmp(e->mnt_fsname, info.name))
+			return 1;
+	}
+	return 0;
+}
+
+/**
  * init_device_info - Initialize member in struct device_info
  */
 static void init_device_info(void)
@@ -299,6 +321,13 @@ static int get_device_info(uint32_t attr)
 {
 	int fd;
 	struct stat s;
+
+	if (check_mounted_filesystem() &&
+			!(attr & OPTION_FORCE) &&
+			!(attr & OPTION_READONLY)) {
+		pr_err("Error has occurred becasue %s has already mounted.\n", info.name);
+		return -1;
+	}
 
 	if ((fd = open(info.name, attr & OPTION_READONLY ? O_RDONLY : O_RDWR)) < 0) {
 		pr_err("open: %s\n", strerror(errno));
@@ -488,7 +517,7 @@ int main(int argc, char *argv[])
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ab:c:d:il:o:qrs:u:v",
+					"ab:c:d:fil:o:qrs:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
@@ -505,6 +534,9 @@ int main(int argc, char *argv[])
 			case 'd':
 				attr |= OPTION_DIRECTORY;
 				dir = optarg;
+				break;
+			case 'f':
+				attr |= OPTION_FORCE;
 				break;
 			case 'i':
 				attr |= OPTION_INTERACTIVE;

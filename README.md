@@ -185,6 +185,7 @@ debugfatfs support support these optoin. (Please look at man-page)
 * **-b**, **--byte**=*offset* --- dump the any byte after dump filesystem information
 * **-c**, **--cluster**=*index* --- dump the cluster index after dump filesystem information
 * **-d**, **--direcotry**=*path* --- read directory entry from path
+* **-f**, **--fource** --- write foucibly even if filesystem image has already mounted
 * **-i**, **--interactive** --- prompt the user operate filesystem
 * **-l**, **--load**=*file* --- Load Main boot region and FAT region from file
 * **-o**, **--output**=*file* --- send output to file rather than stdout
