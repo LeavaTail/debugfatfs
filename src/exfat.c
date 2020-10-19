@@ -738,7 +738,7 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
 	t->tm_year = (time >> EXFAT_YEAR) & 0x7f;
 	t->tm_mon  = (time >> EXFAT_MONTH) & 0x0f;
 	t->tm_mday = (time >> EXFAT_DAY) & 0x1f;
-	t->tm_hour = (time >> EXFAT_HOUR) & 0x0f;
+	t->tm_hour = (time >> EXFAT_HOUR) & 0x1f;
 	t->tm_min  = (time >> EXFAT_MINUTE) & 0x3f;
 	t->tm_sec  = (time & 0x1f) * 2;
 	t->tm_sec += subsec / 100;
