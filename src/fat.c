@@ -998,6 +998,8 @@ int fat_print_bootsec(void)
 			pr_err("Expected FAT filesystem, But this is not FAT filesystem.\n");
 			ret = -1;
 	}
+	pr_msg("\n");
+
 	free(b);
 	return ret;
 }
