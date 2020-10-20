@@ -51,6 +51,7 @@ int exfat_convert_character(const char *, size_t, char *);
 int exfat_clean(uint32_t);
 int exfat_set_fat_entry(uint32_t, uint32_t);
 int exfat_get_fat_entry(uint32_t, uint32_t *);
+int exfat_print_dentry(uint32_t, size_t);
 int exfat_alloc_cluster(uint32_t);
 int exfat_release_cluster(uint32_t);
 int exfat_create(const char *, uint32_t, int);
@@ -67,6 +68,7 @@ static const struct operations exfat_ops = {
 	.clean = exfat_clean,
 	.setfat = exfat_set_fat_entry,
 	.getfat = exfat_get_fat_entry,
+	.dentry = exfat_print_dentry,
 	.alloc = exfat_alloc_cluster,
 	.release = exfat_release_cluster,
 	.create = exfat_create,
@@ -1166,6 +1168,125 @@ int exfat_set_fat_entry(uint32_t clu, uint32_t entry)
 int exfat_get_fat_entry(uint32_t clu, uint32_t *entry)
 {
 	*entry = exfat_check_fat_entry(clu);
+	return 0;
+}
+
+/**
+ * exfat_print_dentry - function to print any directory entry
+ * @clu:                index of the cluster want to check
+ * @n:                  directory entry index
+ *
+ * @return              0 (success)
+ *                     -1 (failed to read)
+ */
+int exfat_print_dentry(uint32_t clu, size_t n)
+{
+	int i;
+	uint32_t next_clu = 0;
+	size_t size = info.cluster_size;
+	size_t entries = size / sizeof(struct exfat_dentry);
+	void *data;
+	struct exfat_dentry d;
+
+	exfat_traverse_directory(clu);
+	while (n > entries) {
+		next_clu = exfat_check_fat_entry(clu);
+		if (!next_clu) {
+			pr_err("Directory size limit exceeded.\n");
+			return -1;
+		}
+		n -= entries;
+		clu = next_clu;
+	}
+
+	data = malloc(size);
+	get_cluster(data, clu);
+	d = ((struct exfat_dentry *)data)[n];
+
+	pr_msg("EntryType                       : %02x\n", d.EntryType);
+	switch (d.EntryType) {
+		case DENTRY_UNUSED:
+			break;
+		case DENTRY_BITMAP:
+			pr_msg("BitmapFlags                     : %02x\n", d.dentry.bitmap.BitmapFlags);
+			pr_msg("Reserved                        : ");
+			for (i = 0; i < 18; i++)
+				pr_msg("%02x", d.dentry.bitmap.Reserved[i]);
+			pr_msg("\n");
+			pr_msg("BitmapFlags                     : %08x\n", d.dentry.bitmap.FirstCluster);
+			pr_msg("DataLength                      : %016lx\n", d.dentry.bitmap.DataLength);
+			break;
+		case DENTRY_UPCASE:
+			pr_msg("Reserved1                       : ");
+			for (i = 0; i < 3; i++)
+				pr_msg("%02x", d.dentry.upcase.Reserved1[i]);
+			pr_msg("\n");
+			pr_msg("TableCheckSum                   : %08x\n", d.dentry.upcase.TableCheckSum);
+			pr_msg("Reserved2                       : ");
+			for (i = 0; i < 12; i++)
+				pr_msg("%02x", d.dentry.upcase.Reserved2[i]);
+			pr_msg("\n");
+			pr_msg("FirstCluster                    : %08x\n", d.dentry.upcase.FirstCluster);
+			pr_msg("DataLength                      : %016x\n", d.dentry.upcase.DataLength);
+			break;
+		case DENTRY_VOLUME:
+			pr_msg("CharacterCount                  : %02x\n", d.dentry.vol.CharacterCount);
+			pr_msg("VolumeLabel                     : ");
+			for (i = 0; i < 22; i++)
+				pr_msg("%02x", ((uint8_t *)d.dentry.vol.VolumeLabel)[i]);
+			pr_msg("\n");
+			pr_msg("Reserved2                       : ");
+			for (i = 0; i < 8; i++)
+				pr_msg("%02x", d.dentry.vol.Reserved[i]);
+			pr_msg("\n");
+			break;
+		case DENTRY_FILE:
+			pr_msg("SecondaryCount                  : %02x\n", d.dentry.file.SecondaryCount);
+			pr_msg("SetChecksum                     : %04x\n", d.dentry.file.SetChecksum);
+			pr_msg("FileAttributes                  : %04x\n", d.dentry.file.FileAttributes);
+			pr_msg("Reserved1                       : ");
+			for (i = 0; i < 2; i++)
+				pr_msg("%02x", d.dentry.file.Reserved1[i]);
+			pr_msg("\n");
+			pr_msg("CreateTimestamp                 : %08x\n", d.dentry.file.CreateTimestamp);
+			pr_msg("LastModifiedTimestamp           : %08x\n", d.dentry.file.LastModifiedTimestamp);
+			pr_msg("LastAccessedTimestamp           : %08x\n", d.dentry.file.LastAccessedTimestamp);
+			pr_msg("Create10msIncrement             : %02x\n", d.dentry.file.Create10msIncrement);
+			pr_msg("LastModified10msIncrement       : %02x\n", d.dentry.file.LastModified10msIncrement);
+			pr_msg("CreateUtcOffset                 : %02x\n", d.dentry.file.CreateUtcOffset);
+			pr_msg("LastModifiedUtcOffset           : %02x\n", d.dentry.file.LastModifiedUtcOffset);
+			pr_msg("LastAccessdUtcOffset            : %02x\n", d.dentry.file.LastAccessdUtcOffset);
+			pr_msg("Reserved2                       : ");
+			for (i = 0; i < 7; i++)
+				pr_msg("%02x", d.dentry.file.Reserved2[i]);
+			pr_msg("\n");
+			break;
+		case DENTRY_STREAM:
+			pr_msg("GeneralSecondaryFlags           : %02x\n", d.dentry.stream.GeneralSecondaryFlags);
+			pr_msg("Reserved1                       : %02x\n", d.dentry.stream.Reserved1);
+			pr_msg("NameLength                      : %02x\n", d.dentry.stream.NameLength);
+			pr_msg("NameHash                        : %04x\n", d.dentry.stream.NameHash);
+			pr_msg("Reserved2                       : ");
+			for (i = 0; i < 2; i++)
+				pr_msg("%02x", d.dentry.stream.Reserved2[i]);
+			pr_msg("\n");
+			pr_msg("ValidDataLength                 : %016lx\n", d.dentry.stream.ValidDataLength);
+			pr_msg("Reserved3                       : ");
+			for (i = 0; i < 4; i++)
+				pr_msg("%02x", d.dentry.stream.Reserved3[i]);
+			pr_msg("\n");
+			pr_msg("FirstCluster                    : %08x\n", d.dentry.stream.FirstCluster);
+			pr_msg("DataLength                      : %016lx\n", d.dentry.stream.DataLength);
+			break;
+		case DENTRY_NAME:
+			pr_msg("GeneralSecondaryFlags           : %02x\n", d.dentry.name.GeneralSecondaryFlags);
+			pr_msg("FileName                        : ");
+			for (i = 0; i < 30; i++)
+				pr_msg("%02x", ((uint8_t *)d.dentry.name.FileName)[i]);
+			pr_msg("\n");
+			break;
+		}
+	free(data);
 	return 0;
 }
 

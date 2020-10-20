@@ -36,6 +36,7 @@ static struct option const longopts[] =
 	{"byte", required_argument, NULL, 'b'},
 	{"cluster", required_argument, NULL, 'c'},
 	{"directory", required_argument, NULL, 'd'},
+	{"entry", required_argument, NULL, 'e'},
 	{"force", required_argument, NULL, 'f'},
 	{"interactive", no_argument, NULL, 'i'},
 	{"load", required_argument, NULL, 'l'},
@@ -63,6 +64,7 @@ static void usage(void)
 	fprintf(stderr, "  -b, --byte=offset\tdump the any byte after dump filesystem information.\n");
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
 	fprintf(stderr, "  -d, --direcotry=path\tread directory entry from path.\n");
+	fprintf(stderr, "  -e --entry=index\tread raw directory entry in current directory.\n");
 	fprintf(stderr, "  -f, --fource\twrite foucibly even if filesystem image has already mounted.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -l, --load=file\tLoad Main boot region and FAT region from file.\n");
@@ -505,6 +507,7 @@ int main(int argc, char *argv[])
 	int entries = 0;
 	uint32_t attr = 0;
 	uint32_t cluster = 0;
+	uint32_t index = 0;
 	uint32_t sector = 0;
 	char *outfile = NULL;
 	char *backup = NULL;
@@ -517,7 +520,7 @@ int main(int argc, char *argv[])
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ab:c:d:fil:o:qrs:u:v",
+					"ab:c:d:e:fil:o:qrs:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
@@ -534,6 +537,10 @@ int main(int argc, char *argv[])
 			case 'd':
 				attr |= OPTION_DIRECTORY;
 				dir = optarg;
+				break;
+			case 'e':
+				attr |= OPTION_ENTRY;
+				index = strtoul(optarg, NULL, 0);
 				break;
 			case 'f':
 				attr |= OPTION_FORCE;
@@ -681,6 +688,13 @@ int main(int argc, char *argv[])
 	/* Command line: -a option */
 	if (attr & OPTION_ALL) {
 		ret = info.ops->info();
+		if (ret < 0)
+			goto device_close;
+	}
+
+	/* Command line: -a option */
+	if (attr & OPTION_ENTRY) {
+		ret = info.ops->dentry(offset, index);
 		if (ret < 0)
 			goto device_close;
 	}

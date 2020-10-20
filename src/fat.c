@@ -52,6 +52,7 @@ int fat_convert_character(const char *, size_t, char *);
 int fat_clean(uint32_t);
 int fat_set_fat_entry(uint32_t, uint32_t);
 int fat_get_fat_entry(uint32_t, uint32_t *);
+int fat_print_dentry(uint32_t, size_t);
 int fat_alloc_cluster(uint32_t);
 int fat_release_cluster(uint32_t);
 int fat_create(const char *, uint32_t, int);
@@ -68,6 +69,7 @@ static const struct operations fat_ops = {
 	.clean = fat_clean,
 	.setfat = fat_set_fat_entry,
 	.getfat = fat_get_fat_entry,
+	.dentry = fat_print_dentry,
 	.alloc = fat_alloc_cluster,
 	.release = fat_release_cluster,
 	.create = fat_create,
@@ -1257,6 +1259,95 @@ int fat_get_fat_entry(uint32_t clu, uint32_t *entry)
 			ret = -1;
 	}
 	return ret;
+}
+
+/**
+ * fat_print_dentry - function to print any directory entry
+ * @clu:              index of the cluster want to check
+ * @n:                directory entry index
+ *
+ * @return            0 (success)
+ *                   -1 (failed to read)
+ */
+int fat_print_dentry(uint32_t clu, size_t n)
+{
+	int i;
+	uint8_t ord = 0, attr = 0;
+	uint32_t next_clu;
+	size_t size = info.cluster_size;
+	size_t entries = size / sizeof(struct fat_dentry);
+	void *data;
+	struct fat_dentry d;
+
+	fat_traverse_directory(clu);
+	while (n > entries) {
+		fat_get_fat_entry(clu, &next_clu);
+		if (!next_clu) {
+			pr_err("Directory size limit exceeded.\n");
+			return -1;
+		}
+		n -= entries;
+		clu = next_clu;
+	}
+
+	if (clu) {
+		data = malloc(size);
+		get_cluster(data, clu);
+	} else {
+		size = info.root_length * info.sector_size;
+		entries = size / sizeof(struct fat_dentry);
+		data = malloc(size);
+		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	}
+
+	d = ((struct fat_dentry *)data)[n];
+	ord = d.dentry.lfn.LDIR_Ord;
+	attr = d.dentry.lfn.LDIR_Attr;
+
+	/* Empty entry */
+	if (ord == 0x00 || ord == 0xe5)
+		goto out;
+	/* Long File Name */
+	if (attr == ATTR_LONG_FILE_NAME) {
+		pr_msg("LDIR_Ord                        : %02x\n", d.dentry.lfn.LDIR_Ord);
+		pr_msg("LDIR_Name1                      : ");
+		for (i = 0; i < 10; i++)
+			pr_msg("%02x", ((uint8_t *)d.dentry.lfn.LDIR_Name1)[i]);
+		pr_msg("\n");
+		pr_msg("LDIR_Attr                       : %02x\n", d.dentry.lfn.LDIR_Attr);
+		pr_msg("LDIR_Type                       : %02x\n", d.dentry.lfn.LDIR_Type);
+		pr_msg("LDIR_Chksum                     : %02x\n", d.dentry.lfn.LDIR_Chksum);
+		pr_msg("LDIR_Name2                      : ");
+		for (i = 0; i < 12; i++)
+			pr_msg("%02x", ((uint8_t *)d.dentry.lfn.LDIR_Name2)[i]);
+		pr_msg("\n");
+		pr_msg("LDIR_FstClusLO                  : %02x\n", d.dentry.lfn.LDIR_FstClusLO);
+		pr_msg("LDIR_Name3                      : ");
+		for (i = 0; i < 4; i++)
+			pr_msg("%02x", ((uint8_t *)d.dentry.lfn.LDIR_Name3)[i]);
+		pr_msg("\n");
+	} else {
+		/* Directory Structure */
+		pr_msg("DIR_Name                        : ");
+		for (i = 0; i < 11; i++)
+			pr_msg("%02x", d.dentry.dir.DIR_Name[i]);
+		pr_msg("\n");
+		pr_msg("DIR_Attr                        : %02x\n", d.dentry.dir.DIR_Attr);
+		pr_msg("DIR_NTRes                       : %02x\n", d.dentry.dir.DIR_NTRes);
+		pr_msg("DIR_CrtTimeTenth                : %02x\n", d.dentry.dir.DIR_CrtTimeTenth);
+		pr_msg("DIR_CrtTime                     : %04x\n", d.dentry.dir.DIR_CrtTime);
+		pr_msg("DIR_CrtDate                     : %04x\n", d.dentry.dir.DIR_CrtDate);
+		pr_msg("DIR_LstAccDate                  : %04x\n", d.dentry.dir.DIR_LstAccDate);
+		pr_msg("DIR_FstClusHI                   : %04x\n", d.dentry.dir.DIR_FstClusHI);
+		pr_msg("DIR_WrtTime                     : %04x\n", d.dentry.dir.DIR_WrtTime);
+		pr_msg("DIR_WrtDate                     : %04x\n", d.dentry.dir.DIR_WrtDate);
+		pr_msg("DIR_FstClusLO                   : %04x\n", d.dentry.dir.DIR_FstClusLO);
+		pr_msg("DIR_FileSize                    : %08x\n", d.dentry.dir.DIR_FileSize);
+	}
+
+out:
+	free(data);
+	return 0;
 }
 
 /**

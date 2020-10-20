@@ -142,6 +142,7 @@ struct device_info {
 #define OPTION_READONLY     (1 << 9)
 #define OPTION_DIRECTORY    (1 << 10)
 #define OPTION_FORCE        (1 << 11)
+#define OPTION_ENTRY        (1 << 12)
 
 struct directory {
 	unsigned char *name;
@@ -388,6 +389,7 @@ struct operations {
 	int (*clean)(uint32_t);
 	int (*setfat)(uint32_t, uint32_t);
 	int (*getfat)(uint32_t, uint32_t *);
+	int (*dentry)(uint32_t, size_t);
 	int (*alloc)(uint32_t);
 	int (*release)(uint32_t);
 	int (*create)(const char *, uint32_t, int);
