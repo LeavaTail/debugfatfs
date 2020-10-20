@@ -538,7 +538,7 @@ static int fat_get_index(uint32_t clu)
 		info.root = tmp;
 		info.root[i] = NULL;
 	} else {
-		pr_warn("Can't expand directory chain.\n");
+		pr_warn("Can't expand directory chain, so delete last chain.\n");
 		delete_node2(info.root[--i]);
 	}
 
@@ -1059,7 +1059,7 @@ int fat_lookup(uint32_t clu, char *name)
 	path[depth] = strtok(fullpath, "/");
 	while (path[depth] != NULL) {
 		if (depth >= MAX_NAME_LENGTH) {
-			pr_warn("Pathname is too depth. (> %d)\n", MAX_NAME_LENGTH);
+			pr_err("Pathname is too depth. (> %d)\n", MAX_NAME_LENGTH);
 			return -1;
 		}
 		path[++depth] = strtok(NULL, "/");

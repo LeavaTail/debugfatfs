@@ -266,7 +266,7 @@ static int exfat_save_bitmap(uint32_t clu, uint32_t value)
 	uint8_t mask = 0x01;
 
 	if (clu < EXFAT_FIRST_CLUSTER || clu > info.cluster_count + 1) {
-		pr_warn("cluster: %u is invalid.\n", clu);
+		pr_err("cluster: %u is invalid.\n", clu);
 		return -1;
 	}
 
@@ -342,7 +342,7 @@ static uint32_t exfat_update_fat_entry(uint32_t clu, uint32_t entry)
 	uint32_t offset = (clu) % entry_per_sector;
 
 	if (clu > info.cluster_count + 1) {
-		pr_warn("This Filesystem doesn't have Entry %u\n", clu);
+		pr_info("This Filesystem doesn't have Entry %u\n", clu);
 		return 0;
 	}
 
@@ -428,7 +428,7 @@ static int exfat_get_index(uint32_t clu)
 		info.root = tmp;
 		info.root[i] = NULL;
 	} else {
-		pr_warn("Can't expand directory chain.\n");
+		pr_warn("Can't expand directory chain, so delete last chain.\n");
 		delete_node2(info.root[--i]);
 	}
 
@@ -545,7 +545,7 @@ static int exfat_traverse_directory(uint32_t clu)
 						next = ((struct exfat_dentry *)data)[i + 1];
 					}
 					if (next.EntryType != DENTRY_STREAM) {
-						pr_warn("File should have stream entry, but This don't have.\n");
+						pr_info("File should have stream entry, but This don't have.\n");
 						continue;
 					}
 
@@ -560,7 +560,7 @@ static int exfat_traverse_directory(uint32_t clu)
 						name = ((struct exfat_dentry *)data)[i + 2];
 					}
 					if (name.EntryType != DENTRY_NAME) {
-						pr_warn("File should have name entry, but This don't have.\n");
+						pr_info("File should have name entry, but This don't have.\n");
 						return -1;
 					}
 
@@ -577,7 +577,7 @@ static int exfat_traverse_directory(uint32_t clu)
 					i += remaining;
 					break;
 				case DENTRY_STREAM:
-					pr_warn("Stream needs be File entry, but This is not.\n");
+					pr_info("Stream needs be File entry, but This is not.\n");
 					break;
 			}
 		}
@@ -981,7 +981,7 @@ int exfat_lookup(uint32_t clu, char *name)
 	path[depth] = strtok(fullpath, "/");
 	while (path[depth] != NULL) {
 		if (depth >= MAX_NAME_LENGTH) {
-			pr_warn("Pathname is too depth. (> %d)\n", MAX_NAME_LENGTH);
+			pr_err("Pathname is too depth. (> %d)\n", MAX_NAME_LENGTH);
 			return -1;
 		}
 		path[++depth] = strtok(NULL, "/");
@@ -1492,7 +1492,7 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 
 				s = ((struct exfat_dentry *)data) + i + 1;
 				if (s->EntryType != DENTRY_STREAM) {
-					pr_warn("File should have stream entry, but This don't have.\n");
+					pr_debug("File should have stream entry, but This don't have.\n");
 					continue;
 				}
 
@@ -1503,7 +1503,7 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 
 				n = ((struct exfat_dentry *)data) + i + 2;
 				if (n->EntryType != DENTRY_NAME) {
-					pr_warn("File should have name entry, but This don't have.\n");
+					pr_debug("File should have name entry, but This don't have.\n");
 					return -1;
 				}
 
