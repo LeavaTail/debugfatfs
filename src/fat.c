@@ -116,8 +116,8 @@ static uint32_t fat_concat_cluster(uint32_t clu, void **data, size_t size)
 {
 	uint32_t ret;
 	void *tmp;
-	fat_get_fat_entry(clu, &ret);
 
+	fat_get_fat_entry(clu, &ret);
 	if (ret) {
 		tmp = realloc(*data, size + info.cluster_size);
 		if (tmp) {
@@ -344,8 +344,8 @@ static int fat12_set_fat_entry(uint32_t clu, uint32_t entry)
 {
 	uint32_t FATOffset = clu + (clu / 2);
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
-
 	uint16_t *fat;
+
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	if (clu % 2) {
@@ -371,8 +371,8 @@ static int fat16_set_fat_entry(uint32_t clu, uint32_t entry)
 {
 	uint32_t FATOffset = clu * sizeof(uint16_t);
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
-
 	uint16_t *fat;
+
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	*(fat + ThisFATEntOffset) = (uint16_t)entry;
@@ -392,8 +392,8 @@ static int fat32_set_fat_entry(uint32_t clu, uint32_t entry)
 {
 	uint32_t FATOffset = clu * sizeof(uint32_t);
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
-
 	uint32_t *fat;
+
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	*(fat + ThisFATEntOffset) = entry & 0x0FFFFFFF;
@@ -415,6 +415,7 @@ static uint32_t fat12_get_fat_entry(uint32_t clu)
 	uint32_t FATOffset = clu + (clu / 2);
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
 	uint8_t *fat;
+
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	if (clu % 2) {
@@ -440,6 +441,7 @@ static uint32_t fat16_get_fat_entry(uint32_t clu)
 	uint32_t ret = 0;
 	uint32_t ThisFATEntOffset = clu % info.sector_size;
 	uint16_t *fat;
+
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	ret = fat[ThisFATEntOffset];
@@ -459,6 +461,7 @@ static uint32_t fat32_get_fat_entry(uint32_t clu)
 	uint32_t ret = 0;
 	uint32_t ThisFATEntOffset = clu % info.sector_size;
 	uint32_t *fat;
+
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	ret = fat[ThisFATEntOffset] & 0x0FFFFFFF;
@@ -505,6 +508,7 @@ static void fat_print_dchain(void)
 static int fat_check_dchain(uint32_t clu)
 {
 	int i;
+
 	for (i = 0; info.root[i] && i < info.root_size; i++) {
 		if (info.root[i]->index == clu)
 			return 1;
@@ -522,6 +526,7 @@ static int fat_check_dchain(uint32_t clu)
 static int fat_get_index(uint32_t clu)
 {
 	int i;
+
 	for (i = 0; i < info.root_size && info.root[i]; i++) {
 		if (info.root[i]->index == clu)
 			return i;
@@ -644,6 +649,7 @@ static uint8_t fat_calculate_checksum(unsigned char *DIR_Name)
 {
 	int i;
 	uint8_t chksum;
+
 	for (i = 11; i != 0; i--) {
 		chksum = ((chksum & 1) & 0x80) + (chksum >> 1) + *DIR_Name++;
 	}
@@ -760,6 +766,7 @@ static void fat_convert_uniname(uint16_t *uniname, uint64_t name_len, unsigned c
 static int fat_create_shortname(uint16_t *longname, char *name)
 {
 	int ch;
+
 	/* Pick up Only ASCII code */
 	if (*longname < 0x0080) {
 		/* Upper character is directly set */
@@ -792,6 +799,7 @@ static int fat_create_shortname(uint16_t *longname, char *name)
 static int fat_convert_shortname(const char *shortname, char *name)
 {
 	int i, j;
+
 	/* filename */
 	for (i = 0, j = 0; i < 8; i++) {
 		if (!fat_validate_character(shortname[i])) {
@@ -891,6 +899,7 @@ static int fat_validate_character(const char ch)
 	/* " / \ [] : ; = ,  */
 	int i = 0, c;
 	char bad[] = {0x22, 0x2f, 0x5c, 0x5b, 0x5d, 0x3a, 0x3b, 0x3d, 0x2c, 0x20, 0x00};
+
 	while ((c = bad[i++]) != 0x00) {
 		if (ch == c)
 			return 1;

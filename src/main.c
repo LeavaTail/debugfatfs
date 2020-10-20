@@ -354,6 +354,7 @@ static int get_device_info(uint32_t attr)
 static int free_dentry_list(void)
 {
 	int i;
+
 	for(i = 0; i < info.root_size && info.root[i]; i++) {
 		info.ops->clean(i);
 	}

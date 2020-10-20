@@ -113,8 +113,8 @@ static uint32_t exfat_concat_cluster(uint32_t clu, void **data, size_t size)
 {
 	uint32_t ret;
 	void *tmp;
-	ret = exfat_check_fat_entry(clu);
 
+	ret = exfat_check_fat_entry(clu);
 	if (ret) {
 		tmp = realloc(*data, size + info.cluster_size);
 		if (tmp) {
@@ -217,6 +217,7 @@ static void exfat_print_upcase(void)
 static void exfat_print_label(void)
 {
 	unsigned char *name;
+
 	pr_msg("volume Label: ");
 	name = malloc(info.vol_length * sizeof(uint16_t) + 1);
 	memset(name, '\0', info.vol_length * sizeof(uint16_t) + 1);
@@ -397,6 +398,7 @@ static void exfat_print_dchain(void)
 static int exfat_check_dchain(uint32_t clu)
 {
 	int i;
+
 	for (i = 0; info.root[i] && i < info.root_size; i++) {
 		if (info.root[i]->index == clu)
 			return 1;
@@ -414,6 +416,7 @@ static int exfat_check_dchain(uint32_t clu)
 static int exfat_get_index(uint32_t clu)
 {
 	int i;
+
 	for (i = 0; i < info.root_size && info.root[i]; i++) {
 		if (info.root[i]->index == clu)
 			return i;
@@ -722,6 +725,7 @@ static uint16_t exfat_calculate_namehash(uint16_t *name, uint8_t len)
 	uint16_t bytes = (uint16_t)len * 2;
 	uint16_t hash = 0;
 	uint16_t index;
+
 	for (index = 0; index < bytes; index++)
 		hash = ((hash & 1) ? 0x8000 : 0) + (hash >> 1) + (uint16_t)buffer[index];
 

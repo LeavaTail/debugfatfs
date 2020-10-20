@@ -172,6 +172,7 @@ static int cmd_cluster(int argc, char **argv, char **envp)
 static int cmd_alloc(int argc, char **argv, char **envp)
 {
 	unsigned int index = 0;
+
 	switch (argc) {
 		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
@@ -199,6 +200,7 @@ static int cmd_alloc(int argc, char **argv, char **envp)
 static int cmd_release(int argc, char **argv, char **envp)
 {
 	unsigned int index = 0;
+
 	switch (argc) {
 		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
@@ -226,6 +228,7 @@ static int cmd_release(int argc, char **argv, char **envp)
 static int cmd_fat(int argc, char **argv, char **envp)
 {
 	unsigned int index = 0, entry = 0;
+
 	switch (argc) {
 		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
@@ -372,6 +375,7 @@ static int cmd_exit(int argc, char **argv, char **envp)
 static int execute_cmd(int argc, char **argv, char **envp)
 {
 	int i;
+
 	if (!argc)
 		return 0;
 
