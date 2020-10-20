@@ -276,7 +276,6 @@ static int check_mounted_filesystem(void)
 {
 	FILE *fstab = setmntent("/etc/mtab", "r");
 	struct mntent *e = NULL;
-	const char *devname = NULL;
 
 	while ((e = getmntent(fstab)) != NULL) {
 		if (!strcmp(e->mnt_fsname, info.name))
