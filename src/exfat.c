@@ -1199,12 +1199,13 @@ int exfat_get_fat_entry(uint32_t clu, uint32_t *entry)
  */
 int exfat_print_dentry(uint32_t clu, size_t n)
 {
-	int i;
+	int i, sec;
 	uint32_t next_clu = 0;
 	size_t size = info.cluster_size;
 	size_t entries = size / sizeof(struct exfat_dentry);
 	void *data;
 	struct exfat_dentry d;
+	struct tm ctime, mtime, atime;
 
 	exfat_traverse_directory(clu);
 	while (n > entries) {
@@ -1222,11 +1223,16 @@ int exfat_print_dentry(uint32_t clu, size_t n)
 	d = ((struct exfat_dentry *)data)[n];
 
 	pr_msg("EntryType                       : %02x\n", d.EntryType);
+	pr_info("  TypeCode                      : %02x\n", d.EntryType & 0x1F);
+	pr_info("  TypeImportance                : %02x\n", (d.EntryType >> 5) & 0x01);
+	pr_info("  TypeCategory                  : %02x\n", (d.EntryType >> 6) & 0x01);
+	pr_info("  InUse                         : %02x\n", (d.EntryType >> 7) & 0x01);
 	switch (d.EntryType) {
 		case DENTRY_UNUSED:
 			break;
 		case DENTRY_BITMAP:
 			pr_msg("BitmapFlags                     : %02x\n", d.dentry.bitmap.BitmapFlags);
+			pr_info("  %s Allocation Bitmap\n", d.dentry.bitmap.BitmapFlags & 0x80 ? "2nd" : "1st");
 			pr_msg("Reserved                        : ");
 			for (i = 0; i < 18; i++)
 				pr_msg("%02x", d.dentry.bitmap.Reserved[i]);
@@ -1262,18 +1268,58 @@ int exfat_print_dentry(uint32_t clu, size_t n)
 			pr_msg("SecondaryCount                  : %02x\n", d.dentry.file.SecondaryCount);
 			pr_msg("SetChecksum                     : %04x\n", d.dentry.file.SetChecksum);
 			pr_msg("FileAttributes                  : %04x\n", d.dentry.file.FileAttributes);
+			if (d.dentry.file.FileAttributes & ATTR_READ_ONLY)
+				pr_info("  * ReadOnly\n");
+			if (d.dentry.file.FileAttributes & ATTR_HIDDEN)
+				pr_info("  * Hidden\n");
+			if (d.dentry.file.FileAttributes & ATTR_SYSTEM)
+				pr_info("  * System\n");
+			if (d.dentry.file.FileAttributes & ATTR_DIRECTORY)
+				pr_info("  * Directory\n");
+			if (d.dentry.file.FileAttributes & ATTR_ARCHIVE)
+				pr_info("  * Archive\n");
 			pr_msg("Reserved1                       : ");
 			for (i = 0; i < 2; i++)
 				pr_msg("%02x", d.dentry.file.Reserved1[i]);
 			pr_msg("\n");
+			exfat_convert_unixtime(&ctime, d.dentry.file.CreateTimestamp, 0, 0);
+			exfat_convert_unixtime(&mtime, d.dentry.file.LastModifiedTimestamp, 0, 0);
+			exfat_convert_unixtime(&atime, d.dentry.file.LastAccessedTimestamp, 0, 0);
 			pr_msg("CreateTimestamp                 : %08x\n", d.dentry.file.CreateTimestamp);
+			pr_info("  %d-%02d-%02d %02d:%02d:%02d\n",
+					ctime.tm_year + 1980, ctime.tm_mon, ctime.tm_mday,
+					ctime.tm_hour, ctime.tm_min, ctime.tm_sec);
 			pr_msg("LastModifiedTimestamp           : %08x\n", d.dentry.file.LastModifiedTimestamp);
+			pr_info("  %d-%02d-%02d %02d:%02d:%02d\n",
+					mtime.tm_year + 1980, mtime.tm_mon, mtime.tm_mday,
+					mtime.tm_hour, mtime.tm_min, mtime.tm_sec);
 			pr_msg("LastAccessedTimestamp           : %08x\n", d.dentry.file.LastAccessedTimestamp);
+			pr_info("  %d-%02d-%02d %02d:%02d:%02d\n",
+					atime.tm_year + 1980, atime.tm_mon, atime.tm_mday,
+					atime.tm_hour, atime.tm_min, atime.tm_sec);
 			pr_msg("Create10msIncrement             : %02x\n", d.dentry.file.Create10msIncrement);
+			pr_info("  %0d.%02d\n",
+					d.dentry.file.Create10msIncrement / 100,
+					d.dentry.file.Create10msIncrement % 100);
 			pr_msg("LastModified10msIncrement       : %02x\n", d.dentry.file.LastModified10msIncrement);
+			pr_info("  %0d.%02d\n",
+					d.dentry.file.LastModified10msIncrement / 100,
+					d.dentry.file.LastModified10msIncrement % 100);
 			pr_msg("CreateUtcOffset                 : %02x\n", d.dentry.file.CreateUtcOffset);
+			if (d.dentry.file.CreateUtcOffset & 0x80) {
+				sec = exfat_convert_timezone(d.dentry.file.CreateUtcOffset);
+				pr_info("  %02d:%02d\n", sec / 3600, (abs(sec) % 3600) / 60);
+			}
 			pr_msg("LastModifiedUtcOffset           : %02x\n", d.dentry.file.LastModifiedUtcOffset);
+			if (d.dentry.file.LastModifiedUtcOffset & 0x80) {
+				sec = exfat_convert_timezone(d.dentry.file.LastModifiedUtcOffset);
+				pr_info("  %02d:%02d\n", sec / 3600, (abs(sec) % 3600) / 60);
+			}
 			pr_msg("LastAccessdUtcOffset            : %02x\n", d.dentry.file.LastAccessdUtcOffset);
+			if (d.dentry.file.LastAccessdUtcOffset & 0x80) {
+				sec = exfat_convert_timezone(d.dentry.file.LastAccessdUtcOffset);
+				pr_info("  %02d:%02d\n", sec / 3600, (abs(sec) % 3600) / 60);
+			}
 			pr_msg("Reserved2                       : ");
 			for (i = 0; i < 7; i++)
 				pr_msg("%02x", d.dentry.file.Reserved2[i]);
@@ -1281,6 +1327,10 @@ int exfat_print_dentry(uint32_t clu, size_t n)
 			break;
 		case DENTRY_STREAM:
 			pr_msg("GeneralSecondaryFlags           : %02x\n", d.dentry.stream.GeneralSecondaryFlags);
+			if (d.dentry.stream.GeneralSecondaryFlags & 0x01)
+				pr_info("  * AllocationPossible\n");
+			if (d.dentry.stream.GeneralSecondaryFlags & 0x02)
+				pr_info("  * NoFatChain\n");
 			pr_msg("Reserved1                       : %02x\n", d.dentry.stream.Reserved1);
 			pr_msg("NameLength                      : %02x\n", d.dentry.stream.NameLength);
 			pr_msg("NameHash                        : %04x\n", d.dentry.stream.NameHash);
@@ -1298,12 +1348,16 @@ int exfat_print_dentry(uint32_t clu, size_t n)
 			break;
 		case DENTRY_NAME:
 			pr_msg("GeneralSecondaryFlags           : %02x\n", d.dentry.name.GeneralSecondaryFlags);
+			if (d.dentry.stream.GeneralSecondaryFlags & 0x01)
+				pr_info("  * AllocationPossible\n");
+			if (d.dentry.stream.GeneralSecondaryFlags & 0x02)
+				pr_info("  * NoFatChain\n");
 			pr_msg("FileName                        : ");
 			for (i = 0; i < 30; i++)
 				pr_msg("%02x", ((uint8_t *)d.dentry.name.FileName)[i]);
 			pr_msg("\n");
 			break;
-		}
+	}
 	free(data);
 	return 0;
 }

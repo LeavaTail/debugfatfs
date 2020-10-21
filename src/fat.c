@@ -1289,6 +1289,7 @@ int fat_print_dentry(uint32_t clu, size_t n)
 	size_t entries = size / sizeof(struct fat_dentry);
 	void *data;
 	struct fat_dentry d;
+	struct tm ctime, mtime, atime;
 
 	fat_traverse_directory(clu);
 	while (n > entries) {
@@ -1343,15 +1344,45 @@ int fat_print_dentry(uint32_t clu, size_t n)
 		for (i = 0; i < 11; i++)
 			pr_msg("%02x", d.dentry.dir.DIR_Name[i]);
 		pr_msg("\n");
+		pr_info("  ");
+		for (i = 0; i < 11; i++)
+			pr_info("%c", d.dentry.dir.DIR_Name[i]);
+		pr_info("\n");
 		pr_msg("DIR_Attr                        : %02x\n", d.dentry.dir.DIR_Attr);
+		if (d.dentry.dir.DIR_Attr & ATTR_READ_ONLY)
+			pr_info("  * ReadOnly\n");
+		if (d.dentry.dir.DIR_Attr & ATTR_HIDDEN)
+			pr_info("  * Hidden\n");
+		if (d.dentry.dir.DIR_Attr & ATTR_SYSTEM)
+			pr_info("  * System\n");
+		if (d.dentry.dir.DIR_Attr & ATTR_VOLUME_ID)
+			pr_info("  * Volume\n");
+		if (d.dentry.dir.DIR_Attr & ATTR_DIRECTORY)
+			pr_info("  * Directory\n");
+		if (d.dentry.dir.DIR_Attr & ATTR_ARCHIVE)
+			pr_info("  * Archive\n");
 		pr_msg("DIR_NTRes                       : %02x\n", d.dentry.dir.DIR_NTRes);
+		fat_convert_unixtime(&ctime, d.dentry.dir.DIR_CrtDate, d.dentry.dir.DIR_CrtTime, 0);
 		pr_msg("DIR_CrtTimeTenth                : %02x\n", d.dentry.dir.DIR_CrtTimeTenth);
 		pr_msg("DIR_CrtTime                     : %04x\n", d.dentry.dir.DIR_CrtTime);
 		pr_msg("DIR_CrtDate                     : %04x\n", d.dentry.dir.DIR_CrtDate);
+		pr_info("  %d-%02d-%02d %02d:%02d:%02d +%0d.%02d(s)\n",
+				ctime.tm_year + 1980, ctime.tm_mon, ctime.tm_mday,
+				ctime.tm_hour, ctime.tm_min, ctime.tm_sec,
+				d.dentry.dir.DIR_CrtTimeTenth / 100,
+				d.dentry.dir.DIR_CrtTimeTenth % 100);
+		fat_convert_unixtime(&atime, d.dentry.dir.DIR_LstAccDate, 0, 0);
 		pr_msg("DIR_LstAccDate                  : %04x\n", d.dentry.dir.DIR_LstAccDate);
+		pr_info("  %d-%02d-%02d %02d:%02d:%02d\n",
+				atime.tm_year + 1980, atime.tm_mon, atime.tm_mday,
+				atime.tm_hour, atime.tm_min, atime.tm_sec);
 		pr_msg("DIR_FstClusHI                   : %04x\n", d.dentry.dir.DIR_FstClusHI);
+		fat_convert_unixtime(&mtime, d.dentry.dir.DIR_WrtDate, d.dentry.dir.DIR_WrtTime, 0);
 		pr_msg("DIR_WrtTime                     : %04x\n", d.dentry.dir.DIR_WrtTime);
 		pr_msg("DIR_WrtDate                     : %04x\n", d.dentry.dir.DIR_WrtDate);
+		pr_info("  %d-%02d-%02d %02d:%02d:%02d\n",
+				mtime.tm_year + 1980, mtime.tm_mon, mtime.tm_mday,
+				mtime.tm_hour, mtime.tm_min, mtime.tm_sec);
 		pr_msg("DIR_FstClusLO                   : %04x\n", d.dentry.dir.DIR_FstClusLO);
 		pr_msg("DIR_FileSize                    : %08x\n", d.dentry.dir.DIR_FileSize);
 	}
