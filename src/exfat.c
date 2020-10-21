@@ -37,6 +37,7 @@ static uint16_t exfat_calculate_checksum(unsigned char *, unsigned char);
 static void exfat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
 static void exfat_convert_unixtime(struct tm *, uint32_t, uint8_t, uint8_t);
+static int exfat_convert_timezone(uint8_t);
 static int exfat_query_timestamp(struct tm *, uint32_t *, uint8_t *, int);
 static int exfat_query_timezone(char *, uint8_t *, int);
 static int exfat_create_timezone(char *, uint8_t *);
@@ -751,27 +752,40 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
 	/* OffsetValid */
 	if (tz & 0x80) {
 		int ex_sec = 0;
-		int ex_min = 0;
-		int ex_hour = 0;
-		char offset = tz & 0x7f;
 		time_t tmp_time = mktime(t);
 		struct tm *t2;
-		/* negative value */
-		if (offset & 0x40) {
-			offset = ((~offset) + 1) & 0x7f;
-			ex_min = ((offset % 4) * 15) * -1;
-			ex_hour = (offset / 4) * -1;
-		} else {
-			ex_min = (offset % 4) * 15;
-			ex_hour = offset / 4;
-		}
-		ex_sec = ex_min * 60 + ex_hour * 3600;
-		t->tm_hour += ex_hour;
-		t->tm_min  += ex_min;
+		ex_sec = exfat_convert_timezone(tz);
 		tmp_time += ex_sec;
 		t2 = gmtime(&tmp_time);
 		*t = *t2;
 	}
+}
+
+/**
+ * exfat_convert_timezone - function to get timezone in file
+ * @tz:                     UtcOffset in File Directory Entry
+ *
+ * @return                  difference seconds from timezone
+ */
+static int exfat_convert_timezone(uint8_t tz)
+{
+	int ex_min = 0;
+	int ex_hour = 0;
+	char offset = tz & 0x7f;
+
+	/* OffsetValid */
+	if (!(tz & 0x80))
+		return 0;
+	/* negative value */
+	if (offset & 0x40) {
+		offset = ((~offset) + 1) & 0x7f;
+		ex_min = ((offset % 4) * 15) * -1;
+		ex_hour = (offset / 4) * -1;
+	} else {
+		ex_min = (offset % 4) * 15;
+		ex_hour = offset / 4;
+	}
+	return ex_min * 60 + ex_hour * 3600;
 }
 
 /**

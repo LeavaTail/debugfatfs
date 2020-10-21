@@ -692,7 +692,7 @@ int main(int argc, char *argv[])
 			goto device_close;
 	}
 
-	/* Command line: -a option */
+	/* Command line: -e option */
 	if (attr & OPTION_ENTRY) {
 		ret = info.ops->dentry(offset, index);
 		if (ret < 0)
