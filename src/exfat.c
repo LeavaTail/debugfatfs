@@ -874,7 +874,7 @@ static int exfat_create_timezone(char *buf, uint8_t *tz)
 			&op,
 			&hour,
 			&min);
-	*tz = (hour * 4 + min) / 15;
+	*tz = (hour * 60 + min) / 15;
 
 	switch (op) {
 		case '-':
