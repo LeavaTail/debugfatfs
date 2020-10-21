@@ -769,14 +769,14 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
 		t->tm_hour += ex_hour;
 		t->tm_min  += ex_min;
 		tmp_time += ex_sec;
-		t2 = localtime(&tmp_time);
+		t2 = gmtime(&tmp_time);
 		*t = *t2;
 	}
 }
 
 /**
  * exfat_query_timestamp - Prompt user for timestamp
- * @t:                     local timezone
+ * @t:                     timestamp (GMT)
  * @timestamp:             Time Field (Output)
  * @subsec:                Time subsecond Field (Output)
  * @quiet:                 set parameter without ask
@@ -1344,7 +1344,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	size_t name_len;
 	struct exfat_dentry *d;
 	time_t t = time(NULL);
-	struct tm *local = localtime(&t);
+	struct tm *tm = localtime(&t);
 	char buf[8] = {0};
 
 	/* convert UTF-8 to UTF16 */
@@ -1352,8 +1352,8 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	count = ((len + ENTRY_NAME_MAX - 1) / ENTRY_NAME_MAX) + 1;
 	namehash = exfat_calculate_namehash(uniname, len);
 
-	/* Set up timezone */
-	strftime(buf, 8, "%z", local);
+	/* obrain current timezone */
+	strftime(buf, 8, "%z", tm);
 	exfat_create_timezone(buf, &tz);
 	/* Lookup last entry */
 	data = malloc(size);
@@ -1375,7 +1375,8 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			d->dentry.file.FileAttributes = attr;
 			query_param(create_prompt[2], &(d->dentry.file.SecondaryCount), count, 1, quiet);
 			query_param(create_prompt[3], &(d->dentry.file.Reserved1), 0x0, 2, quiet);
-			exfat_query_timestamp(local, &stamp, &subsec, quiet);
+			tm = gmtime(&t);
+			exfat_query_timestamp(tm, &stamp, &subsec, quiet);
 			exfat_query_timezone(buf, &tz, quiet);
 			d->dentry.file.CreateTimestamp = stamp;
 			d->dentry.file.LastAccessedTimestamp = stamp;
