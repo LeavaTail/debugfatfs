@@ -632,12 +632,12 @@ static int exfat_clean_dchain(uint32_t index)
 /*                                                                                               */
 /*************************************************************************************************/
 /**
- * exfat_create_file_entry - Create file infomarion
- * @head:                    Directory chain head
- * @clu:                     parent Directory cluster index
- * @file:                    file dentry
- * @stream:                  stream Extension dentry
- * @uniname:                 File Name dentry
+ * exfat_create_fileinfo - Create file infomarion
+ * @head:                  Directory chain head
+ * @clu:                   parent Directory cluster index
+ * @file:                  file dentry
+ * @stream:                stream Extension dentry
+ * @uniname:               File Name dentry
  */
 static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 		struct exfat_dentry *file, struct exfat_dentry *stream, uint16_t *uniname)

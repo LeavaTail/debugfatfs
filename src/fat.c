@@ -927,11 +927,11 @@ numtail:
 }
 
 /**
- * exfat_convert_unixname - function to get timestamp in file
- * @t:                      output pointer
- * @date:                   Date Field in File Directory Entry
- * @time:                   Timestamp Field in File Directory Entry
- * @subsec:                 10msincrement Field in File Directory Entry
+ * fat_convert_unixtime - function to get timestamp in file
+ * @t:                    output pointer
+ * @date:                 Date Field in File Directory Entry
+ * @time:                 Timestamp Field in File Directory Entry
+ * @subsec:               10msincrement Field in File Directory Entry
  */
 static void fat_convert_unixtime(struct tm *t, uint16_t date, uint16_t time, uint8_t subsec)
 {
