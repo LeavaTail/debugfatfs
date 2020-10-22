@@ -33,6 +33,9 @@ static int exfat_clean_dchain(uint32_t);
 /* File function prototype */
 static void exfat_create_fileinfo(node2_t *,
 		uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
+static int exfat_init_file(struct exfat_dentry *, uint16_t *, size_t);
+static int exfat_init_stream(struct exfat_dentry *, uint16_t *, size_t);
+static int exfat_init_filename(struct exfat_dentry *, uint16_t *, size_t);
 static uint16_t exfat_calculate_checksum(unsigned char *, unsigned char);
 static void exfat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
@@ -679,6 +682,87 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 		index = exfat_get_index(next_index);
 		info.root[index] = init_node2(next_index, d);
 	}
+}
+
+/**
+ * exfat_init_file  - function interface to create entry
+ * @d:                directory entry
+ * @name:             filename in UTF-16
+ * @namelen:          filename length
+ *
+ * @return            0 (Success)
+ */
+static int exfat_init_file(struct exfat_dentry *d, uint16_t *name, size_t namelen)
+{
+	uint32_t timestamp;
+	uint8_t subsec, tz;
+	time_t t = time(NULL);
+	struct tm *tm = localtime(&t);
+	char buf[8] = {0};
+
+	/* obrain current timezone */
+	strftime(buf, 8, "%z", tm);
+	exfat_parse_timezone(buf, &tz);
+	tm = gmtime(&t);
+	exfat_convert_exfattime(tm, &timestamp, &subsec);
+
+	d->EntryType = 0x85;
+	d->dentry.file.SetChecksum = 0;
+	d->dentry.file.FileAttributes = ATTR_ARCHIVE;
+	d->dentry.file.SecondaryCount = 1 + ((namelen + 14) / 15);
+	memset(d->dentry.file.Reserved1, 0, 2);
+	d->dentry.file.CreateTimestamp = timestamp;
+	d->dentry.file.LastAccessedTimestamp = timestamp;
+	d->dentry.file.LastModifiedTimestamp = timestamp;
+	d->dentry.file.Create10msIncrement = subsec;
+	d->dentry.file.LastModified10msIncrement = subsec;
+	d->dentry.file.CreateUtcOffset = tz | 0x80;
+	d->dentry.file.LastAccessdUtcOffset = tz | 0x80;
+	d->dentry.file.LastModifiedUtcOffset = tz | 0x80;
+	memset(d->dentry.file.Reserved2, 0, 7);
+
+	return 0;
+}
+
+/**
+ * exfat_init_stream  - function interface to create entry
+ * @d:                  directory entry
+ * @name:               filename in UTF-16
+ * @namelen:            filename length
+ *
+ * @return              0 (Success)
+ */
+static int exfat_init_stream(struct exfat_dentry *d, uint16_t *name, size_t namelen)
+{
+	d->EntryType = 0xC0;
+	d->dentry.stream.GeneralSecondaryFlags = 0x03;
+	d->dentry.stream.Reserved1 = 0x00;
+	d->dentry.stream.NameLength = namelen;
+	d->dentry.stream.NameHash = exfat_calculate_namehash(name, namelen);
+	memset(d->dentry.stream.Reserved2, 0, 2);
+	d->dentry.stream.ValidDataLength = 0;
+	memset(d->dentry.stream.Reserved3, 0, 4);
+	d->dentry.stream.FirstCluster = 0;
+	d->dentry.stream.DataLength = 0;
+
+	return 0;
+}
+
+/**
+ * exfat_init_filename  - function interface to create entry
+ * @d:                    directory entry
+ * @name:                 filename in UTF-16
+ * @namelen:              filename length
+ *
+ * @return                0 (Success)
+ */
+static int exfat_init_filename(struct exfat_dentry *d, uint16_t *name, size_t namelen)
+{
+	d->EntryType = 0xC1;
+	d->dentry.stream.GeneralSecondaryFlags = 0x00;
+	memcpy(d->dentry.name.FileName,	name, namelen * sizeof(uint16_t));
+
+	return 0;
 }
 
 /**

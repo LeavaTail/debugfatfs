@@ -34,6 +34,8 @@ int fat_clean_dchain(uint32_t);
 
 /* File function prototype */
 static void fat_create_fileinfo(node2_t *, uint32_t, struct fat_dentry *, uint16_t *, size_t);
+static int fat_init_dentry(struct fat_dentry *, unsigned char *, size_t);
+static int fat_init_lfn(struct fat_dentry *, uint16_t *, size_t, uint8_t);
 static void fat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static int fat_create_shortname(uint16_t *, char *);
 static int fat_convert_shortname(const char *, char *);
@@ -742,6 +744,61 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 		index = fat_get_index(next_clu);
 		info.root[index] = init_node2(next_clu, d);
 	}
+}
+
+/**
+ * fat_init_dentry - initialize directory entry
+ * @d:               directory entry
+ * @shortname:       filename in ASCII
+ * @namelen:         filename length
+ *
+ * @return           0 (Success)
+ */
+static int fat_init_dentry(struct fat_dentry *d, unsigned char *shortname, size_t namelen)
+{
+	uint16_t __date, __time;
+	uint8_t __subsec;
+	time_t t = time(NULL);
+	struct tm *utc = gmtime(&t);
+
+	fat_convert_fattime(utc, &__time, &__date, &__subsec);
+	memcpy(d->dentry.dir.DIR_Name, shortname, 11);
+	d->dentry.dir.DIR_Attr = ATTR_ARCHIVE;
+	d->dentry.dir.DIR_NTRes = 0;
+	d->dentry.dir.DIR_CrtTimeTenth = __subsec;
+	d->dentry.dir.DIR_CrtTime = __time;
+	d->dentry.dir.DIR_CrtDate = __date;
+	d->dentry.dir.DIR_LstAccDate = __date;
+	d->dentry.dir.DIR_WrtTime = __time;
+	d->dentry.dir.DIR_WrtDate = __date;
+	d->dentry.dir.DIR_FstClusHI = 0x00;
+	d->dentry.dir.DIR_FstClusLO = 0x00;
+	d->dentry.dir.DIR_FileSize = 0x0000;
+
+	return 0;
+}
+
+/**
+ * fat_init_lfn - initialize long file name entry
+ * @d:            directory entry
+ * @name:         filename in UTF-16
+ * @namelen:      filename length
+ * @ord:          The order of the entry
+ *
+ * @return        0 (Success)
+ */
+static int fat_init_lfn(struct fat_dentry *d, uint16_t *name, size_t namelen, uint8_t ord)
+{
+	d->dentry.lfn.LDIR_Ord = ord;
+	memcpy(d->dentry.lfn.LDIR_Name1, name, 10);
+	d->dentry.lfn.LDIR_Attr = ATTR_LONG_FILE_NAME;
+	d->dentry.lfn.LDIR_Type = 0;
+	d->dentry.lfn.LDIR_Chksum = 0;
+	memcpy(d->dentry.lfn.LDIR_Name2, name + 5, 12);
+	d->dentry.lfn.LDIR_FstClusLO = 0;
+	memcpy(d->dentry.lfn.LDIR_Name3, name + 6, 4);
+
+	return 0;
 }
 
 /**
