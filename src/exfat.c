@@ -840,7 +840,7 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
 		struct tm *t2;
 		min = exfat_convert_timezone(tz);
 		tmp_time += (min * 60);
-		t2 = gmtime(&tmp_time);
+		t2 = localtime(&tmp_time);
 		*t = *t2;
 	}
 }
