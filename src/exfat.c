@@ -751,11 +751,11 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
 	t->tm_sec += subsec / 100;
 	/* OffsetValid */
 	if (tz & 0x80) {
-		int ex_sec = 0;
+		int min = 0;
 		time_t tmp_time = mktime(t);
 		struct tm *t2;
-		ex_sec = exfat_convert_timezone(tz);
-		tmp_time += ex_sec;
+		min = exfat_convert_timezone(tz);
+		tmp_time += (min * 60);
 		t2 = gmtime(&tmp_time);
 		*t = *t2;
 	}
@@ -765,7 +765,7 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
  * exfat_convert_timezone - function to get timezone in file
  * @tz:                     UtcOffset in File Directory Entry
  *
- * @return                  difference seconds from timezone
+ * @return                  difference minutes from timezone
  */
 static int exfat_convert_timezone(uint8_t tz)
 {
@@ -785,7 +785,7 @@ static int exfat_convert_timezone(uint8_t tz)
 		ex_min = (offset % 4) * 15;
 		ex_hour = offset / 4;
 	}
-	return ex_min * 60 + ex_hour * 3600;
+	return ex_min + ex_hour * 60;
 }
 
 /**
@@ -1199,7 +1199,7 @@ int exfat_get_fat_entry(uint32_t clu, uint32_t *entry)
  */
 int exfat_print_dentry(uint32_t clu, size_t n)
 {
-	int i, sec;
+	int i, min;
 	uint32_t next_clu = 0;
 	size_t size = info.cluster_size;
 	size_t entries = size / sizeof(struct exfat_dentry);
@@ -1307,18 +1307,18 @@ int exfat_print_dentry(uint32_t clu, size_t n)
 					d.dentry.file.LastModified10msIncrement % 100);
 			pr_msg("CreateUtcOffset                 : %02x\n", d.dentry.file.CreateUtcOffset);
 			if (d.dentry.file.CreateUtcOffset & 0x80) {
-				sec = exfat_convert_timezone(d.dentry.file.CreateUtcOffset);
-				pr_info("  %02d:%02d\n", sec / 3600, (abs(sec) % 3600) / 60);
+				min = exfat_convert_timezone(d.dentry.file.CreateUtcOffset);
+				pr_info("  %02d:%02d\n", min / 60, (abs(min) % 60));
 			}
 			pr_msg("LastModifiedUtcOffset           : %02x\n", d.dentry.file.LastModifiedUtcOffset);
 			if (d.dentry.file.LastModifiedUtcOffset & 0x80) {
-				sec = exfat_convert_timezone(d.dentry.file.LastModifiedUtcOffset);
-				pr_info("  %02d:%02d\n", sec / 3600, (abs(sec) % 3600) / 60);
+				min = exfat_convert_timezone(d.dentry.file.LastModifiedUtcOffset);
+				pr_info("  %02d:%02d\n", min / 60, (abs(min) % 60));
 			}
 			pr_msg("LastAccessdUtcOffset            : %02x\n", d.dentry.file.LastAccessdUtcOffset);
 			if (d.dentry.file.LastAccessdUtcOffset & 0x80) {
-				sec = exfat_convert_timezone(d.dentry.file.LastAccessdUtcOffset);
-				pr_info("  %02d:%02d\n", sec / 3600, (abs(sec) % 3600) / 60);
+				min = exfat_convert_timezone(d.dentry.file.LastAccessdUtcOffset);
+				pr_info("  %02d:%02d\n", min / 60, (abs(min) % 60));
 			}
 			pr_msg("Reserved2                       : ");
 			for (i = 0; i < 7; i++)
