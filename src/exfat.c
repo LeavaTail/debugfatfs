@@ -41,9 +41,9 @@ static void exfat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
 static void exfat_convert_unixtime(struct tm *, uint32_t, uint8_t, uint8_t);
 static int exfat_convert_timezone(uint8_t);
-static int exfat_query_timestamp(struct tm *, uint32_t *, uint8_t *, int);
-static int exfat_query_timezone(char *, uint8_t *, int);
-static int exfat_create_timezone(char *, uint8_t *);
+static void exfat_convert_exfattime(struct tm *, uint32_t *, uint8_t *);
+static void exfat_convert_exfattimezone(uint8_t *, int);
+static int exfat_parse_timezone(char *, uint8_t *);
 
 /* Operations function prototype */
 int exfat_print_bootsec(void);
@@ -873,49 +873,13 @@ static int exfat_convert_timezone(uint8_t tz)
 }
 
 /**
- * exfat_query_timestamp - Prompt user for timestamp
- * @t:                     timestamp (GMT)
- * @timestamp:             Time Field (Output)
- * @subsec:                Time subsecond Field (Output)
- * @quiet:                 set parameter without ask
- *
- * @return                 0 (Success)
+ * exfat_convert_exfattime - function to get timestamp in file
+ * @t:                        Timestamp
+ * @time:                     Timestamp Field in File Directory Entry (Output)
+ * @subsec:                   10msincrement Field in File Directory Entry (Output)
  */
-static int exfat_query_timestamp(struct tm *t,
-		uint32_t *timestamp, uint8_t *subsec, int quiet)
+static void exfat_convert_exfattime(struct tm *t, uint32_t *timestamp, uint8_t *subsec)
 {
-	char buf[QUERY_BUFFER_SIZE] = {};
-
-	if (!quiet) {
-		pr_msg("Timestamp (UTC)\n");
-		pr_msg("Select (Default: %d-%02d-%02d %02d:%02d:%02d.%02d): ",
-				t->tm_year + 1900,
-				t->tm_mon + 1,
-				t->tm_mday,
-				t->tm_hour,
-				t->tm_min,
-				t->tm_sec,
-				0);
-		fflush(stdout);
-
-		if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
-			return -1;
-
-		if (buf[0] != '\n') {
-			sscanf(buf, "%d-%02d-%02d %02d:%02d:%02d.%02hhd",
-					&(t->tm_year),
-					&(t->tm_mon),
-					&(t->tm_mday),
-					&(t->tm_hour),
-					&(t->tm_min),
-					&(t->tm_sec),
-					subsec);
-			t->tm_year -= 1900;
-			t->tm_mon -= 1;
-		}
-
-		pr_msg("\n");
-	}
 	*timestamp |= ((t->tm_year - 80) << EXFAT_YEAR);
 	*timestamp |= ((t->tm_mon + 1) << EXFAT_MONTH);
 	*timestamp |= (t->tm_mday << EXFAT_DAY);
@@ -923,47 +887,30 @@ static int exfat_query_timestamp(struct tm *t,
 	*timestamp |= (t->tm_min << EXFAT_MINUTE);
 	*timestamp |= t->tm_sec / 2;
 	*subsec += ((t->tm_sec % 2) * 100);
-	return 0;
 }
 
 /**
- * exfat_query_timezone  - Prompt user for timestamp
- * @zone:                  timezone
- * @tz:                    offset from UTC Field (Output)
- * @quiet:                 set parameter without ask
- *
- * @return                 0 (Success)
+ * exfat_convert_exfattimezone - function to get timezone in file
+ * @tz:                          UtcOffset in File Directory Entry (Output)
+ * @min:                         Utc Offset
  */
-static int exfat_query_timezone(char *zone, uint8_t *tz, int quiet)
+static void exfat_convert_exfattimezone(uint8_t *tz, int min)
 {
-	char buf[QUERY_BUFFER_SIZE] = {};
-
-	if (quiet)
-		return 0;
-
-	pr_msg("Timezone\n");
-	pr_msg("Select (Default: %s): ", zone);
-	fflush(stdout);
-
-	if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
-		return -1;
-
-	exfat_create_timezone(buf, tz);
-	pr_msg("\n");
-	return 0;
+	*tz = (min / 15) & 0x7f;
 }
 
 /**
- * exfat_create_timezone  - Prompt user for timestamp
+ * exfat_parse_timezone  - Prompt user for timestamp
  * @buf:                    difference localtime and UTCtime
  * @tz:                     offset from UTC Field (Output)
  *
  * @return                  0 (Success)
  */
-static int exfat_create_timezone(char *buf, uint8_t *tz)
+static int exfat_parse_timezone(char *buf, uint8_t *tz)
 {
 	char op = 0;
 	char min = 0, hour = 0;
+	int ex = 0;
 
 	if (buf[0] == '\n')
 		return 0;
@@ -972,15 +919,15 @@ static int exfat_create_timezone(char *buf, uint8_t *tz)
 			&op,
 			&hour,
 			&min);
-	*tz = (hour * 60 + min) / 15;
+	ex = hour * 60 + min;
 
 	switch (op) {
 		case '-':
-			*tz = ~(*tz) + 1;
-			*tz &= 0x7f;
+			exfat_convert_exfattimezone(tz, -ex);
 			break;
 		case '+':
 		case ' ':
+			exfat_convert_exfattimezone(tz, ex);
 			break;
 		default:
 			pr_debug("Invalid operation. you can use only ('+' or '-').\n");

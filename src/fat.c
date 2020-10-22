@@ -41,6 +41,7 @@ static int fat_create_shortname(uint16_t *, char *);
 static int fat_convert_shortname(const char *, char *);
 static int fat_create_nameentry(const char *, char *, uint16_t *);
 static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
+static void fat_convert_fattime(struct tm *, uint16_t *, uint16_t *, uint8_t *);
 static int fat_validate_character(const char);
 static int fat_query_timestamp(struct tm *, uint16_t *, uint16_t *, uint8_t *, int);
 
@@ -761,7 +762,7 @@ static int fat_init_dentry(struct fat_dentry *d, unsigned char *shortname, size_
 	time_t t = time(NULL);
 	struct tm *utc = gmtime(&t);
 
-	fat_convert_fattime(utc, &__time, &__date, &__subsec);
+	fat_convert_fattime(utc, &__date, &__time, &__subsec);
 	memcpy(d->dentry.dir.DIR_Name, shortname, 11);
 	d->dentry.dir.DIR_Attr = ATTR_ARCHIVE;
 	d->dentry.dir.DIR_NTRes = 0;
@@ -938,10 +939,28 @@ static void fat_convert_unixtime(struct tm *t, uint16_t date, uint16_t time, uin
 	t->tm_year = (date >> FAT_YEAR) & 0x7f;
 	t->tm_mon  = (date >> FAT_MONTH) & 0x0f;
 	t->tm_mday = (date >> FAT_DAY) & 0x1f;
-	t->tm_hour = (time >> EXFAT_HOUR) & 0x0f;
+	t->tm_hour = (time >> EXFAT_HOUR) & 0x1f;
 	t->tm_min  = (time >> EXFAT_MINUTE) & 0x3f;
 	t->tm_sec  = (time & 0x1f) * 2;
 	t->tm_sec += subsec / 100;
+}
+
+/**
+ * fat_convert_fattime - function to get timestamp in file
+ * @t:                   timestamp (GMT)
+ * @date:                Date Field in File Directory Entry (Output)
+ * @time:                Timestamp Field in File Directory Entry (Output)
+ * @subsec:              10msincrement Field in File Directory Entry (Output)
+ */
+static void fat_convert_fattime(struct tm *t, uint16_t *date, uint16_t *time, uint8_t *subsec)
+{
+	*time = (t->tm_hour << EXFAT_HOUR) |
+		(t->tm_min << EXFAT_MINUTE) |
+		(t->tm_sec / 2);
+	*date = ((t->tm_year - 80) << FAT_YEAR) |
+		((t->tm_mon + 1) << FAT_MONTH) |
+		(t->tm_mday);
+	*subsec += ((t->tm_sec % 2) * 100);
 }
 
 /**
