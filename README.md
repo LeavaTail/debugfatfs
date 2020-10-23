@@ -22,7 +22,6 @@ debugfatfs can ontain these inforamtion.
  * Cluster raw data
  * Sector raw data
  * Convert any character
- * Create any directory entry (Only interactive mode)
  * Change any FAT entry (Only interactive mode)
  * Change any allocation bitmap (Only interactive mode)
  * Trim deleted directory entry (Only interactive mode)
@@ -102,79 +101,21 @@ Welcome to debugfatfs 0.1 (Interactive Mode)
 ---DA    32768 2020-09-14 00:30:04 00_SIMPLE 
 
 /> create TEST
-Entry Type
-  85  File
-  C0  Stream
-  C1  Filename
-Select (Default 0x85): 
-
-File Attributes
-  Bit0  ReadOnly
-  Bit1  Hidden
-  Bit2  System
-  Bit4  Directory
-  Bit5  Archive
-Select (Default 0x20): 3
-
-Secondary Count
-Select (Default 0x2): 0
-
-Reserverd
-Select (Default 0x0): 8
-
-Timestamp (UTC)
-Select (Default: 2020-09-15 14:10:17.00): 
-
-Timezone
-Select (Default: +0900): 
-
-Do you want to create stream entry? (Default [y]/n): n
-File should have stream entry, but This don't have.
-> cluster 4
-Cluster #4:
-00000000:  83 05 DC 30 EA 30 E5 30 FC 30 E0 30 00 00 00 00  ...0.0.0.0.0....
-00000010:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-00000020:  81 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-00000030:  00 00 00 00 02 00 00 00 F8 3F 00 00 00 00 00 00  .........?......
-00000040:  82 00 00 00 0D D3 19 E6 00 00 00 00 00 00 00 00  ................
-00000050:  00 00 00 00 03 00 00 00 CC 16 00 00 00 00 00 00  ................
-00000060:  85 03 5E EE 16 00 00 00 B3 7B 2D 51 B3 7B 2D 51  ..^......{-Q.{-Q
-00000070:  B3 7B 2D 51 BF BF A4 A4 A4 00 00 00 00 00 00 00  .{-Q............
-00000080:  C0 03 00 19 B8 FF 00 00 00 80 00 00 00 00 00 00  ................
-00000090:  00 00 00 00 05 00 00 00 00 80 00 00 00 00 00 00  ................
-000000A0:  C1 00 53 00 79 00 73 00 74 00 65 00 6D 00 20 00  ..S.y.s.t.e.m. .
-000000B0:  56 00 6F 00 6C 00 75 00 6D 00 65 00 20 00 49 00  V.o.l.u.m.e. .I.
-000000C0:  C1 00 6E 00 66 00 6F 00 72 00 6D 00 61 00 74 00  ..n.f.o.r.m.a.t.
-000000D0:  69 00 6F 00 6E 00 00 00 00 00 00 00 00 00 00 00  i.o.n...........
-000000E0:  85 02 DE 55 30 00 00 00 C2 7B 2D 51 2A 7A 2D 51  ...U0....{-Q*z-Q
-000000F0:  C2 7B 2D 51 24 00 A4 A4 A4 00 00 00 00 00 00 00  .{-Q$...........
-00000100:  C0 03 00 0B B6 14 00 00 00 80 00 00 00 00 00 00  ................
-00000110:  00 00 00 00 08 00 00 00 00 80 00 00 00 00 00 00  ................
-00000120:  C1 00 30 00 31 00 5F 00 4C 00 4F 00 4E 00 47 00  ..0.1._.L.O.N.G.
-00000130:  4E 00 41 00 4D 00 45 00 00 00 00 00 00 00 00 00  N.A.M.E.........
-00000140:  85 02 05 AC 30 00 00 00 C2 7B 2D 51 2A 7A 2D 51  ....0....{-Q*z-Q
-00000150:  C2 7B 2D 51 2A 00 A4 A4 A4 00 00 00 00 00 00 00  .-Q*...........
-00000160:  C0 03 00 0A F3 2F 00 00 00 80 00 00 00 00 00 00  ...../..........
-00000170:  00 00 00 00 0B 00 00 00 00 80 00 00 00 00 00 00  ................
-00000180:  C1 00 30 00 32 00 5F 00 55 00 4E 00 49 00 43 00  ..0.2._.U.N.I.C.
-00000190:  4F 00 44 00 45 00 00 00 00 00 00 00 00 00 00 00  O.D.E...........
-000001A0:  85 02 28 C0 30 00 00 00 C2 7B 2D 51 2A 7A 2D 51  ..({.0....{-Q*z-Q
-000001B0:  C2 7B 2D 51 2E 00 A4 A4 A4 00 00 00 00 00 00 00  .{-Q............
-000001C0:  C0 03 00 09 A5 EE 00 00 00 80 00 00 00 00 00 00  ................
-000001D0:  00 00 00 00 0C 00 00 00 00 80 00 00 00 00 00 00  ................
-000001E0:  C1 00 30 00 33 00 5F 00 44 00 45 00 4C 00 45 00  ..0.3._.D.E.L.E.
-000001F0:  54 00 45 00 00 00 00 00 00 00 00 00 00 00 00 00  T.E.............
-00000200:  85 02 3E 71 30 00 00 00 C2 7B 2D 51 2A 7A 2D 51  ..>q0....{-Q*z-Q
-00000210:  C2 7B 2D 51 33 00 A4 A4 A4 00 00 00 00 00 00 00  .{-Q3...........
-00000220:  C0 03 00 09 7F 4C 00 00 00 80 00 00 00 00 00 00  .....L..........
-00000230:  00 00 00 00 0D 00 00 00 00 80 00 00 00 00 00 00  ................
-00000240:  C1 00 30 00 30 00 5F 00 53 00 49 00 4D 00 50 00  ..0.0._.S.I.M.P.
-00000250:  4C 00 45 00 00 00 00 00 00 00 00 00 00 00 00 00  L.E.............
-00000260:  85 00 00 00 03 00 08 00 B3 03 44 51 B3 03 44 51  ..........DQ..DQ
-00000270:  B3 03 44 51 00 00 82 82 82 00 00 00 00 00 00 00  ..DQ............
-00000280:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-*
-00007FF0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+/> entry 19
+EntryType                       : 85
+SecondaryCount                  : 02
+SetChecksum                     : b102
+FileAttributes                  : 0020
+Reserved1                       : 0000
+CreateTimestamp                 : 51576a41
+LastModifiedTimestamp           : 51576a41
+LastAccessedTimestamp           : 51576a41
+Create10msIncrement             : 64
+LastModified10msIncrement       : 64
+CreateUtcOffset                 : a4
+LastModifiedUtcOffset           : a4
+LastAccessdUtcOffset            : a4
+Reserved2                       : 00000000000000
 /> exit
 Goodbye!
 ```
