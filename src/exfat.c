@@ -26,7 +26,6 @@ static uint32_t exfat_update_fat_entry(uint32_t, uint32_t);
 /* Directory chain function prototype */
 static int exfat_check_dchain(uint32_t);
 static int exfat_get_index(uint32_t);
-static int exfat_get_freed_index(uint32_t *);
 static int exfat_traverse_directory(uint32_t);
 static int exfat_clean_dchain(uint32_t);
 
@@ -78,25 +77,6 @@ static const struct operations exfat_ops = {
 	.create = exfat_create,
 	.remove = exfat_remove,
 	.trim = exfat_trim,
-};
-
-static const struct query create_prompt[] = {
-	{"Entry Type", 3, (char *[]){"  85  File","  C0  Stream", "  C1  Filename"}},
-	{"File Attributes", 5, (char *[]){
-										 "  Bit0  ReadOnly",
-										 "  Bit1  Hidden",
-										 "  Bit2  System",
-										 "  Bit4  Directory",
-										 "  Bit5  Archive"}},
-	{"Secondary Count", 0, NULL},
-	{"Reserverd", 0, NULL},
-	{"General Seconday Flags", 2, (char *[]){"  Bit0 AllocationPossible", "  Bit1 NoFatChain"}},
-	{"Name Length", 0, NULL},
-	{"Name Hash", 0, NULL},
-	{"Valid Data Length", 0, NULL},
-	{"First Cluster", 0, NULL},
-	{"Data Length", 0, NULL},
-	{"Anything", 0, NULL},
 };
 
 /*************************************************************************************************/
@@ -439,6 +419,7 @@ static int exfat_get_index(uint32_t clu)
 	return i;
 }
 
+#if 0
 /**
  * exfat_get_freed_index - get unused cluster index by allocation bitmap
  * @clup:                  cluster index pointer (Output)
@@ -467,6 +448,7 @@ static int exfat_get_freed_index(uint32_t *clup)
 
 	return -1;
 }
+#endif
 
 /**
  * exfat_traverse_directory - function to traverse one directory
@@ -1428,32 +1410,19 @@ int exfat_release_cluster(uint32_t clu)
 int exfat_create(const char *name, uint32_t clu, int opt)
 {
 	int i, namei, lasti;
-	int quiet = 0;
-	uint8_t attr = 0;
 	void *data;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
-	uint16_t namehash = 0;
 	uint8_t len;
 	uint8_t count;
-	uint32_t stamp;
-	uint32_t unused = 0;
-	uint8_t subsec, tz;
 	size_t size = info.cluster_size;
 	size_t entries = size / sizeof(struct exfat_dentry);
 	size_t name_len;
 	struct exfat_dentry *d;
-	time_t t = time(NULL);
-	struct tm *tm = localtime(&t);
-	char buf[8] = {0};
 
 	/* convert UTF-8 to UTF16 */
 	len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
 	count = ((len + ENTRY_NAME_MAX - 1) / ENTRY_NAME_MAX) + 1;
-	namehash = exfat_calculate_namehash(uniname, len);
 
-	/* obrain current timezone */
-	strftime(buf, 8, "%z", tm);
-	exfat_create_timezone(buf, &tz);
 	/* Lookup last entry */
 	data = malloc(size);
 	get_cluster(data, clu);
@@ -1463,84 +1432,31 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			break;
 	}
 
-	if (opt & OPTION_QUIET)
-		quiet = 1;
-
-	query_param(create_prompt[0], &(d->EntryType), 0x85, 1, quiet);
+	d->EntryType = 0x85;
 	lasti = i;
 	switch (d->EntryType) {
 		case DENTRY_FILE:
-			query_param(create_prompt[1], &attr, ATTR_ARCHIVE, 2, quiet);
-			d->dentry.file.FileAttributes = attr;
-			query_param(create_prompt[2], &(d->dentry.file.SecondaryCount), count, 1, quiet);
-			query_param(create_prompt[3], &(d->dentry.file.Reserved1), 0x0, 2, quiet);
-			tm = gmtime(&t);
-			exfat_query_timestamp(tm, &stamp, &subsec, quiet);
-			exfat_query_timezone(buf, &tz, quiet);
-			d->dentry.file.CreateTimestamp = stamp;
-			d->dentry.file.LastAccessedTimestamp = stamp;
-			d->dentry.file.LastModifiedTimestamp = stamp;
-			d->dentry.file.Create10msIncrement = subsec;
-			d->dentry.file.LastModified10msIncrement = subsec;
-			d->dentry.file.CreateUtcOffset = tz | 0x80;
-			d->dentry.file.LastAccessdUtcOffset = tz | 0x80;
-			d->dentry.file.LastModifiedUtcOffset = tz | 0x80;
-
-			if (!quiet) {
-				char buf[4] = {0};
-				pr_msg("Do you want to create stream entry? (Default [y]/n): ");
-				fflush(stdout);
-				if (fgets(buf, 4, stdin) != NULL) {
-					if (!strncmp(buf, "n", 1))
-						goto out;
-				}
-			}
+			exfat_init_file(d, uniname, len);
 			lasti = i + 1;
 			d = ((struct exfat_dentry *)data) + lasti;
-			d->EntryType = DENTRY_STREAM;
 		case DENTRY_STREAM:
-			query_param(create_prompt[4], &(d->dentry.stream.GeneralSecondaryFlags), 0x01, 1, quiet);
-			query_param(create_prompt[3], &(d->dentry.stream.Reserved1), 0x00, 1, quiet);
-			query_param(create_prompt[5], &(d->dentry.stream.NameLength), len, 1, quiet);
-			query_param(create_prompt[6], &(d->dentry.stream.NameHash), namehash, 2, quiet);
-			query_param(create_prompt[3], &(d->dentry.stream.Reserved2), 0x00, 2, quiet);
-			query_param(create_prompt[7], &(d->dentry.stream.ValidDataLength), 0x00, 8, quiet);
-			query_param(create_prompt[3], &(d->dentry.stream.Reserved3), 0x00, 4, quiet);
-			if (attr & ATTR_DIRECTORY)
-				exfat_get_freed_index(&unused);
-			query_param(create_prompt[8], &(d->dentry.stream.FirstCluster), unused, 4, quiet);
-			query_param(create_prompt[9], &(d->dentry.stream.DataLength), 0x00, 8, quiet);
-
-			if (!quiet) {
-				char buf[4] = {0};
-				pr_msg("Do you want to create Name entry? (Default [y]/n): ");
-				fflush(stdout);
-				if (fgets(buf, 4, stdin) != NULL) {
-					if (!strncmp(buf, "n", 1))
-						goto out;
-				}
-			}
+			exfat_init_stream(d, uniname, len);
 			lasti = i + 2;
 			d = ((struct exfat_dentry *)data) + lasti;
-			d->EntryType = DENTRY_NAME;
 		case DENTRY_NAME:
 			for (namei = 0; namei < count - 1; namei++) {
 				name_len = MIN(ENTRY_NAME_MAX, len - namei * ENTRY_NAME_MAX);
-				memcpy(d->dentry.name.FileName,
-						uniname + namei * name_len, name_len * sizeof(uint16_t));
+				exfat_init_filename(d, uniname, name_len);
 				d = ((struct exfat_dentry *)data) + lasti + namei;
 				d->EntryType = DENTRY_NAME;
 			}
-			goto out;
+			break;
 		default:
-			query_param(create_prompt[10], &d->dentry, 0x00, 31, quiet);
 			goto out;
 	}
-	if (attr) {
-		d = ((struct exfat_dentry *)data) + i;
-		d->dentry.file.SetChecksum =
-			exfat_calculate_checksum(data+ i * sizeof(struct exfat_dentry), count);
-	}
+	d = ((struct exfat_dentry *)data) + i;
+	d->dentry.file.SetChecksum =
+		exfat_calculate_checksum(data + i * sizeof(struct exfat_dentry), count);
 out:
 	set_cluster(data, clu);
 	free(data);
