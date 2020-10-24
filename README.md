@@ -99,7 +99,7 @@ Cluster #4:
 
 ```sh
 $ sudo debugfatfs -i /dev/sdc1
-Welcome to debugfatfs 0.1 (Interactive Mode)
+Welcome to debugfatfs 0.1.0 (Interactive Mode)
 
 /> ls
 -HSD-    32768 2020-09-14 00:29:39 System Volume Information
