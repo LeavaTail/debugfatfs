@@ -1,9 +1,11 @@
 # debugfatfs
+
 ![C/C++ CI](https://github.com/LeavaTail/debugfatfs/workflows/C/C++%20CI/badge.svg)
 
 FAT/exFAT file system debugger.
 
 ## Table of Contents
+
 - [Description](#Description)
 - [Example](#Example)
 - [Usage](#Usage)
@@ -12,24 +14,29 @@ FAT/exFAT file system debugger.
 - [Authors](#Authors)
 
 ## Description
-FAT/exFAT has filesystem information(e.g. cluster size, root directory cluster index, ...) in first Sector.  
+
+FAT/exFAT has filesystem information in first sector.
+(e.g. cluster size, root directory cluster index, ...)  
 Some users want to obtain these information to confirm filesystem status.  
-In addition, Some developer want to create any FAT/exFAT filesystem image. 
+In addition, Some developer want to create any FAT/exFAT filesystem image.
 
 debugfatfs can ontain these inforamtion.
 
- * Main Boot Sector field
- * Cluster raw data
- * Sector raw data
- * Convert any character
- * Change any FAT entry (Only interactive mode)
- * Change any allocation bitmap (Only interactive mode)
- * Trim deleted directory entry (Only interactive mode)
+- Main Boot Sector field
+- Cluster raw data
+- Sector raw data
+- Convert any character
+- Change any FAT entry (Only interactive mode)
+- Change any allocation bitmap (Only interactive mode)
+- Trim deleted directory entry (Only interactive mode)
 
-:warning: debugfatfs can write filesystem image. If you don't want, Please add `-r`(read only) option.
+:warning: debugfatfs can write filesystem image.
+If you don't want, Please add `-r`(read only) option.
 
 ## Example
-**Command line mode**
+
+### Command line mode
+
 ```sh
 $ sudo debugfatfs -c 4 /dev/sdc1
 media-relative sector offset    : 0x00000800 (sector)
@@ -88,17 +95,18 @@ Cluster #4:
 00007FF0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
 ```
 
-**Interactive mode**
+### Interactive mode
+
 ```sh
 $ sudo debugfatfs -i /dev/sdc1
 Welcome to debugfatfs 0.1 (Interactive Mode)
 
 /> ls
--HSD-    32768 2020-09-14 00:29:39 System Volume Information 
----DA    32768 2020-09-14 00:30:04 01_LONGNAME 
----DA    32768 2020-09-14 00:30:04 02_UNICODE 
----DA    32768 2020-09-14 00:30:04 03_DELETE 
----DA    32768 2020-09-14 00:30:04 00_SIMPLE 
+-HSD-    32768 2020-09-14 00:29:39 System Volume Information
+---DA    32768 2020-09-14 00:30:04 01_LONGNAME
+---DA    32768 2020-09-14 00:30:04 02_UNICODE
+---DA    32768 2020-09-14 00:30:04 03_DELETE
+---DA    32768 2020-09-14 00:30:04 00_SIMPLE
 
 /> create TEST
 /> entry 19
@@ -121,50 +129,56 @@ Goodbye!
 ```
 
 ## Usage
+
 debugfatfs support support these optoin. (Please look at man-page)
-* **-a**, **--all** --- Trverse all directories
-* **-b**, **--byte**=*offset* --- dump the any byte after dump filesystem information
-* **-c**, **--cluster**=*index* --- dump the cluster index after dump filesystem information
-* **-d**, **--direcotry**=*path* --- read directory entry from path
-* **-e**, **--entry=index** --- read raw directory entry in current directory
-* **-f**, **--fource** --- write foucibly even if filesystem image has already mounted
-* **-i**, **--interactive** --- prompt the user operate filesystem
-* **-l**, **--load**=*file* --- Load Main boot region and FAT region from file
-* **-o**, **--output**=*file* --- send output to file rather than stdout
-* **-q**, **--quiet** --- Not prompting the user in interactive mode
-* **-r**, **--ro** --- read only mode
-* **-s**, **--save**=*file* --- Save Main boot region and FAT region in file
-* **-u**, **--upper** --- convert into uppercase latter by up-case Table
-* **-v**, **--verbose** --- Version mode
+
+- **-a**, **--all** --- Trverse all directories
+- **-b**, **--byte**=*offset* --- dump the any byte after dump filesystem information
+- **-c**, **--cluster**=*index* --- dump the cluster after dump filesystem information
+- **-d**, **--direcotry**=*path* --- read directory entry from path
+- **-e**, **--entry=index** --- read raw directory entry in current directory
+- **-f**, **--fource** --- write foucibly even if filesystem image has already mounted
+- **-i**, **--interactive** --- prompt the user operate filesystem
+- **-l**, **--load**=*file* --- Load Main boot region and FAT region from file
+- **-o**, **--output**=*file* --- send output to file rather than stdout
+- **-q**, **--quiet** --- Not prompting the user in interactive mode
+- **-r**, **--ro** --- read only mode
+- **-s**, **--save**=*file* --- Save Main boot region and FAT region in file
+- **-u**, **--upper** --- convert into uppercase latter by up-case Table
+- **-v**, **--verbose** --- Version mode
 
 And, debugfatfs with interactive mode support these command.
-* **ls** --- list current directory contents
-* **cd** *path* --- change directory
-* **cluster** *cluster* --- print cluster raw-data
-* **entry** *index* --- print directory entry
-* **alloc** *cluster* --- allocate cluster
-* **release** *cluster* --- release cluster
-* **fat** *index* *[entry]* --- change File Allocation Table entry
-* **create** *file* --- create directory entry
-* **remove** *file* --- remove directory entry
-* **trim** --- trim deleted dentry
-* **help** --- display this help
-* **exit** --- exit interactive mode
+
+- **ls** --- list current directory contents
+- **cd** *path* --- change directory
+- **cluster** *cluster* --- print cluster raw-data
+- **entry** *index* --- print directory entry
+- **alloc** *cluster* --- allocate cluster
+- **release** *cluster* --- release cluster
+- **fat** *index* *[entry]* --- change File Allocation Table entry
+- **create** *file* --- create directory entry
+- **remove** *file* --- remove directory entry
+- **trim** --- trim deleted dentry
+- **help** --- display this help
+- **exit** --- exit interactive mode
 
 ## Requirements
-* [autoconf](http://www.gnu.org/software/autoconf/)
-* [automake](https://www.gnu.org/software/automake/)
-* [libtool](https://www.gnu.org/software/libtool/)
-* [help2man](https://www.gnu.org/software/help2man/)
-* [make](https://www.gnu.org/software/make/)
+
+- [autoconf](http://www.gnu.org/software/autoconf/)
+- [automake](https://www.gnu.org/software/automake/)
+- [libtool](https://www.gnu.org/software/libtool/)
+- [help2man](https://www.gnu.org/software/help2man/)
+- [make](https://www.gnu.org/software/make/)
 
 ## Install
+
 ```sh
 $ ./script/bootstrap.sh
 $ ./configure
 $ make
-$ make install
+# make install
 ```
 
 ## Authors
+
 [LeavaTail](https://github.com/LeavaTail)
