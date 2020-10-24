@@ -34,13 +34,15 @@ int fat_clean_dchain(uint32_t);
 
 /* File function prototype */
 static void fat_create_fileinfo(node2_t *, uint32_t, struct fat_dentry *, uint16_t *, size_t);
+static int fat_init_dentry(struct fat_dentry *, unsigned char *, size_t);
+static int fat_init_lfn(struct fat_dentry *, uint16_t *, size_t, unsigned char *, uint8_t);
 static void fat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static int fat_create_shortname(uint16_t *, char *);
 static int fat_convert_shortname(const char *, char *);
 static int fat_create_nameentry(const char *, char *, uint16_t *);
 static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
+static void fat_convert_fattime(struct tm *, uint16_t *, uint16_t *, uint8_t *);
 static int fat_validate_character(const char);
-static int fat_query_timestamp(struct tm *, uint16_t *, uint16_t *, uint8_t *, int);
 
 /* Operations function prototype */
 int fat_print_bootsec(void);
@@ -52,6 +54,7 @@ int fat_convert_character(const char *, size_t, char *);
 int fat_clean(uint32_t);
 int fat_set_fat_entry(uint32_t, uint32_t);
 int fat_get_fat_entry(uint32_t, uint32_t *);
+int fat_print_dentry(uint32_t, size_t);
 int fat_alloc_cluster(uint32_t);
 int fat_release_cluster(uint32_t);
 int fat_create(const char *, uint32_t, int);
@@ -68,32 +71,12 @@ static const struct operations fat_ops = {
 	.clean = fat_clean,
 	.setfat = fat_set_fat_entry,
 	.getfat = fat_get_fat_entry,
+	.dentry = fat_print_dentry,
 	.alloc = fat_alloc_cluster,
 	.release = fat_release_cluster,
 	.create = fat_create,
 	.remove = fat_remove,
 	.trim = fat_trim,
-};
-
-static const struct query fat_create_prompt[] = {
-	{"File Attributes", 5, (char *[]){
-										 "  Bit0  ReadOnly",
-										 "  Bit1  Hidden",
-										 "  Bit2  System",
-										 "  Bit3  Volume ID",
-										 "  Bit4  Directory",
-										 "  Bit5  Archive"}},
-	{"NTRes", 2, (char *[]){
-							"  0x08 filename is lower characters",
-							"  0x10 only file externsion is lower characters"
-						   }},
-	{"Reserverd", 0, NULL},
-	{"Name Length", 0, NULL},
-	{"First Cluster", 0, NULL},
-	{"Data Length", 0, NULL},
-	{"Long File Name type", 0, NULL},
-	{"Long File Name checksum", 0, NULL},
-	{"Anything", 0, NULL},
 };
 
 /*************************************************************************************************/
@@ -114,8 +97,8 @@ static uint32_t fat_concat_cluster(uint32_t clu, void **data, size_t size)
 {
 	uint32_t ret;
 	void *tmp;
-	fat_get_fat_entry(clu, &ret);
 
+	fat_get_fat_entry(clu, &ret);
 	if (ret) {
 		tmp = realloc(*data, size + info.cluster_size);
 		if (tmp) {
@@ -267,7 +250,7 @@ static int fat16_print_bootsec(struct fat_bootsec *b)
 
 	pr_msg("%-28s\t: 0x", "Volume ID");
 	for (i = 0; i < VOLIDSIZE; i++)
-		pr_msg("%x", b->reserved_info.fat16_reserved_info.BS_VolID[i]);
+		pr_msg("%02x", b->reserved_info.fat16_reserved_info.BS_VolID[i]);
 	pr_msg("\n");
 
 	pr_msg("%-28s\t: ", "Volume Label");
@@ -289,9 +272,9 @@ static int fat32_print_bootsec(struct fat_bootsec *b)
 	if (strncmp(type, "FAT32", 5))
 		pr_warn("BS_FilSysType is expected \"FAT32   \", But this is %s\n", type);
 
-	pr_msg("%-28s\t: ", "Volume ID");
+	pr_msg("%-28s\t: 0x", "Volume ID");
 	for (i = 0; i < VOLIDSIZE; i++)
-		pr_msg("0x%x", b->reserved_info.fat32_reserved_info.BS_VolID[i]);
+		pr_msg("%02x", b->reserved_info.fat32_reserved_info.BS_VolID[i]);
 	pr_msg("\n");
 
 	pr_msg("%-28s\t: ", "Volume Label");
@@ -342,8 +325,8 @@ static int fat12_set_fat_entry(uint32_t clu, uint32_t entry)
 {
 	uint32_t FATOffset = clu + (clu / 2);
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
-
 	uint16_t *fat;
+
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	if (clu % 2) {
@@ -369,8 +352,8 @@ static int fat16_set_fat_entry(uint32_t clu, uint32_t entry)
 {
 	uint32_t FATOffset = clu * sizeof(uint16_t);
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
-
 	uint16_t *fat;
+
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	*(fat + ThisFATEntOffset) = (uint16_t)entry;
@@ -390,8 +373,8 @@ static int fat32_set_fat_entry(uint32_t clu, uint32_t entry)
 {
 	uint32_t FATOffset = clu * sizeof(uint32_t);
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
-
 	uint32_t *fat;
+
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	*(fat + ThisFATEntOffset) = entry & 0x0FFFFFFF;
@@ -413,6 +396,7 @@ static uint32_t fat12_get_fat_entry(uint32_t clu)
 	uint32_t FATOffset = clu + (clu / 2);
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
 	uint8_t *fat;
+
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	if (clu % 2) {
@@ -438,6 +422,7 @@ static uint32_t fat16_get_fat_entry(uint32_t clu)
 	uint32_t ret = 0;
 	uint32_t ThisFATEntOffset = clu % info.sector_size;
 	uint16_t *fat;
+
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	ret = fat[ThisFATEntOffset];
@@ -457,6 +442,7 @@ static uint32_t fat32_get_fat_entry(uint32_t clu)
 	uint32_t ret = 0;
 	uint32_t ThisFATEntOffset = clu % info.sector_size;
 	uint32_t *fat;
+
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	ret = fat[ThisFATEntOffset] & 0x0FFFFFFF;
@@ -503,6 +489,7 @@ static void fat_print_dchain(void)
 static int fat_check_dchain(uint32_t clu)
 {
 	int i;
+
 	for (i = 0; info.root[i] && i < info.root_size; i++) {
 		if (info.root[i]->index == clu)
 			return 1;
@@ -520,6 +507,7 @@ static int fat_check_dchain(uint32_t clu)
 static int fat_get_index(uint32_t clu)
 {
 	int i;
+
 	for (i = 0; i < info.root_size && info.root[i]; i++) {
 		if (info.root[i]->index == clu)
 			return i;
@@ -531,7 +519,7 @@ static int fat_get_index(uint32_t clu)
 		info.root = tmp;
 		info.root[i] = NULL;
 	} else {
-		pr_warn("Can't expand directory chain.\n");
+		pr_warn("Can't expand directory chain, so delete last chain.\n");
 		delete_node2(info.root[--i]);
 	}
 
@@ -642,6 +630,7 @@ static uint8_t fat_calculate_checksum(unsigned char *DIR_Name)
 {
 	int i;
 	uint8_t chksum;
+
 	for (i = 11; i != 0; i--) {
 		chksum = ((chksum & 1) & 0x80) + (chksum >> 1) + *DIR_Name++;
 	}
@@ -737,6 +726,62 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 }
 
 /**
+ * fat_init_dentry - initialize directory entry
+ * @d:               directory entry
+ * @shortname:       filename in ASCII
+ * @namelen:         filename length
+ *
+ * @return           0 (Success)
+ */
+static int fat_init_dentry(struct fat_dentry *d, unsigned char *shortname, size_t namelen)
+{
+	uint16_t __date, __time;
+	uint8_t __subsec;
+	time_t t = time(NULL);
+	struct tm *utc = gmtime(&t);
+
+	fat_convert_fattime(utc, &__date, &__time, &__subsec);
+	memcpy(d->dentry.dir.DIR_Name, shortname, 11);
+	d->dentry.dir.DIR_Attr = ATTR_ARCHIVE;
+	d->dentry.dir.DIR_NTRes = 0;
+	d->dentry.dir.DIR_CrtTimeTenth = __subsec;
+	d->dentry.dir.DIR_CrtTime = __time;
+	d->dentry.dir.DIR_CrtDate = __date;
+	d->dentry.dir.DIR_LstAccDate = __date;
+	d->dentry.dir.DIR_WrtTime = __time;
+	d->dentry.dir.DIR_WrtDate = __date;
+	d->dentry.dir.DIR_FstClusHI = 0x00;
+	d->dentry.dir.DIR_FstClusLO = 0x00;
+	d->dentry.dir.DIR_FileSize = 0x0000;
+
+	return 0;
+}
+
+/**
+ * fat_init_lfn - initialize long file name entry
+ * @d:            directory entry
+ * @name:         filename in UTF-16
+ * @namelen:      filename length
+ * @ord:          The order of the entry
+ *
+ * @return        0 (Success)
+ */
+static int fat_init_lfn(struct fat_dentry *d,
+		uint16_t *name, size_t namelen, unsigned char *shortname, uint8_t ord)
+{
+	d->dentry.lfn.LDIR_Ord = ord;
+	memcpy(d->dentry.lfn.LDIR_Name1, name, 10);
+	d->dentry.lfn.LDIR_Attr = ATTR_LONG_FILE_NAME;
+	d->dentry.lfn.LDIR_Type = 0;
+	d->dentry.lfn.LDIR_Chksum = fat_calculate_checksum(shortname);
+	memcpy(d->dentry.lfn.LDIR_Name2, name + 5, 12);
+	d->dentry.lfn.LDIR_FstClusLO = 0;
+	memcpy(d->dentry.lfn.LDIR_Name3, name + 6, 4);
+
+	return 0;
+}
+
+/**
  * fat_convert_uniname - function to get filename
  * @uniname:             filename dentry in UTF-16
  * @name_len:            filename length
@@ -758,6 +803,7 @@ static void fat_convert_uniname(uint16_t *uniname, uint64_t name_len, unsigned c
 static int fat_create_shortname(uint16_t *longname, char *name)
 {
 	int ch;
+
 	/* Pick up Only ASCII code */
 	if (*longname < 0x0080) {
 		/* Upper character is directly set */
@@ -790,6 +836,7 @@ static int fat_create_shortname(uint16_t *longname, char *name)
 static int fat_convert_shortname(const char *shortname, char *name)
 {
 	int i, j;
+
 	/* filename */
 	for (i = 0, j = 0; i < 8; i++) {
 		if (!fat_validate_character(shortname[i])) {
@@ -860,21 +907,39 @@ numtail:
 }
 
 /**
- * exfat_convert_unixname - function to get timestamp in file
- * @t:                      output pointer
- * @date:                   Date Field in File Directory Entry
- * @time:                   Timestamp Field in File Directory Entry
- * @subsec:                 10msincrement Field in File Directory Entry
+ * fat_convert_unixtime - function to get timestamp in file
+ * @t:                    output pointer
+ * @date:                 Date Field in File Directory Entry
+ * @time:                 Timestamp Field in File Directory Entry
+ * @subsec:               10msincrement Field in File Directory Entry
  */
 static void fat_convert_unixtime(struct tm *t, uint16_t date, uint16_t time, uint8_t subsec)
 {
 	t->tm_year = (date >> FAT_YEAR) & 0x7f;
 	t->tm_mon  = (date >> FAT_MONTH) & 0x0f;
 	t->tm_mday = (date >> FAT_DAY) & 0x1f;
-	t->tm_hour = (time >> EXFAT_HOUR) & 0x0f;
+	t->tm_hour = (time >> EXFAT_HOUR) & 0x1f;
 	t->tm_min  = (time >> EXFAT_MINUTE) & 0x3f;
 	t->tm_sec  = (time & 0x1f) * 2;
 	t->tm_sec += subsec / 100;
+}
+
+/**
+ * fat_convert_fattime - function to get timestamp in file
+ * @t:                   timestamp (GMT)
+ * @date:                Date Field in File Directory Entry (Output)
+ * @time:                Timestamp Field in File Directory Entry (Output)
+ * @subsec:              10msincrement Field in File Directory Entry (Output)
+ */
+static void fat_convert_fattime(struct tm *t, uint16_t *date, uint16_t *time, uint8_t *subsec)
+{
+	*time = (t->tm_hour << EXFAT_HOUR) |
+		(t->tm_min << EXFAT_MINUTE) |
+		(t->tm_sec / 2);
+	*date = ((t->tm_year - 80) << FAT_YEAR) |
+		((t->tm_mon + 1) << FAT_MONTH) |
+		(t->tm_mday);
+	*subsec += ((t->tm_sec % 2) * 100);
 }
 
 /**
@@ -889,65 +954,11 @@ static int fat_validate_character(const char ch)
 	/* " / \ [] : ; = ,  */
 	int i = 0, c;
 	char bad[] = {0x22, 0x2f, 0x5c, 0x5b, 0x5d, 0x3a, 0x3b, 0x3d, 0x2c, 0x20, 0x00};
+
 	while ((c = bad[i++]) != 0x00) {
 		if (ch == c)
 			return 1;
 	}
-	return 0;
-}
-
-/**
- * fat_query_timestamp - Prompt user for timestamp
- * @t:                   local timezone
- * @timestamp:           Time Field (Output)
- * @subsec:              Time subsecond Field (Output)
- * @quiet:               set parameter without ask
- *
- * @return               0 (Success)
- */
-static int fat_query_timestamp(struct tm *t, uint16_t *__time, uint16_t *__date,
-		uint8_t *subsec, int quiet)
-{
-	char buf[QUERY_BUFFER_SIZE] = {};
-
-	if (!quiet) {
-		pr_msg("Timestamp (UTC)\n");
-		pr_msg("Select (Default: %d-%02d-%02d %02d:%02d:%02d.%02d): ",
-				t->tm_year + 1900,
-				t->tm_mon + 1,
-				t->tm_mday,
-				t->tm_hour,
-				t->tm_min,
-				t->tm_sec,
-				0);
-		fflush(stdout);
-
-		if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
-			return -1;
-
-		if (buf[0] != '\n') {
-			sscanf(buf, "%d-%02d-%02d %02d:%02d:%02d.%02hhd",
-					&(t->tm_year),
-					&(t->tm_mon),
-					&(t->tm_mday),
-					&(t->tm_hour),
-					&(t->tm_min),
-					&(t->tm_sec),
-					subsec);
-			t->tm_year -= 1900;
-			t->tm_mon -= 1;
-		}
-
-		pr_msg("\n");
-	}
-
-	*__time = (t->tm_hour << EXFAT_HOUR) |
-		(t->tm_min << EXFAT_MINUTE) |
-		(t->tm_sec / 2);
-	*__date = ((t->tm_year - 80) << FAT_YEAR) |
-		((t->tm_mon + 1) << FAT_MONTH) |
-		(t->tm_mday << EXFAT_DAY);
-	*subsec += ((t->tm_sec % 2) * 100);
 	return 0;
 }
 
@@ -996,6 +1007,8 @@ int fat_print_bootsec(void)
 			pr_err("Expected FAT filesystem, But this is not FAT filesystem.\n");
 			ret = -1;
 	}
+	pr_msg("\n");
+
 	free(b);
 	return ret;
 }
@@ -1046,7 +1059,7 @@ int fat_lookup(uint32_t clu, char *name)
 	path[depth] = strtok(fullpath, "/");
 	while (path[depth] != NULL) {
 		if (depth >= MAX_NAME_LENGTH) {
-			pr_warn("Pathname is too depth. (> %d)\n", MAX_NAME_LENGTH);
+			pr_err("Pathname is too depth. (> %d)\n", MAX_NAME_LENGTH);
 			return -1;
 		}
 		path[++depth] = strtok(NULL, "/");
@@ -1260,6 +1273,126 @@ int fat_get_fat_entry(uint32_t clu, uint32_t *entry)
 }
 
 /**
+ * fat_print_dentry - function to print any directory entry
+ * @clu:              index of the cluster want to check
+ * @n:                directory entry index
+ *
+ * @return            0 (success)
+ *                   -1 (failed to read)
+ */
+int fat_print_dentry(uint32_t clu, size_t n)
+{
+	int i;
+	uint8_t ord = 0, attr = 0;
+	uint32_t next_clu;
+	size_t size = info.cluster_size;
+	size_t entries = size / sizeof(struct fat_dentry);
+	void *data;
+	struct fat_dentry d;
+	struct tm ctime, mtime, atime;
+
+	fat_traverse_directory(clu);
+	while (n > entries) {
+		fat_get_fat_entry(clu, &next_clu);
+		if (!next_clu) {
+			pr_err("Directory size limit exceeded.\n");
+			return -1;
+		}
+		n -= entries;
+		clu = next_clu;
+	}
+
+	if (clu) {
+		data = malloc(size);
+		get_cluster(data, clu);
+	} else {
+		size = info.root_length * info.sector_size;
+		entries = size / sizeof(struct fat_dentry);
+		data = malloc(size);
+		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	}
+
+	d = ((struct fat_dentry *)data)[n];
+	ord = d.dentry.lfn.LDIR_Ord;
+	attr = d.dentry.lfn.LDIR_Attr;
+
+	/* Empty entry */
+	if (ord == 0x00 || ord == 0xe5)
+		goto out;
+	/* Long File Name */
+	if (attr == ATTR_LONG_FILE_NAME) {
+		pr_msg("LDIR_Ord                        : %02x\n", d.dentry.lfn.LDIR_Ord);
+		pr_msg("LDIR_Name1                      : ");
+		for (i = 0; i < 10; i++)
+			pr_msg("%02x", ((uint8_t *)d.dentry.lfn.LDIR_Name1)[i]);
+		pr_msg("\n");
+		pr_msg("LDIR_Attr                       : %02x\n", d.dentry.lfn.LDIR_Attr);
+		pr_msg("LDIR_Type                       : %02x\n", d.dentry.lfn.LDIR_Type);
+		pr_msg("LDIR_Chksum                     : %02x\n", d.dentry.lfn.LDIR_Chksum);
+		pr_msg("LDIR_Name2                      : ");
+		for (i = 0; i < 12; i++)
+			pr_msg("%02x", ((uint8_t *)d.dentry.lfn.LDIR_Name2)[i]);
+		pr_msg("\n");
+		pr_msg("LDIR_FstClusLO                  : %02x\n", d.dentry.lfn.LDIR_FstClusLO);
+		pr_msg("LDIR_Name3                      : ");
+		for (i = 0; i < 4; i++)
+			pr_msg("%02x", ((uint8_t *)d.dentry.lfn.LDIR_Name3)[i]);
+		pr_msg("\n");
+	} else {
+		/* Directory Structure */
+		pr_msg("DIR_Name                        : ");
+		for (i = 0; i < 11; i++)
+			pr_msg("%02x", d.dentry.dir.DIR_Name[i]);
+		pr_msg("\n");
+		pr_info("  ");
+		for (i = 0; i < 11; i++)
+			pr_info("%c", d.dentry.dir.DIR_Name[i]);
+		pr_info("\n");
+		pr_msg("DIR_Attr                        : %02x\n", d.dentry.dir.DIR_Attr);
+		if (d.dentry.dir.DIR_Attr & ATTR_READ_ONLY)
+			pr_info("  * ReadOnly\n");
+		if (d.dentry.dir.DIR_Attr & ATTR_HIDDEN)
+			pr_info("  * Hidden\n");
+		if (d.dentry.dir.DIR_Attr & ATTR_SYSTEM)
+			pr_info("  * System\n");
+		if (d.dentry.dir.DIR_Attr & ATTR_VOLUME_ID)
+			pr_info("  * Volume\n");
+		if (d.dentry.dir.DIR_Attr & ATTR_DIRECTORY)
+			pr_info("  * Directory\n");
+		if (d.dentry.dir.DIR_Attr & ATTR_ARCHIVE)
+			pr_info("  * Archive\n");
+		pr_msg("DIR_NTRes                       : %02x\n", d.dentry.dir.DIR_NTRes);
+		fat_convert_unixtime(&ctime, d.dentry.dir.DIR_CrtDate, d.dentry.dir.DIR_CrtTime, 0);
+		pr_msg("DIR_CrtTimeTenth                : %02x\n", d.dentry.dir.DIR_CrtTimeTenth);
+		pr_msg("DIR_CrtTime                     : %04x\n", d.dentry.dir.DIR_CrtTime);
+		pr_msg("DIR_CrtDate                     : %04x\n", d.dentry.dir.DIR_CrtDate);
+		pr_info("  %d-%02d-%02d %02d:%02d:%02d +%0d.%02d(s)\n",
+				ctime.tm_year + 1980, ctime.tm_mon, ctime.tm_mday,
+				ctime.tm_hour, ctime.tm_min, ctime.tm_sec,
+				d.dentry.dir.DIR_CrtTimeTenth / 100,
+				d.dentry.dir.DIR_CrtTimeTenth % 100);
+		fat_convert_unixtime(&atime, d.dentry.dir.DIR_LstAccDate, 0, 0);
+		pr_msg("DIR_LstAccDate                  : %04x\n", d.dentry.dir.DIR_LstAccDate);
+		pr_info("  %d-%02d-%02d %02d:%02d:%02d\n",
+				atime.tm_year + 1980, atime.tm_mon, atime.tm_mday,
+				atime.tm_hour, atime.tm_min, atime.tm_sec);
+		pr_msg("DIR_FstClusHI                   : %04x\n", d.dentry.dir.DIR_FstClusHI);
+		fat_convert_unixtime(&mtime, d.dentry.dir.DIR_WrtDate, d.dentry.dir.DIR_WrtTime, 0);
+		pr_msg("DIR_WrtTime                     : %04x\n", d.dentry.dir.DIR_WrtTime);
+		pr_msg("DIR_WrtDate                     : %04x\n", d.dentry.dir.DIR_WrtDate);
+		pr_info("  %d-%02d-%02d %02d:%02d:%02d\n",
+				mtime.tm_year + 1980, mtime.tm_mon, mtime.tm_mday,
+				mtime.tm_hour, mtime.tm_min, mtime.tm_sec);
+		pr_msg("DIR_FstClusLO                   : %04x\n", d.dentry.dir.DIR_FstClusLO);
+		pr_msg("DIR_FileSize                    : %08x\n", d.dentry.dir.DIR_FileSize);
+	}
+
+out:
+	free(data);
+	return 0;
+}
+
+/**
  * fat_alloc_cluster - function to allocate cluster
  * @clu:               cluster index
  *
@@ -1309,27 +1442,20 @@ int fat_release_cluster(uint32_t clu)
 int fat_create(const char *name, uint32_t clu, int opt)
 {
 	int i, j, namei;
-	int quiet = 0;
 	int long_len = 0;
 	int count = 0;
 	char shortname[11] = {0};
 	uint16_t longname[MAX_NAME_LENGTH] = {0};
-	uint8_t chksum = 0;
 	void *data;
 	uint8_t ord = LAST_LONG_ENTRY;
-	uint32_t fstclus = 0;
 	size_t size = info.cluster_size;
 	size_t entries = size / sizeof(struct fat_dentry);
-	uint8_t subsec;
+	size_t name_len;
 	struct fat_dentry *d;
-	uint16_t __time, __date;
-	time_t t = time(NULL);
-	struct tm *utc = gmtime(&t);
 	
 	long_len = fat_create_nameentry(name, shortname, longname);
 	if (long_len)
 		count = (long_len / 13) + 1;
-	chksum = fat_calculate_checksum((unsigned char *)shortname);
 
 	/* Lookup last entry */
 	if (clu) {
@@ -1348,51 +1474,19 @@ int fat_create(const char *name, uint32_t clu, int opt)
 			break;
 	}
 
-	if (opt & OPTION_QUIET)
-		quiet = 1;
-
 	if (!long_len)
 		goto create_short;
 
-	if (!quiet) {
-		char buf[4] = {0};
-		pr_msg("Do you want to create Long File Name entry? (Default [y]/n): ");
-		fflush(stdout);
-		if (fgets(buf, 4, stdin) != NULL) {
-			if (!strncmp(buf, "n", 1))
-			goto create_short;
-		}
-	}
-
 	for (j = count; j != 0; j--) {
-		ord |= j;
 		namei = count - j;
-		memcpy(d->dentry.lfn.LDIR_Name1, longname + namei * 13, 5);
-		memcpy(d->dentry.lfn.LDIR_Name1, longname + 6 + namei * 13, 6);
-		memcpy(d->dentry.lfn.LDIR_Name1, longname + 11 + namei * 13, 2);
-		query_param(fat_create_prompt[0], &(d->dentry.lfn.LDIR_Attr), ATTR_LONG_FILE_NAME, 1, quiet);
-		query_param(fat_create_prompt[6], &(d->dentry.lfn.LDIR_Type), 0, 1, quiet);
-		query_param(fat_create_prompt[7], &(d->dentry.lfn.LDIR_Chksum), chksum, 1, quiet);
-		query_param(fat_create_prompt[4], &(d->dentry.lfn.LDIR_FstClusLO), 0, 1, quiet);
+		name_len = MIN(13, long_len - namei * 13);
+		fat_init_lfn(d, longname, name_len, (unsigned char *)shortname, j | ord);
 		ord = 0;
 		d = ((struct fat_dentry *)data) + i + namei + 1;
 	}
 
 create_short:
-	memcpy(d->dentry.dir.DIR_Name, shortname, 11);
-	query_param(fat_create_prompt[0], &(d->dentry.dir.DIR_Attr), ATTR_ARCHIVE, 1, quiet);
-	query_param(fat_create_prompt[1], &(d->dentry.dir.DIR_NTRes), 0, 1, quiet);
-	fat_query_timestamp(utc, &__time, &__date, &subsec, quiet);
-	d->dentry.dir.DIR_CrtTimeTenth = subsec;
-	d->dentry.dir.DIR_CrtTime = __time;
-	d->dentry.dir.DIR_CrtDate = __date;
-	d->dentry.dir.DIR_LstAccDate = __date;
-	d->dentry.dir.DIR_WrtTime = __time;
-	d->dentry.dir.DIR_WrtDate = __date;
-	query_param(fat_create_prompt[4], &fstclus, 0, 4, quiet);
-	d->dentry.dir.DIR_FstClusHI = fstclus & 0x00ff;
-	d->dentry.dir.DIR_FstClusLO = fstclus >> 16;
-	query_param(fat_create_prompt[3], &(d->dentry.dir.DIR_FileSize), 0, 4, quiet);
+	fat_init_dentry(d, (unsigned char *)shortname, 11);
 
 	if (clu)
 		set_cluster(data, clu);

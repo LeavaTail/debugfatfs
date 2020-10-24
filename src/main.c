@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <mntent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -35,6 +36,8 @@ static struct option const longopts[] =
 	{"byte", required_argument, NULL, 'b'},
 	{"cluster", required_argument, NULL, 'c'},
 	{"directory", required_argument, NULL, 'd'},
+	{"entry", required_argument, NULL, 'e'},
+	{"force", required_argument, NULL, 'f'},
 	{"interactive", no_argument, NULL, 'i'},
 	{"load", required_argument, NULL, 'l'},
 	{"output", required_argument, NULL, 'o'},
@@ -61,6 +64,8 @@ static void usage(void)
 	fprintf(stderr, "  -b, --byte=offset\tdump the any byte after dump filesystem information.\n");
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
 	fprintf(stderr, "  -d, --direcotry=path\tread directory entry from path.\n");
+	fprintf(stderr, "  -e --entry=index\tread raw directory entry in current directory.\n");
+	fprintf(stderr, "  -f, --fource\twrite foucibly even if filesystem image has already mounted.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -l, --load=file\tLoad Main boot region and FAT region from file.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
@@ -262,6 +267,24 @@ void hexdump(FILE *out, void *data, size_t size)
 }
 
 /**
+ * check_mounted_filesystem - check if the image has mounted
+ *
+ * @return                    0 (not mount)
+ *                            1 (already mounted)
+ */
+static int check_mounted_filesystem(void)
+{
+	FILE *fstab = setmntent("/etc/mtab", "r");
+	struct mntent *e = NULL;
+
+	while ((e = getmntent(fstab)) != NULL) {
+		if (!strcmp(e->mnt_fsname, info.name))
+			return 1;
+	}
+	return 0;
+}
+
+/**
  * init_device_info - Initialize member in struct device_info
  */
 static void init_device_info(void)
@@ -300,6 +323,13 @@ static int get_device_info(uint32_t attr)
 	int fd;
 	struct stat s;
 
+	if (check_mounted_filesystem() &&
+			!(attr & OPTION_FORCE) &&
+			!(attr & OPTION_READONLY)) {
+		pr_err("Error has occurred becasue %s has already mounted.\n", info.name);
+		return -1;
+	}
+
 	if ((fd = open(info.name, attr & OPTION_READONLY ? O_RDONLY : O_RDWR)) < 0) {
 		pr_err("open: %s\n", strerror(errno));
 		return -1;
@@ -324,6 +354,7 @@ static int get_device_info(uint32_t attr)
 static int free_dentry_list(void)
 {
 	int i;
+
 	for(i = 0; i < info.root_size && info.root[i]; i++) {
 		info.ops->clean(i);
 	}
@@ -396,72 +427,6 @@ int print_cluster(uint32_t index)
 }
 
 /**
- * query_param - prompt user from parameter
- * @q:           query paramater
- * @param:       parameter (output)
- * @def:         default parameter
- * @size:        byte size in @param
- * @quiet:       set parameter without ask
- *
- * @return        0 (success)
- *               -1 (failed)
- */
-int query_param(const struct query q, void *param, unsigned int def, size_t size, int quiet)
-{
-	int i;
-	char buf[QUERY_BUFFER_SIZE] = {0};
-
-	if (!quiet) {
-		pr_msg("%s\n", q.name);
-		for (i = 0; i < q.len; i++)
-			pr_msg("%s\n", q.select[i]);
-		pr_msg("Select (Default 0x%0x): ", def);
-		fflush(stdout);
-
-		if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
-			return -1;
-
-		pr_msg("\n");
-	}
-
-	switch (size) {
-		case 1:
-			if (quiet || buf[0] == '\n')
-				*(uint8_t *)param = def;
-			else
-				sscanf(buf, "%02hhx", (uint8_t *)param);
-			break;
-		case 2:
-			if (quiet || buf[0] == '\n')
-				*(uint16_t *)param = def;
-			else
-				sscanf(buf, "%04hx", (uint16_t *)param);
-			break;
-		case 4:
-			if (quiet || buf[0] == '\n')
-				*(uint32_t *)param = def;
-			else
-				sscanf(buf, "%08x", (uint32_t *)param);
-			break;
-		case 8:
-			if (quiet || buf[0] == '\n')
-				*(uint64_t *)param = def;
-			else
-				sscanf(buf, "%016lx", (uint64_t *)param);
-			break;
-		default:
-			if (quiet) {
-				memset(param, def, size);
-			} else {
-				for (i = 0; i < size; i++)
-					sscanf(buf + (i * 2), "%02hhx", ((uint8_t *)param) + i);
-			}
-			break;
-	}
-	return 0;
-}
-
-/**
  * main - main function
  * @argc:      argument count
  * @argv:      argument vector
@@ -476,6 +441,7 @@ int main(int argc, char *argv[])
 	int entries = 0;
 	uint32_t attr = 0;
 	uint32_t cluster = 0;
+	uint32_t index = 0;
 	uint32_t sector = 0;
 	char *outfile = NULL;
 	char *backup = NULL;
@@ -488,7 +454,7 @@ int main(int argc, char *argv[])
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ab:c:d:il:o:qrs:u:v",
+					"ab:c:d:e:fil:o:qrs:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
@@ -505,6 +471,13 @@ int main(int argc, char *argv[])
 			case 'd':
 				attr |= OPTION_DIRECTORY;
 				dir = optarg;
+				break;
+			case 'e':
+				attr |= OPTION_ENTRY;
+				index = strtoul(optarg, NULL, 0);
+				break;
+			case 'f':
+				attr |= OPTION_FORCE;
 				break;
 			case 'i':
 				attr |= OPTION_INTERACTIVE;
@@ -649,6 +622,13 @@ int main(int argc, char *argv[])
 	/* Command line: -a option */
 	if (attr & OPTION_ALL) {
 		ret = info.ops->info();
+		if (ret < 0)
+			goto device_close;
+	}
+
+	/* Command line: -e option */
+	if (attr & OPTION_ENTRY) {
+		ret = info.ops->dentry(offset, index);
 		if (ret < 0)
 			goto device_close;
 	}

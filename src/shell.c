@@ -16,6 +16,7 @@ static int get_env(char **, char *, char *);
 static int cmd_ls(int, char **, char **);
 static int cmd_cd(int, char **, char **);
 static int cmd_cluster(int, char **, char **);
+static int cmd_entry(int, char **, char **);
 static int cmd_alloc(int, char **, char **);
 static int cmd_release(int, char **, char **);
 static int cmd_fat(int, char **, char **);
@@ -32,6 +33,7 @@ struct command cmd[] = {
 	{"ls", cmd_ls},
 	{"cd", cmd_cd},
 	{"cluster", cmd_cluster},
+	{"entry", cmd_entry},
 	{"alloc", cmd_alloc},
 	{"release", cmd_release},
 	{"fat", cmd_fat},
@@ -162,6 +164,34 @@ static int cmd_cluster(int argc, char **argv, char **envp)
 }
 
 /**
+ * cmd_entry  - Print entry in current directory
+ * @argc:       argument count
+ * @argv:       argument vetor
+ * @envp:       environment pointer
+ *
+ * @return      0 (success)
+ */
+static int cmd_entry(int argc, char **argv, char **envp)
+{
+	size_t index = 0;
+
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			index = strtoul(argv[1], NULL, 10);
+			info.ops->dentry(cluster, index);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+
+	return 0;
+}
+
+/**
  * cmd_alloc  - Allocate cluster in bitmap.
  * @argc:       argument count
  * @argv:       argument vetor
@@ -172,6 +202,7 @@ static int cmd_cluster(int argc, char **argv, char **envp)
 static int cmd_alloc(int argc, char **argv, char **envp)
 {
 	unsigned int index = 0;
+
 	switch (argc) {
 		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
@@ -199,6 +230,7 @@ static int cmd_alloc(int argc, char **argv, char **envp)
 static int cmd_release(int argc, char **argv, char **envp)
 {
 	unsigned int index = 0;
+
 	switch (argc) {
 		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
@@ -226,6 +258,7 @@ static int cmd_release(int argc, char **argv, char **envp)
 static int cmd_fat(int argc, char **argv, char **envp)
 {
 	unsigned int index = 0, entry = 0;
+
 	switch (argc) {
 		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
@@ -335,6 +368,7 @@ static int cmd_help(int argc, char **argv, char **envp)
 	fprintf(stderr, "ls         list current directory contents.\n");
 	fprintf(stderr, "cd         change directory.\n");
 	fprintf(stderr, "cluster    print cluster raw-data.\n");
+	fprintf(stderr, "entry      print directory entry.\n");
 	fprintf(stderr, "alloc      allocate cluster.\n");
 	fprintf(stderr, "release    release cluster.\n");
 	fprintf(stderr, "fat        change File Allocation Table entry\n");
@@ -372,6 +406,7 @@ static int cmd_exit(int argc, char **argv, char **envp)
 static int execute_cmd(int argc, char **argv, char **envp)
 {
 	int i;
+
 	if (!argc)
 		return 0;
 

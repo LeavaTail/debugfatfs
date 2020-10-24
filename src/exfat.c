@@ -26,20 +26,23 @@ static uint32_t exfat_update_fat_entry(uint32_t, uint32_t);
 /* Directory chain function prototype */
 static int exfat_check_dchain(uint32_t);
 static int exfat_get_index(uint32_t);
-static int exfat_get_freed_index(uint32_t *);
 static int exfat_traverse_directory(uint32_t);
 static int exfat_clean_dchain(uint32_t);
 
 /* File function prototype */
 static void exfat_create_fileinfo(node2_t *,
 		uint32_t, struct exfat_dentry *, struct exfat_dentry *, uint16_t *);
+static int exfat_init_file(struct exfat_dentry *, uint16_t *, size_t);
+static int exfat_init_stream(struct exfat_dentry *, uint16_t *, size_t);
+static int exfat_init_filename(struct exfat_dentry *, uint16_t *, size_t);
 static uint16_t exfat_calculate_checksum(unsigned char *, unsigned char);
 static void exfat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
 static void exfat_convert_unixtime(struct tm *, uint32_t, uint8_t, uint8_t);
-static int exfat_query_timestamp(struct tm *, uint32_t *, uint8_t *, int);
-static int exfat_query_timezone(char *, uint8_t *, int);
-static int exfat_create_timezone(char *, uint8_t *);
+static int exfat_convert_timezone(uint8_t);
+static void exfat_convert_exfattime(struct tm *, uint32_t *, uint8_t *);
+static void exfat_convert_exfattimezone(uint8_t *, int);
+static int exfat_parse_timezone(char *, uint8_t *);
 
 /* Operations function prototype */
 int exfat_print_bootsec(void);
@@ -51,6 +54,7 @@ int exfat_convert_character(const char *, size_t, char *);
 int exfat_clean(uint32_t);
 int exfat_set_fat_entry(uint32_t, uint32_t);
 int exfat_get_fat_entry(uint32_t, uint32_t *);
+int exfat_print_dentry(uint32_t, size_t);
 int exfat_alloc_cluster(uint32_t);
 int exfat_release_cluster(uint32_t);
 int exfat_create(const char *, uint32_t, int);
@@ -67,30 +71,12 @@ static const struct operations exfat_ops = {
 	.clean = exfat_clean,
 	.setfat = exfat_set_fat_entry,
 	.getfat = exfat_get_fat_entry,
+	.dentry = exfat_print_dentry,
 	.alloc = exfat_alloc_cluster,
 	.release = exfat_release_cluster,
 	.create = exfat_create,
 	.remove = exfat_remove,
 	.trim = exfat_trim,
-};
-
-static const struct query create_prompt[] = {
-	{"Entry Type", 3, (char *[]){"  85  File","  C0  Stream", "  C1  Filename"}},
-	{"File Attributes", 5, (char *[]){
-										 "  Bit0  ReadOnly",
-										 "  Bit1  Hidden",
-										 "  Bit2  System",
-										 "  Bit4  Directory",
-										 "  Bit5  Archive"}},
-	{"Secondary Count", 0, NULL},
-	{"Reserverd", 0, NULL},
-	{"General Seconday Flags", 2, (char *[]){"  Bit0 AllocationPossible", "  Bit1 NoFatChain"}},
-	{"Name Length", 0, NULL},
-	{"Name Hash", 0, NULL},
-	{"Valid Data Length", 0, NULL},
-	{"First Cluster", 0, NULL},
-	{"Data Length", 0, NULL},
-	{"Anything", 0, NULL},
 };
 
 /*************************************************************************************************/
@@ -111,8 +97,8 @@ static uint32_t exfat_concat_cluster(uint32_t clu, void **data, size_t size)
 {
 	uint32_t ret;
 	void *tmp;
-	ret = exfat_check_fat_entry(clu);
 
+	ret = exfat_check_fat_entry(clu);
 	if (ret) {
 		tmp = realloc(*data, size + info.cluster_size);
 		if (tmp) {
@@ -215,6 +201,7 @@ static void exfat_print_upcase(void)
 static void exfat_print_label(void)
 {
 	unsigned char *name;
+
 	pr_msg("volume Label: ");
 	name = malloc(info.vol_length * sizeof(uint16_t) + 1);
 	memset(name, '\0', info.vol_length * sizeof(uint16_t) + 1);
@@ -263,7 +250,7 @@ static int exfat_save_bitmap(uint32_t clu, uint32_t value)
 	uint8_t mask = 0x01;
 
 	if (clu < EXFAT_FIRST_CLUSTER || clu > info.cluster_count + 1) {
-		pr_warn("cluster: %u is invalid.\n", clu);
+		pr_err("cluster: %u is invalid.\n", clu);
 		return -1;
 	}
 
@@ -339,7 +326,7 @@ static uint32_t exfat_update_fat_entry(uint32_t clu, uint32_t entry)
 	uint32_t offset = (clu) % entry_per_sector;
 
 	if (clu > info.cluster_count + 1) {
-		pr_warn("This Filesystem doesn't have Entry %u\n", clu);
+		pr_info("This Filesystem doesn't have Entry %u\n", clu);
 		return 0;
 	}
 
@@ -395,6 +382,7 @@ static void exfat_print_dchain(void)
 static int exfat_check_dchain(uint32_t clu)
 {
 	int i;
+
 	for (i = 0; info.root[i] && i < info.root_size; i++) {
 		if (info.root[i]->index == clu)
 			return 1;
@@ -412,6 +400,7 @@ static int exfat_check_dchain(uint32_t clu)
 static int exfat_get_index(uint32_t clu)
 {
 	int i;
+
 	for (i = 0; i < info.root_size && info.root[i]; i++) {
 		if (info.root[i]->index == clu)
 			return i;
@@ -423,13 +412,14 @@ static int exfat_get_index(uint32_t clu)
 		info.root = tmp;
 		info.root[i] = NULL;
 	} else {
-		pr_warn("Can't expand directory chain.\n");
+		pr_warn("Can't expand directory chain, so delete last chain.\n");
 		delete_node2(info.root[--i]);
 	}
 
 	return i;
 }
 
+#if 0
 /**
  * exfat_get_freed_index - get unused cluster index by allocation bitmap
  * @clup:                  cluster index pointer (Output)
@@ -458,6 +448,7 @@ static int exfat_get_freed_index(uint32_t *clup)
 
 	return -1;
 }
+#endif
 
 /**
  * exfat_traverse_directory - function to traverse one directory
@@ -540,7 +531,7 @@ static int exfat_traverse_directory(uint32_t clu)
 						next = ((struct exfat_dentry *)data)[i + 1];
 					}
 					if (next.EntryType != DENTRY_STREAM) {
-						pr_warn("File should have stream entry, but This don't have.\n");
+						pr_info("File should have stream entry, but This don't have.\n");
 						continue;
 					}
 
@@ -555,7 +546,7 @@ static int exfat_traverse_directory(uint32_t clu)
 						name = ((struct exfat_dentry *)data)[i + 2];
 					}
 					if (name.EntryType != DENTRY_NAME) {
-						pr_warn("File should have name entry, but This don't have.\n");
+						pr_info("File should have name entry, but This don't have.\n");
 						return -1;
 					}
 
@@ -572,7 +563,7 @@ static int exfat_traverse_directory(uint32_t clu)
 					i += remaining;
 					break;
 				case DENTRY_STREAM:
-					pr_warn("Stream needs be File entry, but This is not.\n");
+					pr_info("Stream needs be File entry, but This is not.\n");
 					break;
 			}
 		}
@@ -623,12 +614,12 @@ static int exfat_clean_dchain(uint32_t index)
 /*                                                                                               */
 /*************************************************************************************************/
 /**
- * exfat_create_file_entry - Create file infomarion
- * @head:                    Directory chain head
- * @clu:                     parent Directory cluster index
- * @file:                    file dentry
- * @stream:                  stream Extension dentry
- * @uniname:                 File Name dentry
+ * exfat_create_fileinfo - Create file infomarion
+ * @head:                  Directory chain head
+ * @clu:                   parent Directory cluster index
+ * @file:                  file dentry
+ * @stream:                stream Extension dentry
+ * @uniname:               File Name dentry
  */
 static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 		struct exfat_dentry *file, struct exfat_dentry *stream, uint16_t *uniname)
@@ -676,6 +667,87 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 }
 
 /**
+ * exfat_init_file  - function interface to create entry
+ * @d:                directory entry
+ * @name:             filename in UTF-16
+ * @namelen:          filename length
+ *
+ * @return            0 (Success)
+ */
+static int exfat_init_file(struct exfat_dentry *d, uint16_t *name, size_t namelen)
+{
+	uint32_t timestamp;
+	uint8_t subsec, tz;
+	time_t t = time(NULL);
+	struct tm *tm = localtime(&t);
+	char buf[8] = {0};
+
+	/* obrain current timezone */
+	strftime(buf, 8, "%z", tm);
+	exfat_parse_timezone(buf, &tz);
+	tm = gmtime(&t);
+	exfat_convert_exfattime(tm, &timestamp, &subsec);
+
+	d->EntryType = 0x85;
+	d->dentry.file.SetChecksum = 0;
+	d->dentry.file.FileAttributes = ATTR_ARCHIVE;
+	d->dentry.file.SecondaryCount = 1 + ((namelen + 14) / 15);
+	memset(d->dentry.file.Reserved1, 0, 2);
+	d->dentry.file.CreateTimestamp = timestamp;
+	d->dentry.file.LastAccessedTimestamp = timestamp;
+	d->dentry.file.LastModifiedTimestamp = timestamp;
+	d->dentry.file.Create10msIncrement = subsec;
+	d->dentry.file.LastModified10msIncrement = subsec;
+	d->dentry.file.CreateUtcOffset = tz | 0x80;
+	d->dentry.file.LastAccessdUtcOffset = tz | 0x80;
+	d->dentry.file.LastModifiedUtcOffset = tz | 0x80;
+	memset(d->dentry.file.Reserved2, 0, 7);
+
+	return 0;
+}
+
+/**
+ * exfat_init_stream  - function interface to create entry
+ * @d:                  directory entry
+ * @name:               filename in UTF-16
+ * @namelen:            filename length
+ *
+ * @return              0 (Success)
+ */
+static int exfat_init_stream(struct exfat_dentry *d, uint16_t *name, size_t namelen)
+{
+	d->EntryType = 0xC0;
+	d->dentry.stream.GeneralSecondaryFlags = 0x03;
+	d->dentry.stream.Reserved1 = 0x00;
+	d->dentry.stream.NameLength = namelen;
+	d->dentry.stream.NameHash = exfat_calculate_namehash(name, namelen);
+	memset(d->dentry.stream.Reserved2, 0, 2);
+	d->dentry.stream.ValidDataLength = 0;
+	memset(d->dentry.stream.Reserved3, 0, 4);
+	d->dentry.stream.FirstCluster = 0;
+	d->dentry.stream.DataLength = 0;
+
+	return 0;
+}
+
+/**
+ * exfat_init_filename  - function interface to create entry
+ * @d:                    directory entry
+ * @name:                 filename in UTF-16
+ * @namelen:              filename length
+ *
+ * @return                0 (Success)
+ */
+static int exfat_init_filename(struct exfat_dentry *d, uint16_t *name, size_t namelen)
+{
+	d->EntryType = 0xC1;
+	d->dentry.stream.GeneralSecondaryFlags = 0x00;
+	memcpy(d->dentry.name.FileName,	name, namelen * sizeof(uint16_t));
+
+	return 0;
+}
+
+/**
  * exfat_calculate_checksum - Calculate file entry Checksum
  * @entry:                    points to an in-memory copy of the directory entry set
  * @count:                    the number of secondary directory entries
@@ -720,6 +792,7 @@ static uint16_t exfat_calculate_namehash(uint16_t *name, uint8_t len)
 	uint16_t bytes = (uint16_t)len * 2;
 	uint16_t hash = 0;
 	uint16_t index;
+
 	for (index = 0; index < bytes; index++)
 		hash = ((hash & 1) ? 0x8000 : 0) + (hash >> 1) + (uint16_t)buffer[index];
 
@@ -738,80 +811,57 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
 	t->tm_year = (time >> EXFAT_YEAR) & 0x7f;
 	t->tm_mon  = (time >> EXFAT_MONTH) & 0x0f;
 	t->tm_mday = (time >> EXFAT_DAY) & 0x1f;
-	t->tm_hour = (time >> EXFAT_HOUR) & 0x0f;
+	t->tm_hour = (time >> EXFAT_HOUR) & 0x1f;
 	t->tm_min  = (time >> EXFAT_MINUTE) & 0x3f;
 	t->tm_sec  = (time & 0x1f) * 2;
 	t->tm_sec += subsec / 100;
 	/* OffsetValid */
 	if (tz & 0x80) {
-		int ex_sec = 0;
-		int ex_min = 0;
-		int ex_hour = 0;
-		char offset = tz & 0x7f;
+		int min = 0;
 		time_t tmp_time = mktime(t);
 		struct tm *t2;
-		/* negative value */
-		if (offset & 0x40) {
-			offset = ((~offset) + 1) & 0x7f;
-			ex_min = ((offset % 4) * 15) * -1;
-			ex_hour = (offset / 4) * -1;
-		} else {
-			ex_min = (offset % 4) * 15;
-			ex_hour = offset / 4;
-		}
-		ex_sec = ex_min * 60 + ex_hour * 3600;
-		t->tm_hour += ex_hour;
-		t->tm_min  += ex_min;
-		tmp_time += ex_sec;
+		min = exfat_convert_timezone(tz);
+		tmp_time += (min * 60);
 		t2 = localtime(&tmp_time);
 		*t = *t2;
 	}
 }
 
 /**
- * exfat_query_timestamp - Prompt user for timestamp
- * @t:                     local timezone
- * @timestamp:             Time Field (Output)
- * @subsec:                Time subsecond Field (Output)
- * @quiet:                 set parameter without ask
+ * exfat_convert_timezone - function to get timezone in file
+ * @tz:                     UtcOffset in File Directory Entry
  *
- * @return                 0 (Success)
+ * @return                  difference minutes from timezone
  */
-static int exfat_query_timestamp(struct tm *t,
-		uint32_t *timestamp, uint8_t *subsec, int quiet)
+static int exfat_convert_timezone(uint8_t tz)
 {
-	char buf[QUERY_BUFFER_SIZE] = {};
+	int ex_min = 0;
+	int ex_hour = 0;
+	char offset = tz & 0x7f;
 
-	if (!quiet) {
-		pr_msg("Timestamp (UTC)\n");
-		pr_msg("Select (Default: %d-%02d-%02d %02d:%02d:%02d.%02d): ",
-				t->tm_year + 1900,
-				t->tm_mon + 1,
-				t->tm_mday,
-				t->tm_hour,
-				t->tm_min,
-				t->tm_sec,
-				0);
-		fflush(stdout);
-
-		if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
-			return -1;
-
-		if (buf[0] != '\n') {
-			sscanf(buf, "%d-%02d-%02d %02d:%02d:%02d.%02hhd",
-					&(t->tm_year),
-					&(t->tm_mon),
-					&(t->tm_mday),
-					&(t->tm_hour),
-					&(t->tm_min),
-					&(t->tm_sec),
-					subsec);
-			t->tm_year -= 1900;
-			t->tm_mon -= 1;
-		}
-
-		pr_msg("\n");
+	/* OffsetValid */
+	if (!(tz & 0x80))
+		return 0;
+	/* negative value */
+	if (offset & 0x40) {
+		offset = ((~offset) + 1) & 0x7f;
+		ex_min = ((offset % 4) * 15) * -1;
+		ex_hour = (offset / 4) * -1;
+	} else {
+		ex_min = (offset % 4) * 15;
+		ex_hour = offset / 4;
 	}
+	return ex_min + ex_hour * 60;
+}
+
+/**
+ * exfat_convert_exfattime - function to get timestamp in file
+ * @t:                        Timestamp
+ * @time:                     Timestamp Field in File Directory Entry (Output)
+ * @subsec:                   10msincrement Field in File Directory Entry (Output)
+ */
+static void exfat_convert_exfattime(struct tm *t, uint32_t *timestamp, uint8_t *subsec)
+{
 	*timestamp |= ((t->tm_year - 80) << EXFAT_YEAR);
 	*timestamp |= ((t->tm_mon + 1) << EXFAT_MONTH);
 	*timestamp |= (t->tm_mday << EXFAT_DAY);
@@ -819,47 +869,30 @@ static int exfat_query_timestamp(struct tm *t,
 	*timestamp |= (t->tm_min << EXFAT_MINUTE);
 	*timestamp |= t->tm_sec / 2;
 	*subsec += ((t->tm_sec % 2) * 100);
-	return 0;
 }
 
 /**
- * exfat_query_timezone  - Prompt user for timestamp
- * @zone:                  timezone
- * @tz:                    offset from UTC Field (Output)
- * @quiet:                 set parameter without ask
- *
- * @return                 0 (Success)
+ * exfat_convert_exfattimezone - function to get timezone in file
+ * @tz:                          UtcOffset in File Directory Entry (Output)
+ * @min:                         Utc Offset
  */
-static int exfat_query_timezone(char *zone, uint8_t *tz, int quiet)
+static void exfat_convert_exfattimezone(uint8_t *tz, int min)
 {
-	char buf[QUERY_BUFFER_SIZE] = {};
-
-	if (quiet)
-		return 0;
-
-	pr_msg("Timezone\n");
-	pr_msg("Select (Default: %s): ", zone);
-	fflush(stdout);
-
-	if (!fgets(buf, QUERY_BUFFER_SIZE, stdin))
-		return -1;
-
-	exfat_create_timezone(buf, tz);
-	pr_msg("\n");
-	return 0;
+	*tz = (min / 15) & 0x7f;
 }
 
 /**
- * exfat_create_timezone  - Prompt user for timestamp
+ * exfat_parse_timezone  - Prompt user for timestamp
  * @buf:                    difference localtime and UTCtime
  * @tz:                     offset from UTC Field (Output)
  *
  * @return                  0 (Success)
  */
-static int exfat_create_timezone(char *buf, uint8_t *tz)
+static int exfat_parse_timezone(char *buf, uint8_t *tz)
 {
 	char op = 0;
 	char min = 0, hour = 0;
+	int ex = 0;
 
 	if (buf[0] == '\n')
 		return 0;
@@ -868,15 +901,15 @@ static int exfat_create_timezone(char *buf, uint8_t *tz)
 			&op,
 			&hour,
 			&min);
-	*tz = (hour * 4 + min) / 15;
+	ex = hour * 60 + min;
 
 	switch (op) {
 		case '-':
-			*tz = ~(*tz) + 1;
-			*tz &= 0x7f;
+			exfat_convert_exfattimezone(tz, -ex);
 			break;
 		case '+':
 		case ' ':
+			exfat_convert_exfattimezone(tz, ex);
 			break;
 		default:
 			pr_debug("Invalid operation. you can use only ('+' or '-').\n");
@@ -975,7 +1008,7 @@ int exfat_lookup(uint32_t clu, char *name)
 	path[depth] = strtok(fullpath, "/");
 	while (path[depth] != NULL) {
 		if (depth >= MAX_NAME_LENGTH) {
-			pr_warn("Pathname is too depth. (> %d)\n", MAX_NAME_LENGTH);
+			pr_err("Pathname is too depth. (> %d)\n", MAX_NAME_LENGTH);
 			return -1;
 		}
 		path[++depth] = strtok(NULL, "/");
@@ -1170,6 +1203,179 @@ int exfat_get_fat_entry(uint32_t clu, uint32_t *entry)
 }
 
 /**
+ * exfat_print_dentry - function to print any directory entry
+ * @clu:                index of the cluster want to check
+ * @n:                  directory entry index
+ *
+ * @return              0 (success)
+ *                     -1 (failed to read)
+ */
+int exfat_print_dentry(uint32_t clu, size_t n)
+{
+	int i, min;
+	uint32_t next_clu = 0;
+	size_t size = info.cluster_size;
+	size_t entries = size / sizeof(struct exfat_dentry);
+	void *data;
+	struct exfat_dentry d;
+	struct tm ctime, mtime, atime;
+
+	exfat_traverse_directory(clu);
+	while (n > entries) {
+		next_clu = exfat_check_fat_entry(clu);
+		if (!next_clu) {
+			pr_err("Directory size limit exceeded.\n");
+			return -1;
+		}
+		n -= entries;
+		clu = next_clu;
+	}
+
+	data = malloc(size);
+	get_cluster(data, clu);
+	d = ((struct exfat_dentry *)data)[n];
+
+	pr_msg("EntryType                       : %02x\n", d.EntryType);
+	pr_info("  TypeCode                      : %02x\n", d.EntryType & 0x1F);
+	pr_info("  TypeImportance                : %02x\n", (d.EntryType >> 5) & 0x01);
+	pr_info("  TypeCategory                  : %02x\n", (d.EntryType >> 6) & 0x01);
+	pr_info("  InUse                         : %02x\n", (d.EntryType >> 7) & 0x01);
+	switch (d.EntryType) {
+		case DENTRY_UNUSED:
+			break;
+		case DENTRY_BITMAP:
+			pr_msg("BitmapFlags                     : %02x\n", d.dentry.bitmap.BitmapFlags);
+			pr_info("  %s Allocation Bitmap\n", d.dentry.bitmap.BitmapFlags & 0x80 ? "2nd" : "1st");
+			pr_msg("Reserved                        : ");
+			for (i = 0; i < 18; i++)
+				pr_msg("%02x", d.dentry.bitmap.Reserved[i]);
+			pr_msg("\n");
+			pr_msg("BitmapFlags                     : %08x\n", d.dentry.bitmap.FirstCluster);
+			pr_msg("DataLength                      : %016lx\n", d.dentry.bitmap.DataLength);
+			break;
+		case DENTRY_UPCASE:
+			pr_msg("Reserved1                       : ");
+			for (i = 0; i < 3; i++)
+				pr_msg("%02x", d.dentry.upcase.Reserved1[i]);
+			pr_msg("\n");
+			pr_msg("TableCheckSum                   : %08x\n", d.dentry.upcase.TableCheckSum);
+			pr_msg("Reserved2                       : ");
+			for (i = 0; i < 12; i++)
+				pr_msg("%02x", d.dentry.upcase.Reserved2[i]);
+			pr_msg("\n");
+			pr_msg("FirstCluster                    : %08x\n", d.dentry.upcase.FirstCluster);
+			pr_msg("DataLength                      : %016x\n", d.dentry.upcase.DataLength);
+			break;
+		case DENTRY_VOLUME:
+			pr_msg("CharacterCount                  : %02x\n", d.dentry.vol.CharacterCount);
+			pr_msg("VolumeLabel                     : ");
+			for (i = 0; i < 22; i++)
+				pr_msg("%02x", ((uint8_t *)d.dentry.vol.VolumeLabel)[i]);
+			pr_msg("\n");
+			pr_msg("Reserved2                       : ");
+			for (i = 0; i < 8; i++)
+				pr_msg("%02x", d.dentry.vol.Reserved[i]);
+			pr_msg("\n");
+			break;
+		case DENTRY_FILE:
+			pr_msg("SecondaryCount                  : %02x\n", d.dentry.file.SecondaryCount);
+			pr_msg("SetChecksum                     : %04x\n", d.dentry.file.SetChecksum);
+			pr_msg("FileAttributes                  : %04x\n", d.dentry.file.FileAttributes);
+			if (d.dentry.file.FileAttributes & ATTR_READ_ONLY)
+				pr_info("  * ReadOnly\n");
+			if (d.dentry.file.FileAttributes & ATTR_HIDDEN)
+				pr_info("  * Hidden\n");
+			if (d.dentry.file.FileAttributes & ATTR_SYSTEM)
+				pr_info("  * System\n");
+			if (d.dentry.file.FileAttributes & ATTR_DIRECTORY)
+				pr_info("  * Directory\n");
+			if (d.dentry.file.FileAttributes & ATTR_ARCHIVE)
+				pr_info("  * Archive\n");
+			pr_msg("Reserved1                       : ");
+			for (i = 0; i < 2; i++)
+				pr_msg("%02x", d.dentry.file.Reserved1[i]);
+			pr_msg("\n");
+			exfat_convert_unixtime(&ctime, d.dentry.file.CreateTimestamp, 0, 0);
+			exfat_convert_unixtime(&mtime, d.dentry.file.LastModifiedTimestamp, 0, 0);
+			exfat_convert_unixtime(&atime, d.dentry.file.LastAccessedTimestamp, 0, 0);
+			pr_msg("CreateTimestamp                 : %08x\n", d.dentry.file.CreateTimestamp);
+			pr_info("  %d-%02d-%02d %02d:%02d:%02d\n",
+					ctime.tm_year + 1980, ctime.tm_mon, ctime.tm_mday,
+					ctime.tm_hour, ctime.tm_min, ctime.tm_sec);
+			pr_msg("LastModifiedTimestamp           : %08x\n", d.dentry.file.LastModifiedTimestamp);
+			pr_info("  %d-%02d-%02d %02d:%02d:%02d\n",
+					mtime.tm_year + 1980, mtime.tm_mon, mtime.tm_mday,
+					mtime.tm_hour, mtime.tm_min, mtime.tm_sec);
+			pr_msg("LastAccessedTimestamp           : %08x\n", d.dentry.file.LastAccessedTimestamp);
+			pr_info("  %d-%02d-%02d %02d:%02d:%02d\n",
+					atime.tm_year + 1980, atime.tm_mon, atime.tm_mday,
+					atime.tm_hour, atime.tm_min, atime.tm_sec);
+			pr_msg("Create10msIncrement             : %02x\n", d.dentry.file.Create10msIncrement);
+			pr_info("  %0d.%02d\n",
+					d.dentry.file.Create10msIncrement / 100,
+					d.dentry.file.Create10msIncrement % 100);
+			pr_msg("LastModified10msIncrement       : %02x\n", d.dentry.file.LastModified10msIncrement);
+			pr_info("  %0d.%02d\n",
+					d.dentry.file.LastModified10msIncrement / 100,
+					d.dentry.file.LastModified10msIncrement % 100);
+			pr_msg("CreateUtcOffset                 : %02x\n", d.dentry.file.CreateUtcOffset);
+			if (d.dentry.file.CreateUtcOffset & 0x80) {
+				min = exfat_convert_timezone(d.dentry.file.CreateUtcOffset);
+				pr_info("  %02d:%02d\n", min / 60, (abs(min) % 60));
+			}
+			pr_msg("LastModifiedUtcOffset           : %02x\n", d.dentry.file.LastModifiedUtcOffset);
+			if (d.dentry.file.LastModifiedUtcOffset & 0x80) {
+				min = exfat_convert_timezone(d.dentry.file.LastModifiedUtcOffset);
+				pr_info("  %02d:%02d\n", min / 60, (abs(min) % 60));
+			}
+			pr_msg("LastAccessdUtcOffset            : %02x\n", d.dentry.file.LastAccessdUtcOffset);
+			if (d.dentry.file.LastAccessdUtcOffset & 0x80) {
+				min = exfat_convert_timezone(d.dentry.file.LastAccessdUtcOffset);
+				pr_info("  %02d:%02d\n", min / 60, (abs(min) % 60));
+			}
+			pr_msg("Reserved2                       : ");
+			for (i = 0; i < 7; i++)
+				pr_msg("%02x", d.dentry.file.Reserved2[i]);
+			pr_msg("\n");
+			break;
+		case DENTRY_STREAM:
+			pr_msg("GeneralSecondaryFlags           : %02x\n", d.dentry.stream.GeneralSecondaryFlags);
+			if (d.dentry.stream.GeneralSecondaryFlags & 0x01)
+				pr_info("  * AllocationPossible\n");
+			if (d.dentry.stream.GeneralSecondaryFlags & 0x02)
+				pr_info("  * NoFatChain\n");
+			pr_msg("Reserved1                       : %02x\n", d.dentry.stream.Reserved1);
+			pr_msg("NameLength                      : %02x\n", d.dentry.stream.NameLength);
+			pr_msg("NameHash                        : %04x\n", d.dentry.stream.NameHash);
+			pr_msg("Reserved2                       : ");
+			for (i = 0; i < 2; i++)
+				pr_msg("%02x", d.dentry.stream.Reserved2[i]);
+			pr_msg("\n");
+			pr_msg("ValidDataLength                 : %016lx\n", d.dentry.stream.ValidDataLength);
+			pr_msg("Reserved3                       : ");
+			for (i = 0; i < 4; i++)
+				pr_msg("%02x", d.dentry.stream.Reserved3[i]);
+			pr_msg("\n");
+			pr_msg("FirstCluster                    : %08x\n", d.dentry.stream.FirstCluster);
+			pr_msg("DataLength                      : %016lx\n", d.dentry.stream.DataLength);
+			break;
+		case DENTRY_NAME:
+			pr_msg("GeneralSecondaryFlags           : %02x\n", d.dentry.name.GeneralSecondaryFlags);
+			if (d.dentry.stream.GeneralSecondaryFlags & 0x01)
+				pr_info("  * AllocationPossible\n");
+			if (d.dentry.stream.GeneralSecondaryFlags & 0x02)
+				pr_info("  * NoFatChain\n");
+			pr_msg("FileName                        : ");
+			for (i = 0; i < 30; i++)
+				pr_msg("%02x", ((uint8_t *)d.dentry.name.FileName)[i]);
+			pr_msg("\n");
+			break;
+	}
+	free(data);
+	return 0;
+}
+
+/**
  * exfat_alloc_cluster - function to allocate cluster
  * @clu:                 cluster index
  *
@@ -1204,32 +1410,19 @@ int exfat_release_cluster(uint32_t clu)
 int exfat_create(const char *name, uint32_t clu, int opt)
 {
 	int i, namei, lasti;
-	int quiet = 0;
-	uint8_t attr = 0;
 	void *data;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
-	uint16_t namehash = 0;
 	uint8_t len;
 	uint8_t count;
-	uint32_t stamp;
-	uint32_t unused = 0;
-	uint8_t subsec, tz;
 	size_t size = info.cluster_size;
 	size_t entries = size / sizeof(struct exfat_dentry);
 	size_t name_len;
 	struct exfat_dentry *d;
-	time_t t = time(NULL);
-	struct tm *local = localtime(&t);
-	char buf[8] = {0};
 
 	/* convert UTF-8 to UTF16 */
 	len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
 	count = ((len + ENTRY_NAME_MAX - 1) / ENTRY_NAME_MAX) + 1;
-	namehash = exfat_calculate_namehash(uniname, len);
 
-	/* Set up timezone */
-	strftime(buf, 8, "%z", local);
-	exfat_create_timezone(buf, &tz);
 	/* Lookup last entry */
 	data = malloc(size);
 	get_cluster(data, clu);
@@ -1239,83 +1432,31 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			break;
 	}
 
-	if (opt & OPTION_QUIET)
-		quiet = 1;
-
-	query_param(create_prompt[0], &(d->EntryType), 0x85, 1, quiet);
+	d->EntryType = 0x85;
 	lasti = i;
 	switch (d->EntryType) {
 		case DENTRY_FILE:
-			query_param(create_prompt[1], &attr, ATTR_ARCHIVE, 2, quiet);
-			d->dentry.file.FileAttributes = attr;
-			query_param(create_prompt[2], &(d->dentry.file.SecondaryCount), count, 1, quiet);
-			query_param(create_prompt[3], &(d->dentry.file.Reserved1), 0x0, 2, quiet);
-			exfat_query_timestamp(local, &stamp, &subsec, quiet);
-			exfat_query_timezone(buf, &tz, quiet);
-			d->dentry.file.CreateTimestamp = stamp;
-			d->dentry.file.LastAccessedTimestamp = stamp;
-			d->dentry.file.LastModifiedTimestamp = stamp;
-			d->dentry.file.Create10msIncrement = subsec;
-			d->dentry.file.LastModified10msIncrement = subsec;
-			d->dentry.file.CreateUtcOffset = tz | 0x80;
-			d->dentry.file.LastAccessdUtcOffset = tz | 0x80;
-			d->dentry.file.LastModifiedUtcOffset = tz | 0x80;
-
-			if (!quiet) {
-				char buf[4] = {0};
-				pr_msg("Do you want to create stream entry? (Default [y]/n): ");
-				fflush(stdout);
-				if (fgets(buf, 4, stdin) != NULL) {
-					if (!strncmp(buf, "n", 1))
-						goto out;
-				}
-			}
+			exfat_init_file(d, uniname, len);
 			lasti = i + 1;
 			d = ((struct exfat_dentry *)data) + lasti;
-			d->EntryType = DENTRY_STREAM;
 		case DENTRY_STREAM:
-			query_param(create_prompt[4], &(d->dentry.stream.GeneralSecondaryFlags), 0x01, 1, quiet);
-			query_param(create_prompt[3], &(d->dentry.stream.Reserved1), 0x00, 1, quiet);
-			query_param(create_prompt[5], &(d->dentry.stream.NameLength), len, 1, quiet);
-			query_param(create_prompt[6], &(d->dentry.stream.NameHash), namehash, 2, quiet);
-			query_param(create_prompt[3], &(d->dentry.stream.Reserved2), 0x00, 2, quiet);
-			query_param(create_prompt[7], &(d->dentry.stream.ValidDataLength), 0x00, 8, quiet);
-			query_param(create_prompt[3], &(d->dentry.stream.Reserved3), 0x00, 4, quiet);
-			if (attr & ATTR_DIRECTORY)
-				exfat_get_freed_index(&unused);
-			query_param(create_prompt[8], &(d->dentry.stream.FirstCluster), unused, 4, quiet);
-			query_param(create_prompt[9], &(d->dentry.stream.DataLength), 0x00, 8, quiet);
-
-			if (!quiet) {
-				char buf[4] = {0};
-				pr_msg("Do you want to create Name entry? (Default [y]/n): ");
-				fflush(stdout);
-				if (fgets(buf, 4, stdin) != NULL) {
-					if (!strncmp(buf, "n", 1))
-						goto out;
-				}
-			}
+			exfat_init_stream(d, uniname, len);
 			lasti = i + 2;
 			d = ((struct exfat_dentry *)data) + lasti;
-			d->EntryType = DENTRY_NAME;
 		case DENTRY_NAME:
 			for (namei = 0; namei < count - 1; namei++) {
 				name_len = MIN(ENTRY_NAME_MAX, len - namei * ENTRY_NAME_MAX);
-				memcpy(d->dentry.name.FileName,
-						uniname + namei * name_len, name_len * sizeof(uint16_t));
+				exfat_init_filename(d, uniname, name_len);
 				d = ((struct exfat_dentry *)data) + lasti + namei;
 				d->EntryType = DENTRY_NAME;
 			}
-			goto out;
+			break;
 		default:
-			query_param(create_prompt[10], &d->dentry, 0x00, 31, quiet);
 			goto out;
 	}
-	if (attr) {
-		d = ((struct exfat_dentry *)data) + i;
-		d->dentry.file.SetChecksum =
-			exfat_calculate_checksum(data+ i * sizeof(struct exfat_dentry), count);
-	}
+	d = ((struct exfat_dentry *)data) + i;
+	d->dentry.file.SetChecksum =
+		exfat_calculate_checksum(data + i * sizeof(struct exfat_dentry), count);
 out:
 	set_cluster(data, clu);
 	free(data);
@@ -1367,7 +1508,7 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 
 				s = ((struct exfat_dentry *)data) + i + 1;
 				if (s->EntryType != DENTRY_STREAM) {
-					pr_warn("File should have stream entry, but This don't have.\n");
+					pr_debug("File should have stream entry, but This don't have.\n");
 					continue;
 				}
 
@@ -1378,7 +1519,7 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 
 				n = ((struct exfat_dentry *)data) + i + 2;
 				if (n->EntryType != DENTRY_NAME) {
-					pr_warn("File should have name entry, but This don't have.\n");
+					pr_debug("File should have name entry, but This don't have.\n");
 					return -1;
 				}
 

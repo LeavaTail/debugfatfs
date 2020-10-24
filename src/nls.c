@@ -94,6 +94,7 @@ int utf8s_to_utf16s(unsigned char *src, uint16_t namelen, uint16_t* dist)
 	int size = 0, len = 0, out_len = 0;
 	unsigned char *u = src;
 	uint32_t w;
+
 	while (len < namelen) {
 		u = src + len;
 		w = (uint32_t)*u;
@@ -126,6 +127,7 @@ int utf16s_to_utf8s(uint16_t *src, uint16_t namelen, unsigned char* dist)
 	int size, len = 0;
 	uint16_t *u;
 	uint32_t w;
+
 	while (namelen--) {
 		u = src++;
 		w = (uint32_t)*u;

@@ -19,7 +19,7 @@
  * displayed when 'usage' and 'version'
  */
 #define PROGRAM_NAME     "debugfatfs"
-#define PROGRAM_VERSION  "0.1"
+#define PROGRAM_VERSION  "0.1.0"
 #define PROGRAM_AUTHOR   "LeavaTail"
 #define COPYRIGHT_YEAR   "2020"
 
@@ -141,6 +141,8 @@ struct device_info {
 #define OPTION_LOAD         (1 << 8)
 #define OPTION_READONLY     (1 << 9)
 #define OPTION_DIRECTORY    (1 << 10)
+#define OPTION_FORCE        (1 << 11)
+#define OPTION_ENTRY        (1 << 12)
 
 struct directory {
 	unsigned char *name;
@@ -387,6 +389,7 @@ struct operations {
 	int (*clean)(uint32_t);
 	int (*setfat)(uint32_t, uint32_t);
 	int (*getfat)(uint32_t, uint32_t *);
+	int (*dentry)(uint32_t, size_t);
 	int (*alloc)(uint32_t);
 	int (*release)(uint32_t);
 	int (*create)(const char *, uint32_t, int);
@@ -442,14 +445,6 @@ static inline bool is_power2(unsigned int n)
 	return (n != 0 && ((n & (n - 1)) == 0));
 }
 
-struct query {
-	char *name;
-	size_t len;
-	char **select;
-};
-
-#define QUERY_BUFFER_SIZE 255
-
 extern struct device_info info;
 
 /* General function */
@@ -461,7 +456,6 @@ int set_cluster(void *, off_t);
 int set_clusters(void *, off_t, size_t);
 int print_cluster(uint32_t);
 void hexdump(FILE *, void *, size_t);
-int query_param(const struct query, void *, unsigned int, size_t, int);
 
 /* exFAT/FAT check function */
 int exfat_check_filesystem(struct pseudo_bootsec *);
