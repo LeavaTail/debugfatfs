@@ -69,7 +69,7 @@ static void usage(void)
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -l, --load=file\tLoad Main boot region and FAT region from file.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
-	fprintf(stderr, "  -q, --quiet\tNot prompting the user in interactive mode. \n");
+	fprintf(stderr, "  -q, --quiet\tSuppress message about Main boot Sector.\n");
 	fprintf(stderr, "  -r, --ro\tread only mode. \n");
 	fprintf(stderr, "  -s, --save=file\tSave Main boot region and FAT region in file.\n");
 	fprintf(stderr, "  -u, --upper\tconvert into uppercase latter by up-case Table.\n");
@@ -579,7 +579,8 @@ int main(int argc, char *argv[])
 		goto device_close;
 	}
 
-	ret = info.ops->statfs();
+	if (!(attr & OPTION_QUIET))
+		ret = info.ops->statfs();
 	if (ret < 0)
 		goto device_close;
 
