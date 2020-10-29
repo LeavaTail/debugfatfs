@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "shell.h"
 #include "debugfatfs.h"
 
@@ -291,15 +292,30 @@ static int cmd_fat(int argc, char **argv, char **envp)
  */
 static int cmd_create(int argc, char **argv, char **envp)
 {
-	switch (argc) {
-		case 1:
+	int opt, interactive = 0;
+
+	/* To restart scanning a new argument vector */
+	optind = 1;
+
+	while ((opt = getopt(argc, argv, "i")) != -1) {
+		switch (opt) {
+			case 'i':
+				interactive = 1;
+				break;
+			default:
+				fprintf(stderr,"Usage: %s [-i] FILE\n", argv[0]);
+				fprintf(stderr, "\n");
+				fprintf(stderr, "  -i\tprompt before create dentry\n");
+				return 0;
+		}
+	}
+
+	switch (argc - optind) {
+		case 0:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
-		case 2:
-			if (info.attr & OPTION_QUIET)
-				info.ops->create(argv[1], cluster, OPTION_QUIET);
-			else
-				info.ops->create(argv[1], cluster, 0);
+		case 1:
+			info.ops->create(argv[optind], cluster, interactive);
 			info.ops->reload(cluster);
 			break;
 		default:

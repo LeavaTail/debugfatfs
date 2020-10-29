@@ -8,8 +8,6 @@
 #define CMD_MAXLEN 255
 #define CMD_DELIM " \t\r\n\a"
 
-#define CMD_QUIET  1
-
 struct command {
 	char *name;
 	int (*func)(int, char **, char **);
