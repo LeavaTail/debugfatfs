@@ -1409,7 +1409,7 @@ int exfat_release_cluster(uint32_t clu)
  */
 int exfat_create(const char *name, uint32_t clu, int opt)
 {
-	int i, namei, lasti;
+	int i, namei;
 	void *data;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint8_t len;
@@ -1432,32 +1432,22 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 			break;
 	}
 
-	d->EntryType = 0x85;
-	lasti = i;
-	switch (d->EntryType) {
-		case DENTRY_FILE:
-			exfat_init_file(d, uniname, len);
-			lasti = i + 1;
-			d = ((struct exfat_dentry *)data) + lasti;
-		case DENTRY_STREAM:
-			exfat_init_stream(d, uniname, len);
-			lasti = i + 2;
-			d = ((struct exfat_dentry *)data) + lasti;
-		case DENTRY_NAME:
-			for (namei = 0; namei < count - 1; namei++) {
-				name_len = MIN(ENTRY_NAME_MAX, len - namei * ENTRY_NAME_MAX);
-				exfat_init_filename(d, uniname, name_len);
-				d = ((struct exfat_dentry *)data) + lasti + namei;
-				d->EntryType = DENTRY_NAME;
-			}
-			break;
-		default:
-			goto out;
+	exfat_init_file(d, uniname, len);
+	d = ((struct exfat_dentry *)data) + i + 1;
+	exfat_init_stream(d, uniname, len);
+	d = ((struct exfat_dentry *)data) + i + 2;
+	for (namei = 0; namei < count - 1; namei++) {
+		name_len = MIN(ENTRY_NAME_MAX, len - namei * ENTRY_NAME_MAX);
+		exfat_init_filename(d, uniname, name_len);
+		d = ((struct exfat_dentry *)data) + i + 2 + namei;
+		d->EntryType = DENTRY_NAME;
 	}
+
+	/* Calculate File entry checksumc */
 	d = ((struct exfat_dentry *)data) + i;
 	d->dentry.file.SetChecksum =
 		exfat_calculate_checksum(data + i * sizeof(struct exfat_dentry), count);
-out:
+
 	set_cluster(data, clu);
 	free(data);
 	return 0;
