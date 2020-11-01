@@ -35,6 +35,9 @@ static void exfat_create_fileinfo(node2_t *,
 static int exfat_init_file(struct exfat_dentry *, uint16_t *, size_t);
 static int exfat_init_stream(struct exfat_dentry *, uint16_t *, size_t);
 static int exfat_init_filename(struct exfat_dentry *, uint16_t *, size_t);
+static int exfat_init_bitmap(struct exfat_dentry *);
+static int exfat_init_upcase(struct exfat_dentry *);
+static int exfat_init_volume(struct exfat_dentry *, uint16_t *, size_t);
 static uint16_t exfat_calculate_checksum(unsigned char *, unsigned char);
 static void exfat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
@@ -743,6 +746,59 @@ static int exfat_init_filename(struct exfat_dentry *d, uint16_t *name, size_t na
 	d->EntryType = 0xC1;
 	d->dentry.stream.GeneralSecondaryFlags = 0x00;
 	memcpy(d->dentry.name.FileName,	name, namelen * sizeof(uint16_t));
+
+	return 0;
+}
+
+/**
+ * exfat_init_bitmap  - function interface to create allocation bitmap
+ * @d:                  directory entry
+ *
+ * @return              0 (Success)
+ */
+static int exfat_init_bitmap(struct exfat_dentry *d)
+{
+	d->EntryType = 0x81;
+	d->dentry.bitmap.BitmapFlags = 0x00;
+	memset(d->dentry.bitmap.Reserved, 0, 18);
+	d->dentry.bitmap.FirstCluster = 0;
+	d->dentry.bitmap.DataLength = 0;
+
+	return 0;
+}
+
+/**
+ * exfat_init_upcase  - function interface to create Upcase Table
+ * @d:                  directory entry
+ *
+ * @return              0 (Success)
+ */
+static int exfat_init_upcase(struct exfat_dentry *d)
+{
+	d->EntryType = 0x82;
+	memset(d->dentry.upcase.Reserved1, 0, 3);
+	d->dentry.upcase.TableCheckSum = 0x00;
+	memset(d->dentry.upcase.Reserved2, 0, 12);
+	d->dentry.upcase.FirstCluster = 0;
+	d->dentry.upcase.DataLength = 0;
+
+	return 0;
+}
+
+/**
+ * exfat_init_volume  - function interface to create Volume label
+ * @d:                  directory entry
+ * @name:               filename in UTF-16
+ * @namelen:            filename length
+ *
+ * @return              0 (Success)
+ */
+static int exfat_init_volume(struct exfat_dentry *d, uint16_t *name, size_t namelen)
+{
+	d->EntryType = 0x83;
+	d->dentry.vol.CharacterCount = namelen;
+	memcpy(d->dentry.vol.VolumeLabel, name, namelen * sizeof(uint16_t));
+	memset(d->dentry.vol.Reserved, 0, 8);
 
 	return 0;
 }
