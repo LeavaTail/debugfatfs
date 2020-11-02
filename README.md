@@ -141,7 +141,7 @@ debugfatfs support support these optoin. (Please look at man-page)
 - **-i**, **--interactive** --- prompt the user operate filesystem
 - **-l**, **--load**=*file* --- Load Main boot region and FAT region from file
 - **-o**, **--output**=*file* --- send output to file rather than stdout
-- **-q**, **--quiet** --- Not prompting the user in interactive mode
+- **-q**, **--quiet** --- Suppress message about Main boot Sector
 - **-r**, **--ro** --- read only mode
 - **-s**, **--save**=*file* --- Save Main boot region and FAT region in file
 - **-u**, **--upper** --- convert into uppercase latter by up-case Table
