@@ -39,6 +39,7 @@ static int exfat_init_bitmap(struct exfat_dentry *);
 static int exfat_init_upcase(struct exfat_dentry *);
 static int exfat_init_volume(struct exfat_dentry *, uint16_t *, size_t);
 static uint16_t exfat_calculate_checksum(unsigned char *, unsigned char);
+static uint32_t exfat_calculate_tablechecksum(unsigned char *, uint64_t);
 static void exfat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
 static void exfat_convert_unixtime(struct tm *, uint32_t, uint8_t, uint8_t);
@@ -821,6 +822,24 @@ static uint16_t exfat_calculate_checksum(unsigned char *entry, unsigned char cou
 			continue;
 		checksum = ((checksum & 1) ? 0x8000 : 0) + (checksum >> 1) +  (uint16_t)entry[index];
 	}
+	return checksum;
+}
+
+/**
+ * exfat_calculate_Tablechecksum - Calculate Up-case table Checksum
+ * @entry:                         points to an in-memory copy of the directory entry set
+ * @count:                         the number of secondary directory entries
+ *
+ * @return                    Checksum
+ */
+static uint32_t exfat_calculate_tablechecksum(unsigned char *table, uint64_t length)
+{
+	uint32_t checksum = 0;
+	uint64_t index;
+
+	for (index = 0; index < length; index++)
+		checksum = ((checksum & 1) ? 0x80000000 : 0) + (checksum >> 1) + (uint32_t)table[index];
+
 	return checksum;
 }
 
