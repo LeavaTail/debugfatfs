@@ -721,7 +721,7 @@ static int exfat_init_file(struct exfat_dentry *d, uint16_t *name, size_t namele
 static int exfat_init_stream(struct exfat_dentry *d, uint16_t *name, size_t namelen)
 {
 	d->EntryType = 0xC0;
-	d->dentry.stream.GeneralSecondaryFlags = 0x03;
+	d->dentry.stream.GeneralSecondaryFlags = ALLOC_POSIBLE | ALLOC_NOFATCHAIN;
 	d->dentry.stream.Reserved1 = 0x00;
 	d->dentry.stream.NameLength = namelen;
 	d->dentry.stream.NameHash = exfat_calculate_namehash(name, namelen);
@@ -1415,9 +1415,9 @@ int exfat_print_dentry(uint32_t clu, size_t n)
 			break;
 		case DENTRY_STREAM:
 			pr_msg("GeneralSecondaryFlags           : %02x\n", d.dentry.stream.GeneralSecondaryFlags);
-			if (d.dentry.stream.GeneralSecondaryFlags & 0x01)
+			if (d.dentry.stream.GeneralSecondaryFlags & ALLOC_POSIBLE)
 				pr_info("  * AllocationPossible\n");
-			if (d.dentry.stream.GeneralSecondaryFlags & 0x02)
+			if (d.dentry.stream.GeneralSecondaryFlags & ALLOC_NOFATCHAIN)
 				pr_info("  * NoFatChain\n");
 			pr_msg("Reserved1                       : %02x\n", d.dentry.stream.Reserved1);
 			pr_msg("NameLength                      : %02x\n", d.dentry.stream.NameLength);
@@ -1436,9 +1436,9 @@ int exfat_print_dentry(uint32_t clu, size_t n)
 			break;
 		case DENTRY_NAME:
 			pr_msg("GeneralSecondaryFlags           : %02x\n", d.dentry.name.GeneralSecondaryFlags);
-			if (d.dentry.stream.GeneralSecondaryFlags & 0x01)
+			if (d.dentry.stream.GeneralSecondaryFlags & ALLOC_POSIBLE)
 				pr_info("  * AllocationPossible\n");
-			if (d.dentry.stream.GeneralSecondaryFlags & 0x02)
+			if (d.dentry.stream.GeneralSecondaryFlags & ALLOC_NOFATCHAIN)
 				pr_info("  * NoFatChain\n");
 			pr_msg("FileName                        : ");
 			for (i = 0; i < 30; i++)

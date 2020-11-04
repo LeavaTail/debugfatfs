@@ -173,6 +173,7 @@ struct exfat_fileinfo {
 	size_t namelen;
 	size_t datalen;
 	uint16_t attr;
+	uint8_t flags;
 	struct tm ctime;
 	struct tm atime;
 	struct tm mtime;
@@ -425,6 +426,10 @@ struct operations {
 #define EXFAT TYPEIMPORTANCE 0x20
 #define EXFAT_CATEGORY       0x40
 #define EXFAT_INUSE          0x80
+
+/* exFAT GeneralSecondaryFlags */
+#define ALLOC_POSIBLE         0x01
+#define ALLOC_NOFATCHAIN      0x02
 
 /* TimeStamp */
 #define FAT_DAY      0
