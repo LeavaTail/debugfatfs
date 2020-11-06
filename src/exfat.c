@@ -263,7 +263,7 @@ static int exfat_save_bitmap(uint32_t clu, uint32_t value)
 	if (value)
 		info.alloc_table[byte] |= mask;
 	else
-		info.alloc_table[byte] &= mask;
+		info.alloc_table[byte] &= ~mask;
 
 	pr_debug("0x%x\n", info.alloc_table[byte]);
 	return 0;
