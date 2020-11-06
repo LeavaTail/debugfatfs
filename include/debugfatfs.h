@@ -121,6 +121,7 @@ struct device_info {
 	uint32_t root_offset;
 	uint32_t root_length;
 	uint8_t *alloc_table;
+	uint32_t alloc_cluster;
 	uint16_t *upcase_table;
 	size_t upcase_size;
 	uint16_t *vol_label;
