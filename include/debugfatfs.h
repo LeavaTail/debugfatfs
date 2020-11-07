@@ -19,7 +19,7 @@
  * displayed when 'usage' and 'version'
  */
 #define PROGRAM_NAME     "debugfatfs"
-#define PROGRAM_VERSION  "0.1.0"
+#define PROGRAM_VERSION  "0.1.1"
 #define PROGRAM_AUTHOR   "LeavaTail"
 #define COPYRIGHT_YEAR   "2020"
 
@@ -121,6 +121,7 @@ struct device_info {
 	uint32_t root_offset;
 	uint32_t root_length;
 	uint8_t *alloc_table;
+	uint32_t alloc_cluster;
 	uint16_t *upcase_table;
 	size_t upcase_size;
 	uint16_t *vol_label;

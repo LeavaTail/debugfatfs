@@ -248,6 +248,7 @@ static int exfat_save_bitmap(uint32_t clu, uint32_t value)
 {
 	int offset, byte;
 	uint8_t mask = 0x01;
+	uint8_t *raw_bitmap;
 
 	if (clu < EXFAT_FIRST_CLUSTER || clu > info.cluster_count + 1) {
 		pr_err("cluster: %u is invalid.\n", clu);
@@ -263,9 +264,17 @@ static int exfat_save_bitmap(uint32_t clu, uint32_t value)
 	if (value)
 		info.alloc_table[byte] |= mask;
 	else
-		info.alloc_table[byte] &= mask;
+		info.alloc_table[byte] &= ~mask;
 
 	pr_debug("0x%x\n", info.alloc_table[byte]);
+	raw_bitmap = malloc(info.cluster_size);
+	get_cluster(raw_bitmap, info.alloc_cluster);
+	if (value)
+		raw_bitmap[byte] |= mask;
+	else
+		raw_bitmap[byte] &= ~mask;
+	set_cluster(raw_bitmap, info.alloc_cluster);
+	free(raw_bitmap);
 	return 0;
 }
 
@@ -489,6 +498,7 @@ static int exfat_traverse_directory(uint32_t clu)
 					pr_debug("Get: allocation table: cluster 0x%x, size: 0x%lx\n",
 							d.dentry.bitmap.FirstCluster,
 							d.dentry.bitmap.DataLength);
+					info.alloc_cluster = d.dentry.bitmap.FirstCluster;
 					info.alloc_table = malloc(info.cluster_size);
 					get_cluster(info.alloc_table, d.dentry.bitmap.FirstCluster);
 					pr_info("Allocation Bitmap (#%u):\n", d.dentry.bitmap.FirstCluster);
