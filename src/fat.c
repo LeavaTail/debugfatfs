@@ -8,7 +8,7 @@
 #include "debugfatfs.h"
 
 /* Generic function prototype */
-static uint32_t fat_concat_cluster(uint32_t, void **, size_t);
+static uint32_t fat_concat_cluster(struct fat_fileinfo *, uint32_t, void **);
 
 /* Boot sector function prototype */
 static int fat_load_bootsec(struct fat_bootsec *);
@@ -86,31 +86,35 @@ static const struct operations fat_ops = {
 /*************************************************************************************************/
 /**
  * fat_concat_cluster   - Contatenate cluster @data with next_cluster
+ * @f:                    file information pointer
  * @clu:                  index of the cluster
  * @data:                 The cluster
- * @size:                 allocated size to store cluster data
  *
- * @retrun:               next cluster (@clu has next cluster)
- *                        0            (@clu doesn't have next cluster, or failed to realloc)
+ * @retrun:               cluster count (@clu has next cluster)
+ *                        0             (@clu doesn't have next cluster, or failed to realloc)
  */
-static uint32_t fat_concat_cluster(uint32_t clu, void **data, size_t size)
+static uint32_t fat_concat_cluster(struct fat_fileinfo *f, uint32_t clu, void **data)
 {
-	uint32_t ret;
+	int i;
+	uint32_t ret = 0x0FFFFFFF;
+	uint32_t tmp_clu = clu;
 	void *tmp;
+	size_t allocated = 1;
 
-	fat_get_fat_entry(clu, &ret);
-	if (ret) {
-		tmp = realloc(*data, size + info.cluster_size);
-		if (tmp) {
-			*data = tmp;
-			get_cluster(tmp + size, ret);
-			pr_debug("Concatenate cluster #%u with #%u\n", clu, ret);
-		} else {
-			pr_err("Failed to Get new memory.\n");
-			ret = 0;
-		}
+	for (allocated = 0; ret != 0; allocated++, tmp_clu = ret)
+		fat_get_fat_entry(tmp_clu, &ret);
+
+	if (!(tmp = realloc(*data, info.cluster_size * allocated)))
+		return 0;
+	*data = tmp;
+
+	for (i = 1; i < allocated; i++) {
+		fat_get_fat_entry(clu, &ret);
+		get_cluster(*data + info.cluster_size * i, ret);
+		clu = ret;
 	}
-	return ret;
+
+	return allocated;
 }
 
 /**
@@ -176,7 +180,7 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 	strncpy((char *)f->name, "/", strlen("/") + 1);
 	f->uniname = NULL;
 	f->namelen = 1;
-	f->datalen = 0;
+	f->datalen = (size_t) - 1;
 	f->attr = ATTR_DIRECTORY;
 	info.root[0] = init_node2(info.root_offset, f);
 	info.ops = &fat_ops;
@@ -407,6 +411,9 @@ static uint32_t fat12_get_fat_entry(uint32_t clu)
 			| ((uint16_t)(fat[ThisFATEntOffset + 1] & 0x0F) << 8);
 	}
 	free(fat);
+	if (ret >= FAT12_RESERVED)
+		ret = 0;
+
 	return ret;
 }
 
@@ -427,6 +434,9 @@ static uint32_t fat16_get_fat_entry(uint32_t clu)
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	ret = fat[ThisFATEntOffset];
 	free(fat);
+
+	if (ret >= FAT16_RESERVED)
+		ret = 0;
 	return ret;
 }
 
@@ -447,6 +457,9 @@ static uint32_t fat32_get_fat_entry(uint32_t clu)
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	ret = fat[ThisFATEntOffset] & 0x0FFFFFFF;
 	free(fat);
+
+	if (ret >= FAT32_RESERVED)
+		ret = 0;
 	return ret;
 }
 
@@ -540,82 +553,69 @@ static int fat_traverse_directory(uint32_t clu)
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	size_t index = fat_get_index(clu);
 	struct fat_fileinfo *f = (struct fat_fileinfo *)info.root[index]->data;
-	size_t size = info.cluster_size;
-	size_t entries = size / sizeof(struct fat_dentry);
+	size_t entries;
+	size_t cluster_num = 1;
 	size_t namelen = 0;
 	void *data;
 	struct fat_dentry d;
 
-	if (f->datalen > 0) {
+	if (f->cached) {
 		pr_debug("Directory %s was already traversed.\n", f->name);
 		return 0;
 	}
 
 	if (clu) {
-		data = malloc(size);
+		data = malloc(info.cluster_size);
 		get_cluster(data, clu);
+		cluster_num = fat_concat_cluster(f, clu, &data);
+		entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
 	} else {
-		size = info.root_length * info.sector_size;
-		entries = size / sizeof(struct fat_dentry);
-		data = malloc(size);
+		data = malloc(info.root_length * info.sector_size);
 		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+		entries = (info.root_length * info.sector_size) / sizeof(struct fat_dentry);
 	}
 
-	do {
-		for (i = 0; i < entries; i++) {
-			namelen = 0;
-			d = ((struct fat_dentry *)data)[i];
-			attr = d.dentry.lfn.LDIR_Attr;
-			ord = d.dentry.lfn.LDIR_Ord;
-			/* Empty entry */
-			if (ord == 0x00)
-				goto out;
-			if (ord == 0xe5)
-				continue;
-			/* First entry should be checked */
-			switch (attr) {
-				case ATTR_VOLUME_ID:
-					info.vol_length = 11;
-					info.vol_label = calloc(11 + 1, sizeof(unsigned char));
-					memcpy(info.vol_label, d.dentry.dir.DIR_Name,
-							sizeof(unsigned char) * 11);
-					continue;
-				case ATTR_LONG_FILE_NAME:
-					ord &= ~LAST_LONG_ENTRY;
-					if (i + ord >= entries) {
-						clu = fat_concat_cluster(clu, &data, size);
-						size += info.cluster_size;
-						entries = size / sizeof(struct exfat_dentry);
-					}
-					for (j = 0; j < ord; j++) {
-						memcpy(uniname + j * LONGNAME_MAX,
-								(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name1,
-								5 * sizeof(uint16_t));
-						memcpy(uniname + j * LONGNAME_MAX + 5,
-								(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name2,
-								6 * sizeof(uint16_t));
-						memcpy(uniname + j * LONGNAME_MAX + 11,
-								(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name3,
-								2 * sizeof(uint16_t));
-						namelen += LONGNAME_MAX;
-					}
-					d = ((struct fat_dentry *)data)[i + ord];
-					i += ord;
-					break;
-				default:
-					d = ((struct fat_dentry *)data)[i];
-					break;
-			}
-			fat_create_fileinfo(info.root[index], clu, &d, uniname, namelen);
-		}
-		clu = fat_concat_cluster(clu, &data, size);
-		if (!clu)
+	for (i = 0; i < entries; i++) {
+		namelen = 0;
+		d = ((struct fat_dentry *)data)[i];
+		attr = d.dentry.lfn.LDIR_Attr;
+		ord = d.dentry.lfn.LDIR_Ord;
+		/* Empty entry */
+		if (ord == 0x00)
 			break;
-
-		size += info.cluster_size;
-		entries = size / sizeof(struct exfat_dentry);
-	} while (1);
-out:
+		if (ord == 0xe5)
+			continue;
+		/* First entry should be checked */
+		switch (attr) {
+			case ATTR_VOLUME_ID:
+				info.vol_length = 11;
+				info.vol_label = calloc(11 + 1, sizeof(unsigned char));
+				memcpy(info.vol_label, d.dentry.dir.DIR_Name,
+						sizeof(unsigned char) * 11);
+				continue;
+			case ATTR_LONG_FILE_NAME:
+				ord &= ~LAST_LONG_ENTRY;
+				for (j = 0; j < ord; j++) {
+					memcpy(uniname + j * LONGNAME_MAX,
+							(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name1,
+							5 * sizeof(uint16_t));
+					memcpy(uniname + j * LONGNAME_MAX + 5,
+							(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name2,
+							6 * sizeof(uint16_t));
+					memcpy(uniname + j * LONGNAME_MAX + 11,
+							(((struct fat_dentry *)data)[i + ord - j - 1]).dentry.lfn.LDIR_Name3,
+							2 * sizeof(uint16_t));
+					namelen += LONGNAME_MAX;
+				}
+				d = ((struct fat_dentry *)data)[i + ord];
+				i += ord;
+				break;
+			default:
+				d = ((struct fat_dentry *)data)[i];
+				break;
+		}
+		fat_create_fileinfo(info.root[index], clu, &d, uniname, namelen);
+	}
 	free(data);
 	return 0;
 }
@@ -708,7 +708,7 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 			0,
 			0);
 	append_node2(head, next_clu, f);
-	 ((struct fat_fileinfo *)(head->data))->datalen++;
+	 ((struct fat_fileinfo *)(head->data))->cached = 1;
 
 	/* If this entry is Directory, prepare to create next chain */
 	if ((f->attr & ATTR_DIRECTORY) && (!fat_check_dchain(next_clu))) {
@@ -717,7 +717,7 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 		d->uniname = malloc(f->namelen + 1);
 		strncpy((char *)d->uniname, (char *)f->uniname, f->namelen + 1);
 		d->namelen = namelen;
-		d->datalen = 0;
+		d->datalen = file->dentry.dir.DIR_FileSize;
 		d->attr = file->dentry.dir.DIR_Attr;
 
 		index = fat_get_index(next_clu);

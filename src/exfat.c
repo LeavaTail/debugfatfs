@@ -11,7 +11,7 @@
 #include "debugfatfs.h"
 
 /* Generic function prototype */
-static uint32_t exfat_concat_cluster(uint32_t, void **, size_t);
+static uint32_t exfat_concat_cluster(struct exfat_fileinfo *, uint32_t, void **);
 
 /* Boot sector function prototype */
 static int exfat_load_bootsec(struct exfat_bootsec *);
@@ -90,31 +90,43 @@ static const struct operations exfat_ops = {
 /*************************************************************************************************/
 /**
  * exfat_concat_cluster - Contatenate cluster @data with next_cluster
+ * @f:                    file information pointer
  * @clu:                  index of the cluster
  * @data:                 The cluster
- * @size:                 allocated size to store cluster data
  *
- * @retrun:               next cluster (@clu has next cluster)
- *                        0            (@clu doesn't have next cluster, or failed to realloc)
+ * @retrun:               cluster count (@clu has next cluster)
+ *                        0             (@clu doesn't have next cluster, or failed to realloc)
  */
-static uint32_t exfat_concat_cluster(uint32_t clu, void **data, size_t size)
+static uint32_t exfat_concat_cluster(struct exfat_fileinfo *f, uint32_t clu, void **data)
 {
-	uint32_t ret;
+	int i;
 	void *tmp;
+	size_t allocated = 1;
+	size_t cluster_num = ((f->datalen - 1) / info.cluster_size) + 1;
 
-	ret = exfat_check_fat_entry(clu);
-	if (ret) {
-		tmp = realloc(*data, size + info.cluster_size);
-		if (tmp) {
-			*data = tmp;
-			get_cluster(tmp + size, ret);
-			pr_debug("Concatenate cluster #%u with #%u\n", clu, ret);
-		} else {
-			pr_err("Failed to Get new memory.\n");
-			ret = 0;
-		}
+	/* NO_FAT_CHAIN */
+	if (f->flags & ALLOC_NOFATCHAIN) {
+		if (!(tmp = realloc(*data, info.cluster_size * cluster_num)))
+			return 0;
+		*data = tmp;
+		get_clusters(*data + info.cluster_size, clu + 1, cluster_num - 1);
+		return cluster_num;
 	}
-	return ret;
+
+	/* FAT_CHAIN */
+	for (allocated = 0; allocated < cluster_num && clu != EXFAT_LASTCLUSTER; allocated++)
+		clu = exfat_check_fat_entry(clu);
+
+	if (!(tmp = realloc(*data, info.cluster_size * allocated)))
+		return 0;
+	*data = tmp;
+
+	for (i = 1; i < allocated; i++) {
+		clu = exfat_check_fat_entry(clu);
+		get_cluster(*data + info.cluster_size * i, clu);
+	}
+
+	return allocated;
 }
 
 /**
@@ -145,7 +157,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot)
 		f->name = malloc(sizeof(unsigned char *) * (strlen("/") + 1));
 		strncpy((char *)f->name, "/", strlen("/") + 1);
 		f->namelen = 1;
-		f->datalen = 0;
+		f->datalen = (size_t) - 1;
 		f->attr = ATTR_DIRECTORY;
 		f->hash = 0;
 		info.root[0] = init_node2(info.root_offset, f);
@@ -478,117 +490,93 @@ static int exfat_traverse_directory(uint32_t clu)
 	uint64_t len;
 	size_t index = exfat_get_index(clu);
 	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
-	size_t size = info.cluster_size;
-	size_t entries = size / sizeof(struct exfat_dentry);
+	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
+	size_t cluster_num = 1;
 	void *data;
 	struct exfat_dentry d, next, name;
 
-	if (f->datalen > 0) {
+	if (f->cached) {
 		pr_debug("Directory %s was already traversed.\n", f->name);
 		return 0;
 	}
 
-	data = malloc(size);
+	data = malloc(info.cluster_size);
 	get_cluster(data, clu);
 
-	do {
-		for (i = 0; i < entries; i++){
-			d = ((struct exfat_dentry *)data)[i];
+	cluster_num = exfat_concat_cluster(f, clu, &data);
+	entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
 
-			switch (d.EntryType) {
-				case DENTRY_UNUSED:
-					goto out;
-				case DENTRY_BITMAP:
-					pr_debug("Get: allocation table: cluster 0x%x, size: 0x%lx\n",
-							d.dentry.bitmap.FirstCluster,
-							d.dentry.bitmap.DataLength);
-					info.alloc_cluster = d.dentry.bitmap.FirstCluster;
-					info.alloc_table = malloc(info.cluster_size);
-					get_cluster(info.alloc_table, d.dentry.bitmap.FirstCluster);
-					pr_info("Allocation Bitmap (#%u):\n", d.dentry.bitmap.FirstCluster);
-					break;
-				case DENTRY_UPCASE:
-					info.upcase_size = d.dentry.upcase.DataLength;
-					len = (info.cluster_size / info.upcase_size) + 1;
-					info.upcase_table = malloc(info.cluster_size * len);
-					pr_debug("Get: Up-case table: cluster 0x%x, size: 0x%x\n",
-							d.dentry.upcase.FirstCluster,
-							d.dentry.upcase.DataLength);
-					get_clusters(info.upcase_table, d.dentry.upcase.FirstCluster, len);
-					break;
-				case DENTRY_VOLUME:
-					info.vol_length = d.dentry.vol.CharacterCount;
-					if (info.vol_length) {
-						info.vol_label = malloc(sizeof(uint16_t) * info.vol_length);
-						pr_debug("Get: Volume label: size: 0x%x\n",
-								d.dentry.vol.CharacterCount);
-						memcpy(info.vol_label, d.dentry.vol.VolumeLabel,
-								sizeof(uint16_t) * info.vol_length);
-					}
-					break;
-				case DENTRY_FILE:
-					remaining = d.dentry.file.SecondaryCount;
-					if (i + remaining >= entries) {
-						clu = exfat_concat_cluster(clu, &data, size);
-						size += info.cluster_size;
-						entries = size / sizeof(struct exfat_dentry);
-					}
+	for (i = 0; i < entries; i++){
+		d = ((struct exfat_dentry *)data)[i];
 
-					next = ((struct exfat_dentry *)data)[i + 1];
-					while ((!(next.EntryType & EXFAT_INUSE)) && (next.EntryType != DENTRY_UNUSED)) {
-						pr_debug("This entry was deleted (0x%x).\n", next.EntryType);
-						if (++i + remaining >= entries) {
-							clu = exfat_concat_cluster(clu, &data, size);
-							size += info.cluster_size;
-							entries = size / sizeof(struct exfat_dentry);
-						}
-						next = ((struct exfat_dentry *)data)[i + 1];
-					}
-					if (next.EntryType != DENTRY_STREAM) {
-						pr_info("File should have stream entry, but This don't have.\n");
-						continue;
-					}
+		switch (d.EntryType) {
+			case DENTRY_UNUSED:
+				break;
+			case DENTRY_BITMAP:
+				pr_debug("Get: allocation table: cluster 0x%x, size: 0x%lx\n",
+						d.dentry.bitmap.FirstCluster,
+						d.dentry.bitmap.DataLength);
+				info.alloc_cluster = d.dentry.bitmap.FirstCluster;
+				info.alloc_table = malloc(info.cluster_size);
+				get_cluster(info.alloc_table, d.dentry.bitmap.FirstCluster);
+				pr_info("Allocation Bitmap (#%u):\n", d.dentry.bitmap.FirstCluster);
+				break;
+			case DENTRY_UPCASE:
+				info.upcase_size = d.dentry.upcase.DataLength;
+				len = (info.cluster_size / info.upcase_size) + 1;
+				info.upcase_table = malloc(info.cluster_size * len);
+				pr_debug("Get: Up-case table: cluster 0x%x, size: 0x%x\n",
+						d.dentry.upcase.FirstCluster,
+						d.dentry.upcase.DataLength);
+				get_clusters(info.upcase_table, d.dentry.upcase.FirstCluster, len);
+				break;
+			case DENTRY_VOLUME:
+				info.vol_length = d.dentry.vol.CharacterCount;
+				if (info.vol_length) {
+					info.vol_label = malloc(sizeof(uint16_t) * info.vol_length);
+					pr_debug("Get: Volume label: size: 0x%x\n",
+							d.dentry.vol.CharacterCount);
+					memcpy(info.vol_label, d.dentry.vol.VolumeLabel,
+							sizeof(uint16_t) * info.vol_length);
+				}
+				break;
+			case DENTRY_FILE:
+				remaining = d.dentry.file.SecondaryCount;
+				/* Stream entry */
+				next = ((struct exfat_dentry *)data)[i + 1];
+				while ((!(next.EntryType & EXFAT_INUSE)) && (next.EntryType != DENTRY_UNUSED)) {
+					pr_debug("This entry was deleted (0x%x).\n", next.EntryType);
+					next = ((struct exfat_dentry *)data)[++i + 1];
+				}
+				if (next.EntryType != DENTRY_STREAM) {
+					pr_info("File should have stream entry, but This don't have.\n");
+					continue;
+				}
+				/* Filename entry */
+				name = ((struct exfat_dentry *)data)[i + 2];
+				while ((!(name.EntryType & EXFAT_INUSE)) && (name.EntryType != DENTRY_UNUSED)) {
+					pr_debug("This entry was deleted (0x%x).\n", name.EntryType);
+					name = ((struct exfat_dentry *)data)[++i + 2];
+				}
+				if (name.EntryType != DENTRY_NAME) {
+					pr_info("File should have name entry, but This don't have.\n");
+					return -1;
+				}
+				name_len = next.dentry.stream.NameLength;
+				for (j = 0; j < remaining - 1; j++) {
+					name_len = MIN(ENTRY_NAME_MAX,
+							next.dentry.stream.NameLength - j * ENTRY_NAME_MAX);
+					memcpy(uniname + j * ENTRY_NAME_MAX,
+							(((struct exfat_dentry *)data)[i + 2 + j]).dentry.name.FileName,
+							name_len * sizeof(uint16_t));
+				}
 
-					name = ((struct exfat_dentry *)data)[i + 2];
-					while ((!(name.EntryType & EXFAT_INUSE)) && (name.EntryType != DENTRY_UNUSED)) {
-						pr_debug("This entry was deleted (0x%x).\n", name.EntryType);
-						if (++i + remaining >= entries - 1) {
-							clu = exfat_concat_cluster(clu, &data, size);
-							size += info.cluster_size;
-							entries = size / sizeof(struct exfat_dentry);
-						}
-						name = ((struct exfat_dentry *)data)[i + 2];
-					}
-					if (name.EntryType != DENTRY_NAME) {
-						pr_info("File should have name entry, but This don't have.\n");
-						return -1;
-					}
-
-					name_len = next.dentry.stream.NameLength;
-					for (j = 0; j < remaining - 1; j++) {
-						name_len = MIN(ENTRY_NAME_MAX,
-								next.dentry.stream.NameLength - j * ENTRY_NAME_MAX);
-						memcpy(uniname + j * ENTRY_NAME_MAX,
-								(((struct exfat_dentry *)data)[i + 2 + j]).dentry.name.FileName,
-								name_len * sizeof(uint16_t));
-					}
-					exfat_create_fileinfo(info.root[index], clu,
-							&d, &next, uniname);
-					i += remaining;
-					break;
-				case DENTRY_STREAM:
-					pr_info("Stream needs be File entry, but This is not.\n");
-					break;
-			}
+				exfat_create_fileinfo(info.root[index], clu,
+						&d, &next, uniname);
+				i += remaining;
+				break;
 		}
-		clu = exfat_concat_cluster(clu, &data, size);
-		if (!clu)
-			break;
-
-		size += info.cluster_size;
-		entries = size / sizeof(struct exfat_dentry);
-	} while (1);
-out:
+	}
 	free(data);
 	return 0;
 }
@@ -651,6 +639,7 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 	f->namelen = namelen;
 	f->datalen = stream->dentry.stream.DataLength;
 	f->attr = file->dentry.file.FileAttributes;
+	f->flags = stream->dentry.stream.GeneralSecondaryFlags;
 	f->hash = stream->dentry.stream.NameHash;
 
 	exfat_convert_unixtime(&f->ctime, file->dentry.file.CreateTimestamp,
@@ -663,7 +652,7 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 			0,
 			file->dentry.file.LastAccessdUtcOffset);
 	append_node2(head, next_index, f);
-	((struct exfat_fileinfo *)(head->data))->datalen++;
+	((struct exfat_fileinfo *)(head->data))->cached = 1;
 
 	/* If this entry is Directory, prepare to create next chain */
 	if ((f->attr & ATTR_DIRECTORY) && (!exfat_check_dchain(next_index))) {
@@ -671,8 +660,9 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 		d->name = malloc(f->namelen + 1);
 		strncpy((char *)d->name, (char *)f->name, f->namelen + 1);
 		d->namelen = namelen;
-		d->datalen = 0;
+		d->datalen = stream->dentry.stream.DataLength;
 		d->attr = file->dentry.file.FileAttributes;
+		d->flags = stream->dentry.stream.GeneralSecondaryFlags;
 		d->hash = stream->dentry.stream.NameHash;
 
 		index = exfat_get_index(next_index);
@@ -1549,14 +1539,16 @@ int exfat_create(const char *name, uint32_t clu, int opt)
  */
 int exfat_remove(const char *name, uint32_t clu, int opt)
 {
-	int i, j, name_len, name_len2;
+	int i, j, name_len, name_len2, ret = 0;
 	void *data;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint16_t uniname2[MAX_NAME_LENGTH] = {0};
 	uint16_t namehash = 0;
 	uint8_t remaining;
-	size_t size = info.cluster_size;
-	size_t entries = size / sizeof(struct exfat_dentry);
+	size_t index = exfat_get_index(clu);
+	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
+	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
+	size_t cluster_num = 1;
 	struct exfat_dentry *d, *s, *n;
 
 	/* convert UTF-8 to UTF16 */
@@ -1564,24 +1556,27 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 	namehash = exfat_calculate_namehash(uniname, name_len);
 
 	/* Lookup last entry */
-	data = malloc(size);
+	data = malloc(info.cluster_size);
 	get_cluster(data, clu);
+
+	cluster_num = exfat_concat_cluster(f, clu, &data);
+	entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
 
 	for (i = 0; i < entries; i++) {
 		d = ((struct exfat_dentry *)data) + i;
+
 		switch (d->EntryType) {
 			case DENTRY_UNUSED:
-				free(data);
-				return -1;
+				ret = -1;
+				goto out;
 			case DENTRY_FILE:
 				remaining = d->dentry.file.SecondaryCount;
-				if (i + remaining >= entries) {
-					clu = exfat_concat_cluster(clu, &data, size);
-					size += info.cluster_size;
-					entries = size / sizeof(struct exfat_dentry);
-				}
-
+				/* Stream entry */
 				s = ((struct exfat_dentry *)data) + i + 1;
+				while ((!(s->EntryType & EXFAT_INUSE)) && (s->EntryType != DENTRY_UNUSED)) {
+					pr_debug("This entry was deleted (0x%x).\n", s->EntryType);
+					s = ((struct exfat_dentry *)data) + (++i) + 1;
+				}
 				if (s->EntryType != DENTRY_STREAM) {
 					pr_debug("File should have stream entry, but This don't have.\n");
 					continue;
@@ -1592,6 +1587,7 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 					continue;
 				}
 
+				/* Filename entry */
 				n = ((struct exfat_dentry *)data) + i + 2;
 				if (n->EntryType != DENTRY_NAME) {
 					pr_debug("File should have name entry, but This don't have.\n");
@@ -1619,14 +1615,12 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 				}
 				i += remaining;
 				break;
-			default:
-				break;
 		}
 	}
 out:
 	set_cluster(data, clu);
 	free(data);
-	return 0;
+	return ret;
 }
 
 /**

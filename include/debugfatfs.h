@@ -74,6 +74,10 @@ extern FILE *output;
 #define BOOTCODE32SIZE  420
 #define FSIRESV1SIZE    480
 #define FSIRESV2SIZE    12
+
+#define FAT12_RESERVED  0xFF8
+#define FAT16_RESERVED  0xFFF8
+#define FAT32_RESERVED  0x0FFFFFF8
 /*
  * exFAT definition
  */
@@ -163,6 +167,7 @@ struct fat_fileinfo {
 	unsigned char *uniname;
 	size_t namelen;
 	size_t datalen;
+	uint8_t cached;
 	uint16_t attr;
 	struct tm ctime;
 	struct tm atime;
@@ -173,6 +178,7 @@ struct exfat_fileinfo {
 	unsigned char *name;
 	size_t namelen;
 	size_t datalen;
+	uint8_t cached;
 	uint16_t attr;
 	uint8_t flags;
 	struct tm ctime;
