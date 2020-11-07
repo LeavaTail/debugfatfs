@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1] - 2020-11-07
+
+### Fixed
+
+- Unexpected update Allocation Bitmap in memory
+- Not Flush Allocation Bitmap to Disk
+
 ## [0.1.0] - 2020-10-24
 
 ### Added
