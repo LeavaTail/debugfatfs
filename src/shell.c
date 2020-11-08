@@ -23,6 +23,7 @@ static int cmd_release(int, char **, char **);
 static int cmd_fat(int, char **, char **);
 static int cmd_create(int, char **, char **);
 static int cmd_remove(int, char **, char **);
+static int cmd_update(int, char **, char **);
 static int cmd_trim(int, char **, char **);
 static int cmd_help(int, char **, char **);
 static int cmd_exit(int, char **, char **);
@@ -40,6 +41,7 @@ struct command cmd[] = {
 	{"fat", cmd_fat},
 	{"create", cmd_create},
 	{"remove", cmd_remove},
+	{"update", cmd_update},
 	{"trim", cmd_trim},
 	{"help", cmd_help},
 	{"exit", cmd_exit},
@@ -341,6 +343,34 @@ static int cmd_remove(int argc, char **argv, char **envp)
 			break;
 		case 2:
 			info.ops->remove(argv[1], cluster, 0);
+			info.ops->reload(cluster);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
+ * cmd_update - Update directory entry
+ * @argc:       argument count
+ * @argv:       argument vetor
+ * @envp:       environment pointer
+ *
+ * @return      0 (success)
+ */
+static int cmd_update(int argc, char **argv, char **envp)
+{
+	int index;
+
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			index = strtoul(argv[1], NULL, 10);
+			info.ops->update(cluster, index);
 			info.ops->reload(cluster);
 			break;
 		default:
