@@ -1219,17 +1219,22 @@ static void exfat_convert_exfattimezone(uint8_t *tz, int min)
  */
 static int exfat_parse_timezone(char *buf, uint8_t *tz)
 {
-	char op = 0;
+	char op = ' ';
 	char min = 0, hour = 0;
 	int ex = 0;
 
 	if (buf[0] == '\n')
 		return 0;
 
-	sscanf(buf, "%c%02hhd%02hhd",
-			&op,
-			&hour,
-			&min);
+	if (isdigit(buf[0]))
+		sscanf(buf, "%02hhd%02hhd",
+				&hour,
+				&min);
+	else
+		sscanf(buf, "%c%02hhd%02hhd",
+				&op,
+				&hour,
+				&min);
 	ex = hour * 60 + min;
 
 	switch (op) {
