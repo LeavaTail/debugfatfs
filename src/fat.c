@@ -57,7 +57,7 @@ int fat_clean(uint32_t);
 int fat_set_fat_entry(uint32_t, uint32_t);
 int fat_get_fat_entry(uint32_t, uint32_t *);
 int fat_print_dentry(uint32_t, size_t);
-int fat_alloc_cluster(uint32_t);
+int fat_set_bogus_entry(uint32_t);
 int fat_release_cluster(uint32_t);
 int fat_create(const char *, uint32_t, int);
 int fat_remove(const char *, uint32_t, int);
@@ -75,7 +75,7 @@ static const struct operations fat_ops = {
 	.setfat = fat_set_fat_entry,
 	.getfat = fat_get_fat_entry,
 	.dentry = fat_print_dentry,
-	.alloc = fat_alloc_cluster,
+	.alloc = fat_set_bogus_entry,
 	.release = fat_release_cluster,
 	.create = fat_create,
 	.remove = fat_remove,
@@ -1522,12 +1522,12 @@ out:
 }
 
 /**
- * fat_alloc_cluster - function to allocate cluster
- * @clu:               cluster index
+ * fat_set_bogus_entry - function to allocate cluster
+ * @clu:                 cluster index
  *
- * @return             0 (success)
+ * @return               0 (success)
  */
-int fat_alloc_cluster(uint32_t clu)
+int fat_set_bogus_entry(uint32_t clu)
 {
 	int ret = 0;
 

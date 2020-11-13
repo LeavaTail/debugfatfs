@@ -66,8 +66,8 @@ int exfat_clean(uint32_t);
 int exfat_set_fat_entry(uint32_t, uint32_t);
 int exfat_get_fat_entry(uint32_t, uint32_t *);
 int exfat_print_dentry(uint32_t, size_t);
-int exfat_alloc_cluster(uint32_t);
-int exfat_release_cluster(uint32_t);
+int exfat_set_bitmap(uint32_t);
+int exfat_clear_bitmap(uint32_t);
 int exfat_create(const char *, uint32_t, int);
 int exfat_remove(const char *, uint32_t, int);
 int exfat_update_dentry(uint32_t, int);
@@ -84,8 +84,8 @@ static const struct operations exfat_ops = {
 	.setfat = exfat_set_fat_entry,
 	.getfat = exfat_get_fat_entry,
 	.dentry = exfat_print_dentry,
-	.alloc = exfat_alloc_cluster,
-	.release = exfat_release_cluster,
+	.alloc = exfat_set_bitmap,
+	.release = exfat_clear_bitmap,
 	.create = exfat_create,
 	.remove = exfat_remove,
 	.update = exfat_update_dentry,
@@ -1713,25 +1713,25 @@ int exfat_print_dentry(uint32_t clu, size_t n)
 }
 
 /**
- * exfat_alloc_cluster - function to allocate cluster
- * @clu:                 cluster index
+ * exfat_set_bitmap - function to allocate cluster
+ * @clu:              cluster index
  *
- * @return                0 (success)
- *                       -1 (failed)
+ * @return            0 (success)
+ *                   -1 (failed)
  */
-int exfat_alloc_cluster(uint32_t clu)
+int exfat_set_bitmap(uint32_t clu)
 {
 	return exfat_save_bitmap(clu, 1);
 }
 
 /**
- * exfat_release_cluster - function to release cluster
- * @clu:                   cluster index
+ * exfat_clear_bitmap - function to release cluster
+ * @clu:                cluster index
  *
- * @return                 0 (success)
- *                        -1 (failed)
+ * @return              0 (success)
+ *                     -1 (failed)
  */
-int exfat_release_cluster(uint32_t clu)
+int exfat_clear_bitmap(uint32_t clu)
 {
 	return exfat_save_bitmap(clu, 0);
 }
