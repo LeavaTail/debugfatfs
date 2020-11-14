@@ -18,6 +18,7 @@ static uint32_t exfat_concat_cluster(struct exfat_fileinfo *, uint32_t, void **)
 static int exfat_load_bootsec(struct exfat_bootsec *);
 static void exfat_print_upcase(void);
 static void exfat_print_label(void);
+static int exfat_load_bitmap(uint32_t);
 static int exfat_save_bitmap(uint32_t, uint32_t);
 
 /* FAT-entry function prototype */
@@ -237,7 +238,7 @@ static void exfat_print_label(void)
 	pr_msg("%s\n", name);
 	free(name);
 }
-#if 0
+
 /**
  * exfat_load_bitmap - function to load allocation table
  * @clu:                          cluster index
@@ -263,7 +264,7 @@ static int exfat_load_bitmap(uint32_t clu)
 	entry = info.alloc_table[byte];
 	return (entry >> offset) & 0x01;
 }
-#endif
+
 /**
  * exfat_save_bitmap - function to save allocation table
  * @clu:               cluster index
