@@ -120,6 +120,12 @@ static uint32_t exfat_concat_cluster(struct exfat_fileinfo *f, uint32_t clu, voi
 		if (!(tmp = realloc(*data, info.cluster_size * cluster_num)))
 			return 0;
 		*data = tmp;
+		for (i = 1; i < cluster_num; i++) {
+			if (exfat_load_bitmap(clu + i) != 1) {
+				pr_warn("cluster %u isn't allocated cluster.\n", clu + i);
+				break;
+			}
+		}
 		get_clusters(*data + info.cluster_size, clu + 1, cluster_num - 1);
 		return cluster_num;
 	}
@@ -128,6 +134,8 @@ static uint32_t exfat_concat_cluster(struct exfat_fileinfo *f, uint32_t clu, voi
 	for (tmp_clu = clu; allocated < cluster_num; allocated++) { 
 		if (!(tmp_clu = exfat_check_fat_entry(tmp_clu)))
 			break;
+		if (exfat_load_bitmap(tmp_clu) != 1)
+			pr_warn("cluster %u isn't allocated cluster.\n", tmp_clu);
 	}
 
 	if (!(tmp = realloc(*data, info.cluster_size * allocated)))
