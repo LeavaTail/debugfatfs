@@ -1752,8 +1752,9 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint8_t len;
 	uint8_t count;
-	size_t size = info.cluster_size;
-	size_t entries = size / sizeof(struct exfat_dentry);
+	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
+	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
+	size_t cluster_num = 1;
 	size_t name_len;
 	struct exfat_dentry *d;
 
@@ -1762,8 +1763,12 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	count = ((len + ENTRY_NAME_MAX - 1) / ENTRY_NAME_MAX) + 1;
 
 	/* Lookup last entry */
-	data = malloc(size);
+	data = malloc(info.cluster_size);
 	get_cluster(data, clu);
+
+	cluster_num = exfat_concat_cluster(f, clu, &data);
+	entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
+
 	for (i = 0; i < entries; i++) {
 		d = ((struct exfat_dentry *)data) + i;
 		if (d->EntryType == DENTRY_UNUSED)
@@ -1981,14 +1986,21 @@ int exfat_trim(uint32_t clu)
 {
 	int i, j;
 	uint8_t used = 0;
+	uint32_t next_clu;
 	void *data;
-	size_t size = info.cluster_size;
-	size_t entries = size / sizeof(struct exfat_dentry);
+	size_t index = exfat_get_index(clu);
+	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
+	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
+	size_t cluster_num = 1;
+	size_t allocate_cluster = 1;
 	struct exfat_dentry *src, *dist;
 
 	/* Lookup last entry */
-	data = malloc(size);
+	data = malloc(info.cluster_size);
 	get_cluster(data, clu);
+
+	cluster_num = exfat_concat_cluster(f, clu, &data);
+	entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
 
 	for (i = 0, j = 0; i < entries; i++) {
 		src = ((struct exfat_dentry *)data) + i;
@@ -2004,13 +2016,35 @@ int exfat_trim(uint32_t clu)
 			memcpy(dist, src, sizeof(struct exfat_dentry));
 	}
 
+	allocate_cluster = ((sizeof(struct exfat_dentry) * j) / info.cluster_size) + 1;
 	while (j < entries) {
 		dist = ((struct exfat_dentry *)data) + j++;
 		memset(dist, 0, sizeof(struct exfat_dentry));
-		dist->EntryType = 0x7f;
 	}
 
-	set_cluster(data, clu);
+	/* NO_FAT_CHAIN */
+	if (f->flags & ALLOC_NOFATCHAIN) {
+		set_clusters(data, clu, allocate_cluster);
+		set_clusters(data + info.cluster_size * allocate_cluster, clu, cluster_num - allocate_cluster);
+		for (i = allocate_cluster + 1; i <= cluster_num; i++)
+			exfat_save_bitmap(clu + i, 0);
+		goto out;
+	}
+
+	/* FAT_CHAIN */
+	for (i = 0; i < allocate_cluster; i++) {
+		set_cluster(data + info.cluster_size * i, clu);
+		clu = exfat_check_fat_entry(clu);
+	}
+	for (; i < cluster_num; i++) {
+		set_cluster(data + info.cluster_size * i, clu);
+		next_clu = exfat_check_fat_entry(clu);
+		exfat_update_fat_entry(clu, EXFAT_LASTCLUSTER);
+		exfat_save_bitmap(clu, 0);
+		clu = next_clu;
+	}
+
+out:
 	free(data);
 	return 0;
 }
