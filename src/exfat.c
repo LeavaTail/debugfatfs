@@ -1583,7 +1583,7 @@ int exfat_print_dentry(uint32_t clu, size_t n)
 			break;
 		case DENTRY_BITMAP:
 			pr_msg("BitmapFlags                     : %02x\n", d.dentry.bitmap.BitmapFlags);
-			pr_info("  %s Allocation Bitmap\n", d.dentry.bitmap.BitmapFlags & 0x80 ? "2nd" : "1st");
+			pr_info("  %s Allocation Bitmap\n", d.dentry.bitmap.BitmapFlags & ACTIVEFAT ? "2nd" : "1st");
 			pr_msg("Reserved                        : ");
 			for (i = 0; i < 18; i++)
 				pr_msg("%02x", d.dentry.bitmap.Reserved[i]);
