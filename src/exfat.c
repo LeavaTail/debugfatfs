@@ -518,7 +518,7 @@ static int exfat_traverse_directory(uint32_t clu)
 	cluster_num = exfat_concat_cluster(f, clu, &data);
 	entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
 
-	for (i = 0; i < entries; i++){
+	for (i = 0; i < entries; i++) {
 		d = ((struct exfat_dentry *)data)[i];
 
 		switch (d.EntryType) {
@@ -1763,7 +1763,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	/* Lookup last entry */
 	data = malloc(size);
 	get_cluster(data, clu);
-	for (i = 0; i < entries; i++){
+	for (i = 0; i < entries; i++) {
 		d = ((struct exfat_dentry *)data) + i;
 		if (d->EntryType == DENTRY_UNUSED)
 			break;
