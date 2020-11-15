@@ -1868,6 +1868,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint8_t len;
 	uint8_t count;
+	size_t index = exfat_get_index(clu);
 	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
 	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
 	size_t cluster_num = 1;
