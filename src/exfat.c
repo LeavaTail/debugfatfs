@@ -604,37 +604,6 @@ static int exfat_get_index(uint32_t clu)
 	return i;
 }
 
-#if 0
-/**
- * exfat_get_freed_index - get unused cluster index by allocation bitmap
- * @clup:                  cluster index pointer (Output)
- *
- * @return                 0 (found unused allocation cluster)
- *                        -1 (failed)
- */
-static int exfat_get_freed_index(uint32_t *clup)
-{
-	int offset, byte;
-	uint8_t mask = 0x01, entry;
-
-	if (!info.alloc_table)
-		exfat_traverse_directory(info.root_offset);
-
-	for (byte = 0; byte < (info.cluster_count / CHAR_BIT); byte++) {
-		entry = info.alloc_table[byte];
-		for (offset = 0; offset < CHAR_BIT; offset++, entry >>= 1) {
-			if (!(entry & mask)) {
-				*clup = (byte * CHAR_BIT) + offset + EXFAT_FIRST_CLUSTER;
-				exfat_save_bitmap(*clup, 1);
-				return 0;
-			}
-		}
-	}
-
-	return -1;
-}
-#endif
-
 /**
  * exfat_traverse_directory - function to traverse one directory
  * @clu:                      index of the cluster want to check
