@@ -1293,10 +1293,11 @@ static int exfat_update_filesize(struct exfat_fileinfo *f, uint32_t clu)
 		get_cluster(data, parent_clu);
 		for (j = 0; j < (info.cluster_size / sizeof(struct exfat_dentry)); j++) {
 			d = ((struct exfat_dentry *)data)[j];
-			if (d.EntryType == DENTRY_STREAM && d.dentry.stream.FirstCluster == clu)
+			if (d.EntryType == DENTRY_STREAM && d.dentry.stream.FirstCluster == clu) {
 				d.dentry.stream.DataLength = f->datalen;
 				d.dentry.stream.GeneralSecondaryFlags = f->flags;
 				goto out;
+			}
 		}
 		/* traverse next cluster */
 		if (dir->flags & ALLOC_NOFATCHAIN)
