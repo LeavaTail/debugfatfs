@@ -25,6 +25,12 @@ static int exfat_save_bitmap(uint32_t, uint32_t);
 static uint32_t exfat_check_fat_entry(uint32_t);
 static uint32_t exfat_update_fat_entry(uint32_t, uint32_t);
 
+/* cluster function prototype */
+static int exfat_get_last_cluster(struct exfat_fileinfo *, uint32_t);
+static int exfat_alloc_clusters(struct exfat_fileinfo *, uint32_t, size_t);
+static int exfat_free_clusters(struct exfat_fileinfo *, uint32_t, size_t);
+static int exfat_new_clusters(size_t);
+
 /* Directory chain function prototype */
 static int exfat_check_dchain(uint32_t);
 static int exfat_get_index(uint32_t);
@@ -389,6 +395,139 @@ static uint32_t exfat_update_fat_entry(uint32_t clu, uint32_t entry)
 	return ret;
 }
 
+/*************************************************************************************************/
+/*                                                                                               */
+/* CLUSTER FUNCTION FUNCTION                                                                     */
+/*                                                                                               */
+/*************************************************************************************************/
+/**
+ * exfat_get_last_cluster - find last cluster in file
+ * @f:                      file information pointer
+ * @clu:                    first cluster
+ *
+ * @return                  Last cluster
+ *                          -1 (Failed)
+ */
+static int exfat_get_last_cluster(struct exfat_fileinfo *f, uint32_t clu)
+{
+	int i;
+	uint32_t next_clu;
+	size_t cluster_num = (f->datalen + (info.cluster_size - 1)) / info.cluster_size;
+
+	/* NO_FAT_CHAIN */
+	if (f->flags & ALLOC_NOFATCHAIN)
+		return clu + cluster_num - 1;
+
+	/* FAT_CHAIN */
+	for (i = 0; i < cluster_num; i++) {
+		next_clu = exfat_check_fat_entry(clu);
+		if (!next_clu)
+			return clu;
+		clu = next_clu;
+	}
+	return -1;
+}
+
+/**
+ * exfat_alloc_clusters - Allocate cluster to file
+ * @f:                    file information pointer
+ * @clu:                  first cluster
+ * @num_alloc:            number of cluster
+ *
+ * @return                the number of allocated cluster
+ */
+static int exfat_alloc_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t num_alloc)
+{
+	uint32_t next_clu;
+	uint32_t last_clu;
+
+	clu = next_clu = last_clu = exfat_get_last_cluster(f, clu);
+	for (next_clu = last_clu + 1; next_clu != last_clu; next_clu++) {
+		if (next_clu > info.cluster_count - 1)
+			next_clu = EXFAT_FIRST_CLUSTER;
+
+		if (exfat_load_bitmap(next_clu))
+			continue;
+
+		exfat_update_fat_entry(next_clu, EXFAT_LASTCLUSTER);
+		exfat_update_fat_entry(clu, next_clu);
+		exfat_save_bitmap(clu, 1);
+		clu = next_clu;
+		if (--num_alloc == 0)
+			break;
+
+}
+
+	return num_alloc;
+}
+
+/**
+ * exfat_free_clusters - Free cluster in file
+ * @f:                   file information pointer
+ * @clu:                 first cluster
+ * @num_alloc:           number of cluster
+ *
+ * @return               0 (success)
+ */
+static int exfat_free_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t num_alloc)
+{
+	int i;
+	uint32_t next_clu;
+	size_t cluster_num = (f->datalen + (info.cluster_size - 1)) / info.cluster_size;
+
+	/* NO_FAT_CHAIN */
+	if (f->flags & ALLOC_NOFATCHAIN) {
+		for (i = cluster_num - num_alloc; i < cluster_num; i++)
+			exfat_save_bitmap(clu + i, 0);
+		return 0;
+	}
+
+	/* FAT_CHAIN */
+	for (i = 0; i < cluster_num - num_alloc - 1; i++)
+		clu = exfat_check_fat_entry(clu);
+
+	while (i++ < cluster_num - 1) {
+		next_clu = exfat_check_fat_entry(clu);
+		exfat_update_fat_entry(clu, EXFAT_LASTCLUSTER);
+		exfat_save_bitmap(next_clu, 0);
+		clu = next_clu;
+	}
+
+	return 0;
+}
+
+/**
+ * exfat_new_cluster - Prepare to new cluster
+ * @num_alloc:         number of cluster
+ *
+ * @return             allocated first cluster index
+ */
+static int exfat_new_clusters(size_t num_alloc)
+{
+	uint32_t next_clu, clu;
+	uint32_t fst_clu = 0;
+
+	for (next_clu = EXFAT_FIRST_CLUSTER; next_clu < info.cluster_count; next_clu++) {
+		if (exfat_load_bitmap(next_clu))
+			continue;
+
+		if (!fst_clu) {
+			fst_clu = clu = next_clu;
+			exfat_update_fat_entry(fst_clu, EXFAT_LASTCLUSTER);
+			exfat_save_bitmap(fst_clu, 1);
+		} else {
+			exfat_update_fat_entry(next_clu, EXFAT_LASTCLUSTER);
+			exfat_update_fat_entry(clu, next_clu);
+			exfat_save_bitmap(clu, 1);
+			clu = next_clu;
+		}
+
+		if (--num_alloc == 0)
+			break;
+	}
+
+	return fst_clu;
+}
 /*************************************************************************************************/
 /*                                                                                               */
 /* DIRECTORY CHAIN FUNCTION                                                                      */
