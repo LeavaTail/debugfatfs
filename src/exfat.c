@@ -440,6 +440,7 @@ static int exfat_alloc_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t n
 {
 	uint32_t next_clu;
 	uint32_t last_clu;
+	int total_alloc = num_alloc;
 
 	clu = next_clu = last_clu = exfat_get_last_cluster(f, clu);
 	for (next_clu = last_clu + 1; next_clu != last_clu; next_clu++) {
@@ -453,12 +454,12 @@ static int exfat_alloc_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t n
 		exfat_update_fat_entry(clu, next_clu);
 		exfat_save_bitmap(clu, 1);
 		clu = next_clu;
-		if (--num_alloc == 0)
+		if (--total_alloc == 0)
 			break;
 
-}
-
-	return num_alloc;
+	}
+	f->datalen += num_alloc * info.cluster_size;
+	return total_alloc;
 }
 
 /**
@@ -493,6 +494,7 @@ static int exfat_free_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t nu
 		clu = next_clu;
 	}
 
+	f->datalen -= num_alloc * info.cluster_size;
 	return 0;
 }
 
