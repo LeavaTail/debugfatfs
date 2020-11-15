@@ -56,6 +56,7 @@ static uint16_t exfat_calculate_checksum(unsigned char *, unsigned char);
 static uint32_t exfat_calculate_tablechecksum(unsigned char *, uint64_t);
 static void exfat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
+static int exfat_update_filesize(struct exfat_fileinfo *, uint32_t);
 static void exfat_convert_unixtime(struct tm *, uint32_t, uint8_t, uint8_t);
 static int exfat_convert_timezone(uint8_t);
 static void exfat_convert_exfattime(struct tm *, uint32_t *, uint8_t *);
@@ -438,6 +439,7 @@ static int exfat_get_last_cluster(struct exfat_fileinfo *f, uint32_t clu)
  */
 static int exfat_alloc_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t num_alloc)
 {
+	uint32_t tmp = clu;
 	uint32_t next_clu;
 	uint32_t last_clu;
 	int total_alloc = num_alloc;
@@ -459,6 +461,7 @@ static int exfat_alloc_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t n
 
 	}
 	f->datalen += num_alloc * info.cluster_size;
+	exfat_update_filesize(f, tmp);
 	return total_alloc;
 }
 
@@ -473,6 +476,7 @@ static int exfat_alloc_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t n
 static int exfat_free_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t num_alloc)
 {
 	int i;
+	uint32_t tmp = clu;
 	uint32_t next_clu;
 	size_t cluster_num = (f->datalen + (info.cluster_size - 1)) / info.cluster_size;
 
@@ -495,6 +499,7 @@ static int exfat_free_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t nu
 	}
 
 	f->datalen -= num_alloc * info.cluster_size;
+	exfat_update_filesize(f, tmp);
 	return 0;
 }
 
@@ -1248,6 +1253,62 @@ static uint16_t exfat_calculate_namehash(uint16_t *name, uint8_t len)
 		hash = ((hash & 1) ? 0x8000 : 0) + (hash >> 1) + (uint16_t)buffer[index];
 
 	return hash;
+}
+
+/**
+ * exfat_update_filesize - flush filesize to disk
+ * @f:                     file information pointer
+ * @clu:                   first cluster
+ *
+ * @return                 0 (success)
+ *                        -1 (Failed)
+ */
+static int exfat_update_filesize(struct exfat_fileinfo *f, uint32_t clu)
+{
+	int i, j;
+	uint32_t parent_clu = 0;
+	uint32_t target_clu = 0;
+	size_t cluster_num;
+	struct exfat_fileinfo *dir;
+	struct exfat_dentry d;
+	void *data;
+
+	for (i = 0; i < info.root_size && info.root[i]; i++) {
+		if (search_node2(info.root[i], clu)) {
+			parent_clu = info.root[i]->index;
+			dir = info.root[i]->data;
+			break;
+		}
+	}
+
+	if (!parent_clu) {
+		pr_err("Can't find cluster %u parent directory.\n", clu);
+		return -1;
+	}
+
+	cluster_num = (dir->datalen + (info.cluster_size - 1)) / info.cluster_size;
+	data = malloc(info.cluster_size);
+
+	for (i = 0; i < cluster_num; i++) {
+		get_cluster(data, parent_clu);
+		for (j = 0; j < (info.cluster_size / sizeof(struct exfat_dentry)); j++) {
+			d = ((struct exfat_dentry *)data)[j];
+			if (d.EntryType == DENTRY_STREAM && d.dentry.stream.FirstCluster == clu)
+				d.dentry.stream.DataLength = f->datalen;
+				d.dentry.stream.GeneralSecondaryFlags = f->flags;
+				goto out;
+		}
+		/* traverse next cluster */
+		if (dir->flags & ALLOC_NOFATCHAIN)
+			parent_clu++;
+		else
+			parent_clu = exfat_check_fat_entry(parent_clu);
+	}
+
+out:
+	set_cluster(data, target_clu);
+	free(data);
+	return 0;
 }
 
 /**
