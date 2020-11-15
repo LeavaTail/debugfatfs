@@ -1936,6 +1936,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
 	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
 	size_t cluster_num = 1;
+	size_t new_cluster_num = 1;
 	size_t name_len;
 	struct exfat_dentry *d;
 
@@ -1954,6 +1955,14 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 		d = ((struct exfat_dentry *)data) + i;
 		if (d->EntryType == DENTRY_UNUSED)
 			break;
+	}
+
+	new_cluster_num = (i + count + 2) * sizeof(struct exfat_dentry) / info.cluster_size;
+	if (new_cluster_num - cluster_num) {
+		exfat_alloc_clusters(f, clu, new_cluster_num - cluster_num);
+		exfat_update_filesize(f, clu);
+		cluster_num = exfat_concat_cluster(f, clu, &data);
+		entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
 	}
 
 	exfat_init_file(d, uniname, len);
@@ -2167,7 +2176,7 @@ int exfat_trim(uint32_t clu)
 {
 	int i, j;
 	uint8_t used = 0;
-	uint32_t next_clu;
+	uint32_t next_clu = clu;
 	void *data;
 	size_t index = exfat_get_index(clu);
 	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
@@ -2207,25 +2216,17 @@ int exfat_trim(uint32_t clu)
 	if (f->flags & ALLOC_NOFATCHAIN) {
 		set_clusters(data, clu, allocate_cluster);
 		set_clusters(data + info.cluster_size * allocate_cluster, clu, cluster_num - allocate_cluster);
-		for (i = allocate_cluster + 1; i <= cluster_num; i++)
-			exfat_save_bitmap(clu + i, 0);
 		goto out;
 	}
 
 	/* FAT_CHAIN */
 	for (i = 0; i < allocate_cluster; i++) {
-		set_cluster(data + info.cluster_size * i, clu);
-		clu = exfat_check_fat_entry(clu);
-	}
-	for (; i < cluster_num; i++) {
-		set_cluster(data + info.cluster_size * i, clu);
-		next_clu = exfat_check_fat_entry(clu);
-		exfat_update_fat_entry(clu, EXFAT_LASTCLUSTER);
-		exfat_save_bitmap(clu, 0);
-		clu = next_clu;
+		set_cluster(data + info.cluster_size * i, next_clu);
+		next_clu = exfat_check_fat_entry(next_clu);
 	}
 
 out:
+	exfat_free_clusters(f, clu, cluster_num - allocate_cluster);
 	free(data);
 	return 0;
 }
