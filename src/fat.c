@@ -1297,6 +1297,7 @@ int fat_reload_directory(uint32_t clu)
 	fat_clean_dchain(index);
 	f = ((struct fat_fileinfo *)(info.root[index])->data);
 	f->datalen = 0;
+	f->cached = 0;
 	return fat_traverse_directory(clu);
 }
 
