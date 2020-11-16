@@ -149,6 +149,8 @@ struct device_info {
 #define OPTION_FORCE        (1 << 11)
 #define OPTION_ENTRY        (1 << 12)
 
+#define CREATE_DIRECTORY    (1 << 0)
+
 struct directory {
 	unsigned char *name;
 	size_t namelen;

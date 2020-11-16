@@ -294,20 +294,20 @@ static int cmd_fat(int argc, char **argv, char **envp)
  */
 static int cmd_create(int argc, char **argv, char **envp)
 {
-	int opt, interactive = 0;
+	int opt, create_option = 0;
 
 	/* To restart scanning a new argument vector */
 	optind = 1;
 
-	while ((opt = getopt(argc, argv, "i")) != -1) {
+	while ((opt = getopt(argc, argv, "d")) != -1) {
 		switch (opt) {
-			case 'i':
-				interactive = 1;
+			case 'd':
+				create_option = CREATE_DIRECTORY;
 				break;
 			default:
-				fprintf(stderr,"Usage: %s [-i] FILE\n", argv[0]);
+				fprintf(stderr,"Usage: %s [-d] FILE\n", argv[0]);
 				fprintf(stderr, "\n");
-				fprintf(stderr, "  -i\tprompt before create dentry\n");
+				fprintf(stderr, "  -d\tCreate directory\n");
 				return 0;
 		}
 	}
@@ -317,7 +317,7 @@ static int cmd_create(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 1:
-			info.ops->create(argv[optind], cluster, interactive);
+			info.ops->create(argv[optind], cluster, create_option);
 			info.ops->reload(cluster);
 			break;
 		default:

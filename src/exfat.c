@@ -1966,6 +1966,10 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	}
 
 	exfat_init_file(d, uniname, len);
+	if (opt & CREATE_DIRECTORY) {
+		d->dentry.file.FileAttributes = ATTR_DIRECTORY;
+		d->dentry.stream.FirstCluster = exfat_new_clusters(1);
+	}
 	d = ((struct exfat_dentry *)data) + i + 1;
 	exfat_init_stream(d, uniname, len);
 	d = ((struct exfat_dentry *)data) + i + 2;
