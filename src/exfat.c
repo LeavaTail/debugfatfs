@@ -623,6 +623,7 @@ static int exfat_traverse_directory(uint32_t clu)
 	int i, j, name_len;
 	uint8_t remaining;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
+	uint32_t checksum = 0;
 	uint64_t len;
 	size_t index = exfat_get_index(clu);
 	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
@@ -665,6 +666,11 @@ static int exfat_traverse_directory(uint32_t clu)
 						d.dentry.upcase.FirstCluster,
 						d.dentry.upcase.DataLength);
 				get_clusters(info.upcase_table, d.dentry.upcase.FirstCluster, len);
+				checksum = exfat_calculate_tablechecksum((unsigned char *)info.upcase_table, len);
+				if (checksum != d.dentry.upcase.TableCheckSum)
+					pr_warn("Up-case table checksum is difference. (dentry: %x, calculate: %x)\n",
+							d.dentry.upcase.TableCheckSum,
+							checksum);
 				break;
 			case DENTRY_VOLUME:
 				info.vol_length = d.dentry.vol.CharacterCount;
