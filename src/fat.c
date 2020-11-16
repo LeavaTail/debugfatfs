@@ -1199,7 +1199,7 @@ int fat_lookup(uint32_t clu, char *name)
 		found = false;
 		index = fat_get_index(clu);
 		f = (struct fat_fileinfo *)info.root[index]->data;
-		if ((!info.root[index]) || (f->datalen == 0)) {
+		if ((!info.root[index]) || (!(f->cached))) {
 			pr_debug("Directory hasn't load yet, or This Directory doesn't exist in filesystem.\n");
 			fat_traverse_directory(clu);
 			index = fat_get_index(clu);

@@ -1537,7 +1537,7 @@ int exfat_lookup(uint32_t clu, char *name)
 		found = false;
 		index = exfat_get_index(clu);
 		f = (struct exfat_fileinfo *)info.root[index]->data;
-		if ((!info.root[index]) || (f->datalen == 0)) {
+		if ((!info.root[index]) || (!(f->cached))) {
 			pr_debug("Directory hasn't load yet, or This Directory doesn't exist in filesystem.\n");
 			exfat_traverse_directory(clu);
 			index = exfat_get_index(clu);
