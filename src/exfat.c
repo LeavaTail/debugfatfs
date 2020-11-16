@@ -185,7 +185,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot)
 		f->name = malloc(sizeof(unsigned char *) * (strlen("/") + 1));
 		strncpy((char *)f->name, "/", strlen("/") + 1);
 		f->namelen = 1;
-		f->datalen = (size_t) - 1;
+		f->datalen = info.cluster_count * info.cluster_size;
 		f->attr = ATTR_DIRECTORY;
 		f->hash = 0;
 		info.root[0] = init_node2(info.root_offset, f);
