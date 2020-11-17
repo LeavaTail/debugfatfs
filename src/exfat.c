@@ -24,6 +24,7 @@ static int exfat_save_bitmap(uint32_t, uint32_t);
 /* FAT-entry function prototype */
 static uint32_t exfat_check_fat_entry(uint32_t);
 static uint32_t exfat_update_fat_entry(uint32_t, uint32_t);
+static int exfat_create_fat_chain(struct exfat_fileinfo *, uint32_t);
 
 /* cluster function prototype */
 static int exfat_get_last_cluster(struct exfat_fileinfo *, uint32_t);
@@ -396,6 +397,24 @@ static uint32_t exfat_update_fat_entry(uint32_t clu, uint32_t entry)
 	return ret;
 }
 
+/**
+ * exfat_create_fat_chain - Change NoFatChain to FatChain in file
+ * @f:                      file information pointer
+ * @clu:                    first cluster
+ *
+ * @retrun:                 0 (success)
+ */
+static int exfat_create_fat_chain(struct exfat_fileinfo *f, uint32_t clu)
+{
+	size_t cluster_num = (f->datalen + (info.cluster_size - 1)) / info.cluster_size;
+
+	while (--cluster_num) {
+		exfat_update_fat_entry(clu, clu + 1);
+		clu++;
+	}
+	return 0;
+}
+
 /*************************************************************************************************/
 /*                                                                                               */
 /* CLUSTER FUNCTION FUNCTION                                                                     */
@@ -443,6 +462,7 @@ static int exfat_alloc_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t n
 	uint32_t next_clu;
 	uint32_t last_clu;
 	int total_alloc = num_alloc;
+	bool nofatchain = true;
 
 	clu = next_clu = last_clu = exfat_get_last_cluster(f, clu);
 	for (next_clu = last_clu + 1; next_clu != last_clu; next_clu++) {
@@ -452,6 +472,8 @@ static int exfat_alloc_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t n
 		if (exfat_load_bitmap(next_clu))
 			continue;
 
+		if (nofatchain && (next_clu - clu != 1))
+			nofatchain = false;
 		exfat_update_fat_entry(next_clu, EXFAT_LASTCLUSTER);
 		exfat_update_fat_entry(clu, next_clu);
 		exfat_save_bitmap(clu, 1);
@@ -459,6 +481,10 @@ static int exfat_alloc_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t n
 		if (--total_alloc == 0)
 			break;
 
+	}
+	if ((f->flags & ALLOC_NOFATCHAIN) && !nofatchain) {
+		f->flags &= ~ALLOC_NOFATCHAIN;
+		exfat_create_fat_chain(f, tmp);
 	}
 	f->datalen += num_alloc * info.cluster_size;
 	exfat_update_filesize(f, tmp);
