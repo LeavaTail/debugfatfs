@@ -25,6 +25,12 @@ static uint32_t fat12_get_fat_entry(uint32_t);
 static uint32_t fat16_get_fat_entry(uint32_t);
 static uint32_t fat32_get_fat_entry(uint32_t);
 
+/* cluster function prototype */
+static int fat_get_last_cluster(struct fat_fileinfo *, uint32_t);
+static int fat_alloc_clusters(struct fat_fileinfo *, uint32_t, size_t);
+static int fat_free_clusters(struct fat_fileinfo *, uint32_t, size_t);
+static int fat_new_clusters(size_t);
+
 /* Directory chain function prototype */
 static int fat_check_dchain(uint32_t);
 static int fat_get_index(uint32_t);
@@ -467,6 +473,126 @@ static uint32_t fat32_get_fat_entry(uint32_t clu)
 	return ret;
 }
 
+/*************************************************************************************************/
+/*                                                                                               */
+/* CLUSTER FUNCTION FUNCTION                                                                     */
+/*                                                                                               */
+/*************************************************************************************************/
+/**
+ * fat_get_last_cluster - find last cluster in file
+ * @f:                    file information pointer
+ * @clu:                  first cluster
+ *
+ * @return                Last cluster
+ *                        -1 (Failed)
+ */
+static int fat_get_last_cluster(struct fat_fileinfo *f, uint32_t clu)
+{
+	uint32_t ret = 0x0FFFFFFF;
+	size_t allocated = 1;
+
+	for (allocated = 0; ret != 0; allocated++, clu = ret)
+		fat_get_fat_entry(clu, &ret);
+
+	return clu;
+}
+
+/**
+ * fat_alloc_clusters - Allocate cluster to file
+ * @f:                  file information pointer
+ * @clu:                first cluster
+ * @num_alloc:          number of cluster
+ *
+ * @return              the number of allocated cluster
+ */
+static int fat_alloc_clusters(struct fat_fileinfo *f, uint32_t clu, size_t num_alloc)
+{
+	uint32_t tmp = clu;
+	uint32_t next_clu;
+	uint32_t last_clu;
+	int total_alloc = num_alloc;
+
+	clu = next_clu = last_clu = fat_get_last_cluster(f, clu);
+	for (next_clu = last_clu + 1; next_clu != last_clu; next_clu++) {
+		if (next_clu > info.cluster_count - 1)
+			next_clu = EXFAT_FIRST_CLUSTER;
+
+		fat_set_fat_entry(next_clu, EXFAT_LASTCLUSTER);
+		fat_set_fat_entry(clu, next_clu);
+		clu = next_clu;
+		if (--total_alloc == 0)
+			break;
+
+	}
+	return total_alloc;
+}
+
+/**
+ * fat_free_clusters - Free cluster in file
+ * @f:                 file information pointer
+ * @clu:               first cluster
+ * @num_alloc:         number of cluster
+ *
+ * @return             0 (success)
+ */
+static int fat_free_clusters(struct fat_fileinfo *f, uint32_t clu, size_t num_alloc)
+{
+	int i;
+	uint32_t tmp = clu;
+	uint32_t next_clu = 0x0FFFFFFF;
+	size_t cluster_num = 0;
+	uint32_t ret = EXFAT_LASTCLUSTER;
+
+	for (cluster_num = 0; next_clu ;cluster_num++) {
+		fat_get_fat_entry(tmp, &next_clu);
+		tmp = next_clu;
+	}
+
+	for (i = 0; i < cluster_num - num_alloc - 1; i++) {
+		fat_get_fat_entry(clu, &next_clu);
+		clu = next_clu;
+	}
+	while (i++ < cluster_num - 1) {
+		fat_get_fat_entry(clu, &next_clu);
+		fat_set_fat_entry(clu, ret);
+		ret = 0;
+		clu = next_clu;
+	}
+
+	return 0;
+}
+
+/**
+ * fat_new_cluster - Prepare to new cluster
+ * @num_alloc:       number of cluster
+ *
+ * @return           allocated first cluster index
+ */
+static int fat_new_clusters(size_t num_alloc)
+{
+	uint32_t next_clu, clu;
+	uint32_t fst_clu = 0;
+
+	for (clu = EXFAT_FIRST_CLUSTER; clu < info.cluster_count; clu++) {
+		fat_get_fat_entry(clu, &next_clu);
+		if (!next_clu)
+			continue;
+
+		if (!fst_clu) {
+			fst_clu = clu = next_clu;
+			fat_set_fat_entry(fst_clu, EXFAT_LASTCLUSTER);
+		} else {
+			fat_set_fat_entry(next_clu, EXFAT_LASTCLUSTER);
+			fat_set_fat_entry(clu, next_clu);
+			clu = next_clu;
+		}
+
+		if (--num_alloc == 0)
+			break;
+	}
+
+	return fst_clu;
+}
 /*************************************************************************************************/
 /*                                                                                               */
 /* DIRECTORY CHAIN FUNCTION                                                                      */
