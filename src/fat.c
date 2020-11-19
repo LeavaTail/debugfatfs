@@ -35,7 +35,6 @@ static int fat_new_clusters(size_t);
 static int fat_check_dchain(uint32_t);
 static int fat_get_index(uint32_t);
 static int fat_traverse_directory(uint32_t);
-static uint8_t fat_calculate_checksum(unsigned char *);
 int fat_clean_dchain(uint32_t);
 
 /* File function prototype */
@@ -48,6 +47,7 @@ static void fat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static int fat_create_shortname(uint16_t *, char *);
 static int fat_convert_shortname(const char *, char *);
 static int fat_create_nameentry(const char *, char *, uint16_t *);
+static uint8_t fat_calculate_checksum(unsigned char *);
 static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
 static void fat_convert_fattime(struct tm *, uint16_t *, uint16_t *, uint8_t *);
 static int fat_validate_character(const char);
@@ -751,23 +751,6 @@ static int fat_traverse_directory(uint32_t clu)
 }
 
 /**
- * fat_calculate_checksum - Calculate file entry Checksum
- * @DIR_Name:               shortname
- *
- * @return                  Checksum
- */
-static uint8_t fat_calculate_checksum(unsigned char *DIR_Name)
-{
-	int i;
-	uint8_t chksum;
-
-	for (i = 11; i != 0; i--) {
-		chksum = ((chksum & 1) & 0x80) + (chksum >> 1) + *DIR_Name++;
-	}
-	return chksum;
-}
-
-/**
  * fat_clean_dchain - function to clean opeartions
  * @index:            directory chain index
  *
@@ -1159,6 +1142,23 @@ numtail:
 		return name_len;
 	}
 	return 0;
+}
+
+/**
+ * fat_calculate_checksum - Calculate file entry Checksum
+ * @DIR_Name:               shortname
+ *
+ * @return                  Checksum
+ */
+static uint8_t fat_calculate_checksum(unsigned char *DIR_Name)
+{
+	int i;
+	uint8_t chksum;
+
+	for (i = 11; i != 0; i--) {
+		chksum = ((chksum & 1) & 0x80) + (chksum >> 1) + *DIR_Name++;
+	}
+	return chksum;
 }
 
 /**
