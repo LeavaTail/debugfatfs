@@ -388,7 +388,10 @@ static uint32_t exfat_check_fat_entry(uint32_t clu)
 		pr_debug("cluster: %u is invalid.\n", clu);
 	} else {
 		ret = fat[offset];
-		pr_debug("cluster: %u has chain. next is 0x%x.\n", clu, fat[offset]);
+		if (ret == EXFAT_LASTCLUSTER)
+			ret = 0;
+		else
+			pr_debug("cluster: %u has chain. next is 0x%x.\n", clu, fat[offset]);
 	}
 
 	free(fat);
