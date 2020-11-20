@@ -1997,6 +1997,7 @@ int fat_trim(uint32_t clu)
 	size_t size;
 	size_t entries;
 	size_t cluster_num = 1;
+	size_t allocate_cluster = 1;
 	struct fat_dentry *src, *dist;
 
 	/* Lookup last entry */
@@ -2026,16 +2027,18 @@ int fat_trim(uint32_t clu)
 			memcpy(dist, src, sizeof(struct fat_dentry));
 	}
 
+	allocate_cluster = ((sizeof(struct fat_dentry) * j) / info.cluster_size) + 1;
 	while (j < entries) {
 		dist = ((struct fat_dentry *)data) + j++;
 		memset(dist, 0, sizeof(struct fat_dentry));
-		dist->dentry.dir.DIR_Name[0] = DENTRY_DELETED;
 	}
 
-	if (clu)
+	if (clu) {
 		fat_set_cluster(f, clu, data);
-	else
+		fat_free_clusters(f, clu, cluster_num - allocate_cluster);
+	} else {
 		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	}
 	free(data);
 	return 0;
 }
