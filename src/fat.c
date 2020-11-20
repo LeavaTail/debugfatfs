@@ -147,6 +147,7 @@ static uint32_t fat_set_cluster(struct fat_fileinfo *f, uint32_t clu, void *data
 	for (cluster_num = 0; ret != 0; cluster_num++, tmp_clu = ret)
 		fat_get_fat_entry(tmp_clu, &ret);
 
+	ret = clu;
 	for (allocated = 0; allocated < cluster_num; allocated++) {
 		set_cluster(data + info.cluster_size * allocated, ret);
 		fat_get_fat_entry(clu, &ret);
