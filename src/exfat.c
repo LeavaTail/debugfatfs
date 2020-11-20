@@ -726,7 +726,7 @@ static int exfat_traverse_directory(uint32_t clu)
 						d.dentry.upcase.FirstCluster,
 						d.dentry.upcase.DataLength);
 				get_clusters(info.upcase_table, d.dentry.upcase.FirstCluster, len);
-				checksum = exfat_calculate_tablechecksum((unsigned char *)info.upcase_table, len);
+				checksum = exfat_calculate_tablechecksum((unsigned char *)info.upcase_table, info.upcase_size);
 				if (checksum != d.dentry.upcase.TableCheckSum)
 					pr_warn("Up-case table checksum is difference. (dentry: %x, calculate: %x)\n",
 							d.dentry.upcase.TableCheckSum,
