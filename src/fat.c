@@ -219,7 +219,7 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 	strncpy((char *)f->name, "/", strlen("/") + 1);
 	f->uniname = NULL;
 	f->namelen = 1;
-	f->datalen = (size_t) - 1;
+	f->datalen = 0;
 	f->attr = ATTR_DIRECTORY;
 	info.root[0] = init_node2(info.root_offset, f);
 	info.ops = &fat_ops;
