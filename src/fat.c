@@ -1741,8 +1741,13 @@ int fat_create(const char *name, uint32_t clu, int opt)
 	uint16_t longname[MAX_NAME_LENGTH] = {0};
 	void *data;
 	uint8_t ord = LAST_LONG_ENTRY;
-	size_t size = info.cluster_size;
-	size_t entries = size / sizeof(struct fat_dentry);
+	uint32_t fst_clu = 0;
+	size_t index = fat_get_index(clu);
+	struct fat_fileinfo *f = (struct fat_fileinfo *)info.root[index]->data;
+	size_t size;
+	size_t entries;
+	size_t cluster_num = 1;
+	size_t new_cluster_num = 1;
 	size_t name_len;
 	struct fat_dentry *d;
 	
@@ -1752,8 +1757,11 @@ int fat_create(const char *name, uint32_t clu, int opt)
 
 	/* Lookup last entry */
 	if (clu) {
-		data = malloc(size);
+		data = malloc(info.cluster_size);
 		get_cluster(data, clu);
+		cluster_num = fat_concat_cluster(f, clu, &data);
+		size = info.cluster_size * cluster_num;
+		entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
 	} else {
 		size = info.root_length * info.sector_size;
 		entries = size / sizeof(struct fat_dentry);
@@ -1765,6 +1773,20 @@ int fat_create(const char *name, uint32_t clu, int opt)
 		d = ((struct fat_dentry *)data) + i;
 		if (d->dentry.dir.DIR_Name[0] == DENTRY_UNUSED)
 			break;
+	}
+
+	if (clu) {
+		new_cluster_num = (i + count + 1) * sizeof(struct fat_dentry) / info.cluster_size;
+		if (new_cluster_num - cluster_num) {
+			fat_alloc_clusters(f, clu, new_cluster_num - cluster_num);
+			cluster_num = fat_concat_cluster(f, clu, &data);
+			entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
+		}
+	} else {
+		if (((i + count + 1) * info.sector_size) > size) {
+			pr_err("Can't create file entry in root directory.\n");
+			return -1;
+		}
 	}
 
 	if (!long_len)
@@ -1805,9 +1827,12 @@ int fat_remove(const char *name, uint32_t clu, int opt)
 	void *data;
 	char shortname[11] = {0};
 	uint16_t longname[MAX_NAME_LENGTH] = {0};
-	size_t size = info.cluster_size;
+	size_t index = fat_get_index(clu);
+	struct fat_fileinfo *f = (struct fat_fileinfo *)info.root[index]->data;
+	size_t size;
+	size_t entries;
+	size_t cluster_num = 1;
 	uint8_t chksum = 0;
-	size_t entries = size / sizeof(struct fat_dentry);
 	struct fat_dentry *d;
 
 	/* convert UTF-8 to UTF16 */
@@ -1816,8 +1841,11 @@ int fat_remove(const char *name, uint32_t clu, int opt)
 
 	/* Lookup last entry */
 	if (clu) {
-		data = malloc(size);
+		data = malloc(info.cluster_size);
 		get_cluster(data, clu);
+		cluster_num = fat_concat_cluster(f, clu, &data);
+		size = info.cluster_size * cluster_num;
+		entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
 	} else {
 		size = info.root_length * info.sector_size;
 		entries = size / sizeof(struct fat_dentry);
@@ -1933,13 +1961,26 @@ int fat_trim(uint32_t clu)
 {
 	int i, j;
 	void *data;
-	size_t size = info.cluster_size;
-	size_t entries = size / sizeof(struct fat_dentry);
+	size_t index = fat_get_index(clu);
+	struct fat_fileinfo *f = (struct fat_fileinfo *)info.root[index]->data;
+	size_t size;
+	size_t entries;
+	size_t cluster_num = 1;
 	struct fat_dentry *src, *dist;
 
 	/* Lookup last entry */
-	data = malloc(size);
-	get_cluster(data, clu);
+	if (clu) {
+		data = malloc(info.cluster_size);
+		get_cluster(data, clu);
+		cluster_num = fat_concat_cluster(f, clu, &data);
+		size = info.cluster_size * cluster_num;
+		entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
+	} else {
+		size = info.root_length * info.sector_size;
+		entries = size / sizeof(struct fat_dentry);
+		data = malloc(size);
+		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	}
 
 	for (i = 0, j = 0; i < entries; i++) {
 		src = ((struct fat_dentry *)data) + i;
