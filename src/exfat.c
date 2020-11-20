@@ -121,7 +121,7 @@ static uint32_t exfat_concat_cluster(struct exfat_fileinfo *f, uint32_t clu, voi
 	int i;
 	void *tmp;
 	uint32_t tmp_clu = 0;
-	size_t allocated = 0;
+	size_t allocated = 1;
 	size_t cluster_num = (f->datalen + (info.cluster_size - 1)) / info.cluster_size;
 
 	/* NO_FAT_CHAIN */
