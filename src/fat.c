@@ -27,6 +27,7 @@ static uint32_t fat16_get_fat_entry(uint32_t);
 static uint32_t fat32_get_fat_entry(uint32_t);
 
 /* cluster function prototype */
+static int fat_check_last_cluster(uint32_t);
 static int fat_get_last_cluster(struct fat_fileinfo *, uint32_t);
 static int fat_alloc_clusters(struct fat_fileinfo *, uint32_t, size_t);
 static int fat_free_clusters(struct fat_fileinfo *, uint32_t, size_t);
@@ -107,12 +108,12 @@ static const struct operations fat_ops = {
 static uint32_t fat_concat_cluster(struct fat_fileinfo *f, uint32_t clu, void **data)
 {
 	int i;
-	uint32_t ret = 0x0FFFFFFF;
+	uint32_t ret = FAT_FSTCLUSTER;
 	uint32_t tmp_clu = clu;
 	void *tmp;
 	size_t allocated = 1;
 
-	for (allocated = 0; ret != 0; allocated++, tmp_clu = ret)
+	for (allocated = 0; fat_check_last_cluster(ret) == 0; allocated++, tmp_clu = ret)
 		fat_get_fat_entry(tmp_clu, &ret);
 
 	if (!(tmp = realloc(*data, info.cluster_size * allocated)))
@@ -139,12 +140,12 @@ static uint32_t fat_concat_cluster(struct fat_fileinfo *f, uint32_t clu, void **
  */
 static uint32_t fat_set_cluster(struct fat_fileinfo *f, uint32_t clu, void *data)
 {
-	uint32_t ret = 0x0FFFFFFF;
+	uint32_t ret = FAT_FSTCLUSTER;
 	uint32_t tmp_clu = clu;
 	size_t allocated = 0;
 	size_t cluster_num = 0;
 
-	for (cluster_num = 0; ret != 0; cluster_num++, tmp_clu = ret)
+	for (cluster_num = 0; fat_check_last_cluster(ret) == 0; cluster_num++, tmp_clu = ret)
 		fat_get_fat_entry(tmp_clu, &ret);
 
 	ret = clu;
@@ -416,12 +417,12 @@ static int fat16_set_fat_entry(uint32_t clu, uint32_t entry)
 static int fat32_set_fat_entry(uint32_t clu, uint32_t entry)
 {
 	uint32_t FATOffset = clu * sizeof(uint32_t);
-	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
+	uint32_t ThisFATEntOffset = clu % info.sector_size;
 	uint32_t *fat;
 
 	fat = malloc(info.sector_size);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
-	*(fat + ThisFATEntOffset) = entry & 0x0FFFFFFF;
+	fat[ThisFATEntOffset] = entry & 0x0FFFFFFF;
 	set_sector(fat, info.fat_offset * info.sector_size, 1);
 	free(fat);
 	return 0;
@@ -452,12 +453,6 @@ static uint32_t fat12_get_fat_entry(uint32_t clu)
 			| ((uint16_t)(fat[ThisFATEntOffset + 1] & 0x0F) << 8);
 	}
 	free(fat);
-
-	if (ret == FAT12_RESERVED - 1)
-		pr_warn("Cluster %u indicate a bad cluster.\n", ret);
-	if (ret < FAT_FSTCLUSTER || FAT12_RESERVED <= ret)
-		ret = 0;
-
 	return ret;
 }
 
@@ -479,10 +474,6 @@ static uint32_t fat16_get_fat_entry(uint32_t clu)
 	ret = fat[ThisFATEntOffset];
 	free(fat);
 
-	if (ret == FAT16_RESERVED - 1)
-		pr_warn("Cluster %u indicate a bad cluster.\n", clu);
-	if (ret < FAT_FSTCLUSTER || FAT16_RESERVED <= ret)
-		ret = 0;
 	return ret;
 }
 
@@ -504,10 +495,6 @@ static uint32_t fat32_get_fat_entry(uint32_t clu)
 	ret = fat[ThisFATEntOffset] & 0x0FFFFFFF;
 	free(fat);
 
-	if (ret == FAT32_RESERVED - 1)
-		pr_warn("Cluster %u indicate a bad cluster.\n", clu);
-	if (ret < FAT_FSTCLUSTER || FAT32_RESERVED <= ret)
-		ret = 0;
 	return ret;
 }
 
@@ -516,6 +503,29 @@ static uint32_t fat32_get_fat_entry(uint32_t clu)
 /* CLUSTER FUNCTION FUNCTION                                                                     */
 /*                                                                                               */
 /*************************************************************************************************/
+/**
+ * fat_check_last_cluster - check whether cluster is last or not
+ * @clu:                    first cluster
+ *
+ * @return                  1 (Last cluster)
+ *                          0 (Not last cluster)
+ *                         -1 (invalid image)
+ */
+static int fat_check_last_cluster(uint32_t clu)
+{
+	switch (info.fstype) {
+		case FAT12_FILESYSTEM:
+			return (clu < FAT_FSTCLUSTER || FAT12_RESERVED <= clu);
+		case FAT16_FILESYSTEM:
+			return (clu < FAT_FSTCLUSTER || FAT16_RESERVED <= clu);
+		case FAT32_FILESYSTEM:
+			return (clu < FAT_FSTCLUSTER || FAT32_RESERVED <= clu);
+		default:
+			pr_err("Expected FAT filesystem, But this is not FAT filesystem.\n");
+			return -1;
+	}
+}
+
 /**
  * fat_get_last_cluster - find last cluster in file
  * @f:                    file information pointer
@@ -526,10 +536,10 @@ static uint32_t fat32_get_fat_entry(uint32_t clu)
  */
 static int fat_get_last_cluster(struct fat_fileinfo *f, uint32_t clu)
 {
-	uint32_t ret = 0x0FFFFFFF;
+	uint32_t ret = FAT_FSTCLUSTER;
 	size_t allocated = 1;
 
-	for (allocated = 0; ret != 0; allocated++, clu = ret)
+	for (allocated = 0; fat_check_last_cluster(ret) == 0; allocated++, clu = ret)
 		fat_get_fat_entry(clu, &ret);
 
 	return clu;
@@ -553,7 +563,7 @@ static int fat_alloc_clusters(struct fat_fileinfo *f, uint32_t clu, size_t num_a
 	clu = next_clu = last_clu = fat_get_last_cluster(f, clu);
 	for (next_clu = last_clu + 1; next_clu != last_clu; next_clu++) {
 		if (next_clu > info.cluster_count - 1)
-			next_clu = EXFAT_FIRST_CLUSTER;
+			next_clu = FAT_FSTCLUSTER;
 
 		fat_set_fat_entry(next_clu, EXFAT_LASTCLUSTER);
 		fat_set_fat_entry(clu, next_clu);
@@ -577,11 +587,11 @@ static int fat_free_clusters(struct fat_fileinfo *f, uint32_t clu, size_t num_al
 {
 	int i;
 	uint32_t tmp = clu;
-	uint32_t next_clu = 0x0FFFFFFF;
+	uint32_t next_clu = FAT_FSTCLUSTER;
 	size_t cluster_num = 0;
 	uint32_t ret = EXFAT_LASTCLUSTER;
 
-	for (cluster_num = 0; next_clu ;cluster_num++) {
+	for (cluster_num = 0; fat_check_last_cluster(next_clu) == 0 ;cluster_num++) {
 		fat_get_fat_entry(tmp, &next_clu);
 		tmp = next_clu;
 	}
@@ -611,9 +621,9 @@ static int fat_new_clusters(size_t num_alloc)
 	uint32_t next_clu, clu;
 	uint32_t fst_clu = 0;
 
-	for (clu = EXFAT_FIRST_CLUSTER; clu < info.cluster_count; clu++) {
+	for (clu = FAT_FSTCLUSTER; clu < info.cluster_count; clu++) {
 		fat_get_fat_entry(clu, &next_clu);
-		if (!next_clu)
+		if (!fat_check_last_cluster(next_clu))
 			continue;
 
 		if (!fst_clu) {
@@ -1588,7 +1598,7 @@ int fat_print_dentry(uint32_t clu, size_t n)
 	fat_traverse_directory(clu);
 	while (n > entries) {
 		fat_get_fat_entry(clu, &next_clu);
-		if (!next_clu) {
+		if (!fat_check_last_cluster(next_clu)) {
 			pr_err("Directory size limit exceeded.\n");
 			return -1;
 		}
