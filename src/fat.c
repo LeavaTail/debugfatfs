@@ -437,11 +437,12 @@ static uint32_t fat12_get_fat_entry(uint32_t clu)
 {
 	uint32_t ret = 0;
 	uint32_t FATOffset = clu + (clu / 2);
+	uint32_t ThisFATSecNum = info.fat_offset + (FATOffset / info.sector_size); 
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
 	uint8_t *fat;
 
 	fat = malloc(info.sector_size);
-	get_sector(fat, info.fat_offset * info.sector_size, 1);
+	get_sector(fat, (info.fat_length + ThisFATSecNum) * info.sector_size, 1);
 	if (clu % 2) {
 		ret = (fat[ThisFATEntOffset] >> 4)
 			| ((uint16_t)fat[ThisFATEntOffset + 1] << 4);
