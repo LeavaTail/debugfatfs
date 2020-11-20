@@ -2047,7 +2047,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	d->dentry.file.SetChecksum =
 		exfat_calculate_checksum(data + i * sizeof(struct exfat_dentry), count);
 
-	set_cluster(data, clu);
+	exfat_set_cluster(f, clu, data);
 	free(data);
 	return 0;
 }
@@ -2142,7 +2142,7 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 		}
 	}
 out:
-	set_cluster(data, clu);
+	exfat_set_cluster(f, clu, data);
 	free(data);
 	return ret;
 }
@@ -2242,7 +2242,6 @@ int exfat_trim(uint32_t clu)
 {
 	int i, j;
 	uint8_t used = 0;
-	uint32_t next_clu = clu;
 	void *data;
 	size_t index = exfat_get_index(clu);
 	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
@@ -2278,19 +2277,7 @@ int exfat_trim(uint32_t clu)
 		memset(dist, 0, sizeof(struct exfat_dentry));
 	}
 
-	/* NO_FAT_CHAIN */
-	if (f->flags & ALLOC_NOFATCHAIN) {
-		set_clusters(data, clu, allocate_cluster);
-		set_clusters(data + info.cluster_size * allocate_cluster, clu, cluster_num - allocate_cluster);
-		goto out;
-	}
-
-	/* FAT_CHAIN */
-	for (i = 0; i < allocate_cluster; i++) {
-		set_cluster(data + info.cluster_size * i, next_clu);
-		next_clu = exfat_check_fat_entry(next_clu);
-	}
-
+	exfat_set_cluster(f, clu, data);
 out:
 	exfat_free_clusters(f, clu, cluster_num - allocate_cluster);
 	free(data);

@@ -1804,7 +1804,7 @@ create_short:
 	fat_init_dentry(d, (unsigned char *)shortname, 11);
 
 	if (clu)
-		set_cluster(data, clu);
+		fat_set_cluster(f, clu, data);
 	else
 		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
 
@@ -1879,7 +1879,7 @@ int fat_remove(const char *name, uint32_t clu, int opt)
 out:
 
 	if (clu)
-		set_cluster(data, clu);
+		fat_set_cluster(f, clu, data);
 	else
 		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
 	free(data);
@@ -2001,7 +2001,10 @@ int fat_trim(uint32_t clu)
 		dist->dentry.dir.DIR_Name[0] = DENTRY_DELETED;
 	}
 
-	set_cluster(data, clu);
+	if (clu)
+		fat_set_cluster(f, clu, data);
+	else
+		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
 	free(data);
 	return 0;
 }
