@@ -1694,6 +1694,13 @@ out:
 int fat_set_bogus_entry(uint32_t clu)
 {
 	int ret = 0;
+	uint32_t prev = 0;
+
+	fat_get_fat_entry(clu, &prev);
+	if (prev) {
+		pr_warn("Cluster %u is already allocated.\n", clu);
+		return 0;
+	}
 
 	switch (info.fstype) {
 		case FAT12_FILESYSTEM:
@@ -1717,10 +1724,17 @@ int fat_set_bogus_entry(uint32_t clu)
  * @clu:                 cluster index
  *
  * @return               0 (success)
- *                      -1 (failed)
  */
 int fat_release_cluster(uint32_t clu)
 {
+	uint32_t prev = 0;
+	
+	fat_get_fat_entry(clu, &prev);
+	if (!prev) {
+		pr_warn("Cluster %u is already freed.\n", clu);
+		return 0;
+	}
+
 	return fat_set_fat_entry(clu, 0x0);
 }
 

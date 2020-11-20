@@ -1965,6 +1965,10 @@ int exfat_print_dentry(uint32_t clu, size_t n)
  */
 int exfat_set_bitmap(uint32_t clu)
 {
+	if (exfat_load_bitmap(clu)) {
+		pr_warn("Cluster %u is already allocated.\n", clu);
+		return 0;
+	}
 	return exfat_save_bitmap(clu, 1);
 }
 
@@ -1977,6 +1981,10 @@ int exfat_set_bitmap(uint32_t clu)
  */
 int exfat_clear_bitmap(uint32_t clu)
 {
+	if (!exfat_load_bitmap(clu)) {
+		pr_warn("Cluster %u is already freed.\n", clu);
+		return 0;
+	}
 	return exfat_save_bitmap(clu, 0);
 }
 
