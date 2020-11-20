@@ -1802,6 +1802,12 @@ int fat_create(const char *name, uint32_t clu, int opt)
 
 create_short:
 	fat_init_dentry(d, (unsigned char *)shortname, 11);
+	if (opt & CREATE_DIRECTORY) {
+		d->dentry.dir.DIR_Attr = ATTR_DIRECTORY;
+		fst_clu = fat_new_clusters(1);
+		d->dentry.dir.DIR_FstClusHI = fst_clu >> 16;
+		d->dentry.dir.DIR_FstClusLO = fst_clu & 0x0000ffff;
+	}
 
 	if (clu)
 		fat_set_cluster(f, clu, data);
