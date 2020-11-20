@@ -9,6 +9,7 @@
 
 /* Generic function prototype */
 static uint32_t fat_concat_cluster(struct fat_fileinfo *, uint32_t, void **);
+static uint32_t fat_set_cluster(struct fat_fileinfo *, uint32_t, void *);
 
 /* Boot sector function prototype */
 static int fat_load_bootsec(struct fat_bootsec *);
@@ -125,6 +126,34 @@ static uint32_t fat_concat_cluster(struct fat_fileinfo *f, uint32_t clu, void **
 	}
 
 	return allocated;
+}
+
+/**
+ * fat_set_cluster - Set Raw-Data from any sector.
+ * @f:               file information pointer
+ * @clu:             index of the cluster
+ * @data:            The cluster
+ *
+ * @retrun:          cluster count (@clu has next cluster)
+ *                   0             (@clu doesn't have next cluster, or failed to realloc)
+ */
+static uint32_t fat_set_cluster(struct fat_fileinfo *f, uint32_t clu, void *data)
+{
+	uint32_t ret = 0x0FFFFFFF;
+	uint32_t tmp_clu = clu;
+	size_t allocated = 0;
+	size_t cluster_num = 0;
+
+	for (cluster_num = 0; ret != 0; cluster_num++, tmp_clu = ret)
+		fat_get_fat_entry(tmp_clu, &ret);
+
+	for (allocated = 0; allocated < cluster_num; allocated++) {
+		set_cluster(data + info.cluster_size * allocated, ret);
+		fat_get_fat_entry(clu, &ret);
+		clu = ret;
+	}
+
+	return allocated + 1;
 }
 
 /**

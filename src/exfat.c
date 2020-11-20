@@ -13,6 +13,7 @@
 
 /* Generic function prototype */
 static uint32_t exfat_concat_cluster(struct exfat_fileinfo *, uint32_t, void **);
+static uint32_t exfat_set_cluster(struct exfat_fileinfo *, uint32_t, void *);
 
 /* Boot sector function prototype */
 static int exfat_load_bootsec(struct exfat_bootsec *);
@@ -156,6 +157,36 @@ static uint32_t exfat_concat_cluster(struct exfat_fileinfo *f, uint32_t clu, voi
 	}
 
 	return allocated;
+}
+
+/**
+ * exfat_set_cluster - Set Raw-Data from any sector.
+ * @f:                 file information pointer
+ * @clu:               index of the cluster
+ * @data:              The cluster
+ *
+ * @retrun:            cluster count (@clu has next cluster)
+ *                     0             (@clu doesn't have next cluster, or failed to realloc)
+ */
+static uint32_t exfat_set_cluster(struct exfat_fileinfo *f, uint32_t clu, void *data)
+{
+	size_t allocated = 0;
+	size_t cluster_num = (f->datalen + (info.cluster_size - 1)) / info.cluster_size;
+
+	/* NO_FAT_CHAIN */
+	if (f->flags & ALLOC_NOFATCHAIN) {
+		set_clusters(data, clu, cluster_num);
+		return cluster_num;
+	}
+
+	/* FAT_CHAIN */
+	for (allocated = 0; allocated < cluster_num; allocated++) {
+		set_cluster(data + info.cluster_size * allocated, clu);
+		if (!(clu = exfat_check_fat_entry(clu)))
+			break;
+	}
+
+	return allocated + 1;
 }
 
 /**
