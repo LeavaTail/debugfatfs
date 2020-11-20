@@ -1330,7 +1330,6 @@ static int exfat_update_filesize(struct exfat_fileinfo *f, uint32_t clu)
 {
 	int i, j;
 	uint32_t parent_clu = 0;
-	uint32_t target_clu = 0;
 	size_t cluster_num;
 	struct exfat_fileinfo *dir;
 	struct exfat_dentry d;
@@ -1368,9 +1367,9 @@ static int exfat_update_filesize(struct exfat_fileinfo *f, uint32_t clu)
 		else
 			parent_clu = exfat_check_fat_entry(parent_clu);
 	}
-
+	parent_clu = 0;
 out:
-	set_cluster(data, target_clu);
+	set_cluster(data, parent_clu);
 	free(data);
 	return 0;
 }
