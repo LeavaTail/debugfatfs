@@ -1697,13 +1697,13 @@ int fat_set_bogus_entry(uint32_t clu)
 
 	switch (info.fstype) {
 		case FAT12_FILESYSTEM:
-			fat12_set_fat_entry(clu, 0x001);
+			fat12_set_fat_entry(clu, 0xFFF);
 			break;
 		case FAT16_FILESYSTEM:
-			fat16_set_fat_entry(clu, 0x0001);
+			fat16_set_fat_entry(clu, 0xFFFF);
 			break;
 		case FAT32_FILESYSTEM:
-			fat32_set_fat_entry(clu, 0x00000001);
+			fat32_set_fat_entry(clu, 0x0FFFFFFF);
 			break;
 		default:
 			pr_err("Expected FAT filesystem, But this is not FAT filesystem.\n");
