@@ -451,7 +451,10 @@ static uint32_t fat12_get_fat_entry(uint32_t clu)
 			| ((uint16_t)(fat[ThisFATEntOffset + 1] & 0x0F) << 8);
 	}
 	free(fat);
-	if (ret >= FAT12_RESERVED)
+
+	if (ret == FAT12_RESERVED - 1)
+		pr_warn("Cluster %u indicate a bad cluster.\n", ret);
+	if (ret < FAT_FSTCLUSTER || FAT12_RESERVED <= ret)
 		ret = 0;
 
 	return ret;
@@ -475,7 +478,9 @@ static uint32_t fat16_get_fat_entry(uint32_t clu)
 	ret = fat[ThisFATEntOffset];
 	free(fat);
 
-	if (ret >= FAT16_RESERVED)
+	if (ret == FAT16_RESERVED - 1)
+		pr_warn("Cluster %u indicate a bad cluster.\n", clu);
+	if (ret < FAT_FSTCLUSTER || FAT16_RESERVED <= ret)
 		ret = 0;
 	return ret;
 }
@@ -498,7 +503,9 @@ static uint32_t fat32_get_fat_entry(uint32_t clu)
 	ret = fat[ThisFATEntOffset] & 0x0FFFFFFF;
 	free(fat);
 
-	if (ret >= FAT32_RESERVED)
+	if (ret == FAT32_RESERVED - 1)
+		pr_warn("Cluster %u indicate a bad cluster.\n", clu);
+	if (ret < FAT_FSTCLUSTER || FAT32_RESERVED <= ret)
 		ret = 0;
 	return ret;
 }

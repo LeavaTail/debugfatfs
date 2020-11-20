@@ -75,6 +75,7 @@ extern FILE *output;
 #define FSIRESV1SIZE    480
 #define FSIRESV2SIZE    12
 
+#define FAT_FSTCLUSTER  0x002
 #define FAT12_RESERVED  0xFF8
 #define FAT16_RESERVED  0xFFF8
 #define FAT32_RESERVED  0x0FFFFFF8
