@@ -124,6 +124,9 @@ static uint32_t exfat_concat_cluster(struct exfat_fileinfo *f, uint32_t clu, voi
 	size_t allocated = 1;
 	size_t cluster_num = (f->datalen + (info.cluster_size - 1)) / info.cluster_size;
 
+	if (cluster_num <= 1)
+		return cluster_num;
+
 	/* NO_FAT_CHAIN */
 	if (f->flags & ALLOC_NOFATCHAIN) {
 		if (!(tmp = realloc(*data, info.cluster_size * cluster_num)))
@@ -173,6 +176,10 @@ static uint32_t exfat_set_cluster(struct exfat_fileinfo *f, uint32_t clu, void *
 	size_t allocated = 0;
 	size_t cluster_num = (f->datalen + (info.cluster_size - 1)) / info.cluster_size;
 
+	if (cluster_num <= 1) {
+		set_cluster(data, clu);
+		return cluster_num;
+	}
 	/* NO_FAT_CHAIN */
 	if (f->flags & ALLOC_NOFATCHAIN) {
 		set_clusters(data, clu, cluster_num);
