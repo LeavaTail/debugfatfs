@@ -158,6 +158,7 @@ And, debugfatfs with interactive mode support these command.
 - **fat** *index* *[entry]* --- change File Allocation Table entry
 - **create** *file* --- create directory entry
 - **remove** *file* --- remove directory entry
+- **update** *index* --- update directory entry
 - **trim** --- trim deleted dentry
 - **help** --- display this help
 - **exit** --- exit interactive mode
