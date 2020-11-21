@@ -1693,7 +1693,6 @@ int exfat_reload_directory(uint32_t clu)
 
 	exfat_clean_dchain(index);
 	f = ((struct exfat_fileinfo *)(info.root[index])->data);
-	f->datalen = 0;
 	f->cached = 0;
 	return exfat_traverse_directory(clu);
 }
