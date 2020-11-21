@@ -1447,6 +1447,7 @@ static int exfat_convert_timezone(uint8_t tz)
  */
 static void exfat_convert_exfattime(struct tm *t, uint32_t *timestamp, uint8_t *subsec)
 {
+	*timestamp = *subsec = 0;
 	*timestamp |= ((t->tm_year - 80) << EXFAT_YEAR);
 	*timestamp |= ((t->tm_mon + 1) << EXFAT_MONTH);
 	*timestamp |= (t->tm_mday << EXFAT_DAY);
