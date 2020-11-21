@@ -2046,12 +2046,12 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	}
 
 	exfat_init_file(d, uniname, len);
-	if (opt & CREATE_DIRECTORY) {
+	if (opt & CREATE_DIRECTORY)
 		d->dentry.file.FileAttributes = ATTR_DIRECTORY;
-		d->dentry.stream.FirstCluster = exfat_new_clusters(1);
-	}
 	d = ((struct exfat_dentry *)data) + i + 1;
 	exfat_init_stream(d, uniname, len);
+	if (opt & CREATE_DIRECTORY)
+		d->dentry.stream.FirstCluster = exfat_new_clusters(1);
 	d = ((struct exfat_dentry *)data) + i + 2;
 	for (namei = 0; namei < count - 1; namei++) {
 		name_len = MIN(ENTRY_NAME_MAX, len - namei * ENTRY_NAME_MAX);
