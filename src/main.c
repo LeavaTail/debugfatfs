@@ -227,11 +227,10 @@ int set_clusters(void *data, off_t index, size_t num)
 
 /**
  * hexdump - Hex dump of a given data
- * @out:        Output stream
  * @data:       Input data
  * @index:      Input data size
  */
-void hexdump(FILE *out, void *data, size_t size)
+void hexdump(void *data, size_t size)
 {
 	unsigned long skip = 0;
 	size_t line, byte = 0;
@@ -401,7 +400,7 @@ static int print_sector(uint32_t sector)
 	data = malloc(info.sector_size);
 	if (!get_sector(data, sector, 1)) {
 		pr_msg("Sector #%u:\n", sector);
-		hexdump(output, data, info.sector_size);
+		hexdump(data, info.sector_size);
 	}
 	free(data);
 	return 0;
@@ -420,7 +419,7 @@ int print_cluster(uint32_t index)
 	data = malloc(info.cluster_size);
 	if (!get_cluster(data, index)) {
 		pr_msg("Cluster #%u:\n", index);
-		hexdump(output, data, info.cluster_size);
+		hexdump(data, info.cluster_size);
 	}
 	free(data);
 	return 0;

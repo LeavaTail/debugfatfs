@@ -490,7 +490,7 @@ int set_sector(void *, off_t, size_t);
 int set_cluster(void *, off_t);
 int set_clusters(void *, off_t, size_t);
 int print_cluster(uint32_t);
-void hexdump(FILE *, void *, size_t);
+void hexdump(void *, size_t);
 
 /* exFAT/FAT check function */
 int exfat_check_filesystem(struct pseudo_bootsec *);
