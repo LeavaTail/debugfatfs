@@ -2296,7 +2296,6 @@ int exfat_trim(uint32_t clu)
 	}
 
 	exfat_set_cluster(f, clu, data);
-out:
 	exfat_free_clusters(f, clu, cluster_num - allocate_cluster);
 	free(data);
 	return 0;

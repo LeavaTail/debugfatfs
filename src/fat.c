@@ -416,7 +416,6 @@ static int fat16_set_fat_entry(uint32_t clu, uint32_t entry)
  */
 static int fat32_set_fat_entry(uint32_t clu, uint32_t entry)
 {
-	uint32_t FATOffset = clu * sizeof(uint32_t);
 	uint32_t ThisFATEntOffset = clu % info.sector_size;
 	uint32_t *fat;
 
@@ -555,7 +554,6 @@ static int fat_get_last_cluster(struct fat_fileinfo *f, uint32_t clu)
  */
 static int fat_alloc_clusters(struct fat_fileinfo *f, uint32_t clu, size_t num_alloc)
 {
-	uint32_t tmp = clu;
 	uint32_t next_clu;
 	uint32_t last_clu;
 	int total_alloc = num_alloc;
