@@ -1791,7 +1791,7 @@ int fat_create(const char *name, uint32_t clu, int opt)
 		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
 	}
 
-	for (i = 0; i < entries; i++){
+	for (i = 0; i < entries; i++) {
 		d = ((struct fat_dentry *)data) + i;
 		if (d->dentry.dir.DIR_Name[0] == DENTRY_UNUSED)
 			break;
