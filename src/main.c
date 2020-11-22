@@ -52,7 +52,7 @@ static struct option const longopts[] =
 };
 
 /**
- * usage - print out usage.
+ * usage - print out usage
  */
 static void usage(void)
 {
@@ -85,10 +85,10 @@ static void usage(void)
 }
 
 /**
- * version - print out program version.
- * @command_name: command name
- * @version:      program version
- * @author:       program authoer
+ * version        - print out program version
+ * @command_name:   command name
+ * @version:        program version
+ * @author:         program authoer
  */
 static void version(const char *command_name, const char *version, const char *author)
 {
@@ -98,13 +98,13 @@ static void version(const char *command_name, const char *version, const char *a
 }
 
 /**
- * get_sector - Get Raw-Data from any sector.
+ * get_sector - Get Raw-Data from any sector
  * @data:       Sector raw data (Output)
  * @index:      Start bytes
  * @count:      The number of sectors
  *
- * @return        0 (success)
- *               -1 (failed to read)
+ * @return       0 (success)
+ *              -1 (failed to read)
  *
  * NOTE: Need to allocate @data before call it.
  */
@@ -121,13 +121,13 @@ int get_sector(void *data, off_t index, size_t count)
 }
 
 /**
- * set_sector - Set Raw-Data from any sector.
+ * set_sector - Set Raw-Data from any sector
  * @data:       Sector raw data
  * @index:      Start bytes
  * @count:      The number of sectors
  *
- * @return        0 (success)
- *               -1 (failed to read)
+ * @return       0 (success)
+ *              -1 (failed to read)
  *
  * NOTE: Need to allocate @data before call it.
  */
@@ -144,7 +144,7 @@ int set_sector(void *data, off_t index, size_t count)
 }
 
 /**
- * get_cluster - Get Raw-Data from any cluster.
+ * get_cluster - Get Raw-Data from any cluster
  * @data:        cluster raw data (Output)
  * @index:       Start cluster index
  *
@@ -159,7 +159,7 @@ int get_cluster(void *data, off_t index)
 }
 
 /**
- * set_cluster - Set Raw-Data from any cluster.
+ * set_cluster - Set Raw-Data from any cluster
  * @data:        cluster raw data
  * @index:       Start cluster index
  *
@@ -174,13 +174,13 @@ int set_cluster(void *data, off_t index)
 }
 
 /**
- * get_clusters - Get Raw-Data from any cluster.
- * @data:        cluster raw data (Output)
- * @index:      Start cluster index
- * @num:        The number of clusters
+ * get_clusters - Get Raw-Data from any cluster
+ * @data:         cluster raw data (Output)
+ * @index:        Start cluster index
+ * @num:          The number of clusters
  *
- * @return        0 (success)
- *               -1 (failed to read)
+ * @return         0 (success)
+ *                -1 (failed to read)
  *
  * NOTE: Need to allocate @data before call it.
  */
@@ -200,13 +200,13 @@ int get_clusters(void *data, off_t index, size_t num)
 }
 
 /**
- * set_clusters - Set Raw-Data from any cluster.
- * @data:        cluster raw data
- * @index:       Start cluster index
- * @num:         The number of clusters
+ * set_clusters - Set Raw-Data from any cluster
+ * @data:         cluster raw data
+ * @index:        Start cluster index
+ * @num:          The number of clusters
  *
- * @return        0 (success)
- *               -1 (failed to read)
+ * @return         0 (success)
+ *                -1 (failed to read)
  *
  * NOTE: Need to allocate @data before call it.
  */
@@ -227,8 +227,8 @@ int set_clusters(void *data, off_t index, size_t num)
 
 /**
  * hexdump - Hex dump of a given data
- * @data:       Input data
- * @index:      Input data size
+ * @data:    Input data
+ * @size:    Input data size
  */
 void hexdump(void *data, size_t size)
 {
@@ -314,8 +314,8 @@ static void init_device_info(void)
  * get_device_info - get device name and store in device_info
  * @attr:            command line options
  *
- * @return        0 (success)
- *               -1 (failed to open)
+ * @return            0 (success)
+ *                   -1 (failed to open)
  */
 static int get_device_info(uint32_t attr)
 {
@@ -348,7 +348,7 @@ static int get_device_info(uint32_t attr)
 /**
  * free_dentry_list - release list2_t
  *
- * @return        Number of lists freed
+ * @return            Number of lists freed
  */
 static int free_dentry_list(void)
 {
@@ -363,17 +363,17 @@ static int free_dentry_list(void)
 
 /**
  * pseudo_check_filesystem - virtual function to check filesystem
- * @boot:      boot sector pointer
+ * @boot:                    boot sector pointer
  *
- * return:     0  (succeeded in obtaining filesystem)
- *             -1 (failed)
+ * return:                    0 (succeeded in obtaining filesystem)
+ *                           -1 (failed)
  */
 static int pseudo_check_filesystem(struct pseudo_bootsec *boot)
 {
 	size_t count = 0;
 
 	count = pread(info.fd, boot, SECSIZE, 0);
-	if (count < 0){
+	if (count < 0) {
 		pr_err("read: %s\n", strerror(errno));
 		return -1;
 	}
@@ -391,7 +391,7 @@ static int pseudo_check_filesystem(struct pseudo_bootsec *boot)
  * print_sector - print any sector
  * @sector:       sector index to display
  *
- * return:     0  (succeeded in obtaining filesystem)
+ * return:        0 (succeeded in obtaining filesystem)
  */
 static int print_sector(uint32_t sector)
 {
@@ -426,9 +426,9 @@ int print_cluster(uint32_t index)
 }
 
 /**
- * main - main function
- * @argc:      argument count
- * @argv:      argument vector
+ * main   - main function
+ * @argc:   argument count
+ * @argv:   argument vector
  */
 int main(int argc, char *argv[])
 {

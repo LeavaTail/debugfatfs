@@ -97,13 +97,13 @@ static const struct operations fat_ops = {
 /*                                                                                               */
 /*************************************************************************************************/
 /**
- * fat_concat_cluster   - Contatenate cluster @data with next_cluster
- * @f:                    file information pointer
- * @clu:                  index of the cluster
- * @data:                 The cluster
+ * fat_concat_cluster - Contatenate cluster @data with next_cluster
+ * @f:                  file information pointer
+ * @clu:                index of the cluster
+ * @data:               The cluster (Output)
  *
- * @retrun:               cluster count (@clu has next cluster)
- *                        0             (@clu doesn't have next cluster, or failed to realloc)
+ * @retrun:             cluster count (@clu has next cluster)
+ *                      0             (@clu doesn't have next cluster, or failed to realloc)
  */
 static uint32_t fat_concat_cluster(struct fat_fileinfo *f, uint32_t clu, void **data)
 {
@@ -235,7 +235,7 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 /*************************************************************************************************/
 /**
  * fat_load_bootsec - load boot sector in FAT
- * @b:                boot sector pointer in FAT
+ * @b:                boot sector pointer in FAT (Output)
  */
 static int fat_load_bootsec(struct fat_bootsec *b)
 {
@@ -307,7 +307,7 @@ static int fat16_print_bootsec(struct fat_bootsec *b)
 
 /**
  * fat32_print_bootsec - print boot sector in FAT32
- * @b:         boot sector pointer in FAT
+ * @b:                   boot sector pointer in FAT
  */
 static int fat32_print_bootsec(struct fat_bootsec *b)
 {
@@ -507,9 +507,9 @@ static uint32_t fat32_get_fat_entry(uint32_t clu)
  * fat_check_last_cluster - check whether cluster is last or not
  * @clu:                    first cluster
  *
- * @return                  1 (Last cluster)
- *                          0 (Not last cluster)
- *                         -1 (invalid image)
+ * @return                   1 (Last cluster)
+ *                           0 (Not last cluster)
+ *                          -1 (invalid image)
  */
 static int fat_check_last_cluster(uint32_t clu)
 {
@@ -888,7 +888,7 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 
 /**
  * fat_init_dentry - initialize directory entry
- * @d:               directory entry
+ * @d:               directory entry (Output)
  * @shortname:       filename in ASCII
  * @namelen:         filename length
  *
@@ -920,7 +920,7 @@ static int fat_init_dentry(struct fat_dentry *d, unsigned char *shortname, size_
 
 /**
  * fat_init_lfn - initialize long file name entry
- * @d:            directory entry
+ * @d:            directory entry (Output)
  * @name:         filename in UTF-16
  * @namelen:      filename length
  * @ord:          The order of the entry
@@ -945,7 +945,7 @@ static int fat_init_lfn(struct fat_dentry *d,
 /**
  * fat_update_file - Update directory entry
  * @old:             directory entry before update
- * @new:             directory entry after update
+ * @new:             directory entry after update (Output)
  *
  * @return           0 (Success)
  */
@@ -1040,7 +1040,7 @@ static int fat_update_file(struct fat_dentry *old, struct fat_dentry *new)
 /**
  * fat_update_lfn - Update Long filename entry
  * @old:            directory entry before update
- * @new:            directory entry after update
+ * @new:            directory entry after update (Output)
  *
  * @return          0 (Success)
  */
@@ -1071,7 +1071,7 @@ static int fat_update_lfn(struct fat_dentry *old, struct fat_dentry *new)
  * fat_convert_uniname - function to get filename
  * @uniname:             filename dentry in UTF-16
  * @name_len:            filename length
- * @name:                filename in UTF-8 (output)
+ * @name:                filename in UTF-8 (Output)
  */
 static void fat_convert_uniname(uint16_t *uniname, uint64_t name_len, unsigned char *name)
 {
@@ -1079,12 +1079,12 @@ static void fat_convert_uniname(uint16_t *uniname, uint64_t name_len, unsigned c
 }
 
 /**
- * fat_create_shortname -  function to convert filename to shortname
- * @longname:              filename dentry in UTF-16
- * @name:                  filename in ascii (output)
+ * fat_create_shortname - function to convert filename to shortname
+ * @longname:             filename dentry in UTF-16
+ * @name:                 filename in ascii (Output)
  *
- * @return                 0 (Same as input name)
- *                         1 (Difference from input data)
+ * @return                0 (Same as input name)
+ *                        1 (Difference from input data)
  */
 static int fat_create_shortname(uint16_t *longname, char *name)
 {
@@ -1113,11 +1113,11 @@ static int fat_create_shortname(uint16_t *longname, char *name)
 }
 
 /**
- * fat_convert_shortname -  function to convert filename to shortname
- * @shortname:              filename dentry in ASCII
- * @name:                   filename in ascii (output)
+ * fat_convert_shortname - function to convert filename to shortname
+ * @shortname:             filename dentry in ASCII
+ * @name:                  filename in ascii (Output)
  *
- * @return                  name length
+ * @return                 name length
  */
 static int fat_convert_shortname(const char *shortname, char *name)
 {
@@ -1146,11 +1146,11 @@ static int fat_convert_shortname(const char *shortname, char *name)
 /**
  * fat_create_nameentry - function to get filename
  * @name:                 filename dentry in UTF-8
- * @shortname:            filename in ASCII (output)
- * @longname:             filename in UTF-16 (output)
+ * @shortname:            filename in ASCII (Output)
+ * @longname:             filename in UTF-16 (Output)
  *
- * @return                0 (Only shortname)
- *                      > 0 (longname length)
+ * @return                  0 (Only shortname)
+ *                        > 0 (longname length)
  */
 static int fat_create_nameentry(const char *name, char *shortname, uint16_t *longname)
 {
@@ -1211,7 +1211,7 @@ static uint8_t fat_calculate_checksum(unsigned char *DIR_Name)
 
 /**
  * fat_convert_unixtime - function to get timestamp in file
- * @t:                    output pointer
+ * @t:                    output pointer (Output)
  * @date:                 Date Field in File Directory Entry
  * @time:                 Timestamp Field in File Directory Entry
  * @subsec:               10msincrement Field in File Directory Entry
@@ -1460,8 +1460,8 @@ int fat_readdir(struct directory *dir, size_t count, uint32_t clu)
  * fat_reload_directory - function interface to read directories
  * @clu                   cluster index
  *
- * @return                0 (success)
- *                       -1 (failed to read)
+ * @return                 0 (success)
+ *                        -1 (failed to read)
  */
 int fat_reload_directory(uint32_t clu)
 {
@@ -1480,8 +1480,8 @@ int fat_reload_directory(uint32_t clu)
  * @len:                   Target characters length
  * @dist:                  convert result in UTF-8 (Output)
  *
- * return:                 0 (succeeded in obtaining filesystem)
- *                        -1 (failed)
+ * return:                  0 (succeeded in obtaining filesystem)
+ *                         -1 (failed)
  */
 int fat_convert_character(const char *src, size_t len, char *dist)
 {
@@ -1522,8 +1522,8 @@ int fat_clean(uint32_t index)
  * @clu:               index of the cluster want to check
  * @entry:             any cluster index
  *
- * @retrun:            0
- *                    -1 (invalid image)
+ * @retrun:             0
+ *                     -1 (invalid image)
  */
 int fat_set_fat_entry(uint32_t clu, uint32_t entry)
 {
@@ -1549,10 +1549,10 @@ int fat_set_fat_entry(uint32_t clu, uint32_t entry)
 /**
  * fat_get_fat_entry - Get cluster is continuous
  * @clu:               index of the cluster want to check
- * @entry:             any cluster index
+ * @entry:             any cluster index (Output)
  *
- * @return             0
- *                    -1 (invalid image)
+ * @return              0
+ *                     -1 (invalid image)
  */
 int fat_get_fat_entry(uint32_t clu, uint32_t *entry)
 {
@@ -1580,8 +1580,8 @@ int fat_get_fat_entry(uint32_t clu, uint32_t *entry)
  * @clu:              index of the cluster want to check
  * @n:                directory entry index
  *
- * @return            0 (success)
- *                   -1 (failed to read)
+ * @return             0 (success)
+ *                    -1 (failed to read)
  */
 int fat_print_dentry(uint32_t clu, size_t n)
 {
@@ -1848,8 +1848,8 @@ create_short:
  * @index:      Current Directory Index
  * @opt:        create option
  *
- * @return      0 (Success)
- *             -1 (Not found)
+ * @return       0 (Success)
+ *              -1 (Not found)
  */
 int fat_remove(const char *name, uint32_t clu, int opt)
 {
@@ -1917,11 +1917,11 @@ out:
 }
 
 /**
- * fat_update_dentry  -  function interface to update directory entry
- * @clu:                 Current Directory cluster
- * @i:                   Directory entry index
+ * fat_update_dentry - function interface to update directory entry
+ * @clu:               Current Directory cluster
+ * @i:                 Directory entry index
  *
- * @return               0 (Success)
+ * @return             0 (Success)
  */
 int fat_update_dentry(uint32_t clu, int i)
 {

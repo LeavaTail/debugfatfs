@@ -8,11 +8,11 @@
 #include "nls.h"
 
 /**
- * utf8_to_utf32  - convert UTF-8 character to UTF-32
- * @u               UTF-8 character
- * @d               UTF-32 character (output)
+ * utf8_to_utf32 - convert UTF-8 character to UTF-32
+ * @u              UTF-8 character
+ * @d              UTF-32 character (output)
  *
- * @return:         Byte size in UTF-32
+ * @return:        Byte size in UTF-32
  */
 int utf8_to_utf32(unsigned char *u, uint32_t *d)
 {
@@ -47,11 +47,11 @@ int utf8_to_utf32(unsigned char *u, uint32_t *d)
 	return len;
 }
 /**
- * utf32_to_utf8  - convert UTF-32 character to UTF-8
- * @u               UTF-32 character
- * @d               UTF-8 character (output)
+ * utf32_to_utf8 - convert UTF-32 character to UTF-8
+ * @u              UTF-32 character
+ * @d              UTF-8 character (output)
  *
- * @return:         Byte size in UTF-8
+ * @return:        Byte size in UTF-8
  */
 int utf32_to_utf8(uint32_t u, unsigned char *d)
 {
@@ -82,12 +82,12 @@ int utf32_to_utf8(uint32_t u, unsigned char *d)
 }
 
 /**
- * utf8s_to_utf16s  - convert UTF-8 characters to UTF-16
- * @src               UTF-8 characters
- * @namelen           UTF-8 characters length
- * @dist              UTF-16 characters (output)
+ * utf8s_to_utf16s - convert UTF-8 characters to UTF-16
+ * @src              UTF-8 characters
+ * @namelen          UTF-8 characters length
+ * @dist             UTF-16 characters (output)
  *
- * @return:           byte size in UTF-16
+ * @return:          byte size in UTF-16
  */
 int utf8s_to_utf16s(unsigned char *src, uint16_t namelen, uint16_t* dist)
 {
@@ -115,12 +115,12 @@ int utf8s_to_utf16s(unsigned char *src, uint16_t namelen, uint16_t* dist)
 }
 
 /**
- * utf16s_to_utf8s  - convert UTF-16 characters to UTF-8
- * @src               UTF-16 characters
- * @namelen           UTF-16 characters length
- * @dist              UTF-8 characters (output)
+ * utf16s_to_utf8s - convert UTF-16 characters to UTF-8
+ * @src              UTF-16 characters
+ * @namelen          UTF-16 characters length
+ * @dist             UTF-8 characters (output)
  *
- * @return:            byte size in UTF-8
+ * @return:          byte size in UTF-8
  */
 int utf16s_to_utf8s(uint16_t *src, uint16_t namelen, unsigned char* dist)
 {
