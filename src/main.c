@@ -52,7 +52,7 @@ static struct option const longopts[] =
 };
 
 /**
- * usage - print out usage.
+ * usage - print out usage
  */
 static void usage(void)
 {
@@ -69,7 +69,7 @@ static void usage(void)
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -l, --load=file\tLoad Main boot region and FAT region from file.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
-	fprintf(stderr, "  -q, --quiet\tNot prompting the user in interactive mode. \n");
+	fprintf(stderr, "  -q, --quiet\tSuppress message about Main boot Sector.\n");
 	fprintf(stderr, "  -r, --ro\tread only mode. \n");
 	fprintf(stderr, "  -s, --save=file\tSave Main boot region and FAT region in file.\n");
 	fprintf(stderr, "  -u, --upper\tconvert into uppercase latter by up-case Table.\n");
@@ -85,10 +85,10 @@ static void usage(void)
 }
 
 /**
- * version - print out program version.
- * @command_name: command name
- * @version:      program version
- * @author:       program authoer
+ * version        - print out program version
+ * @command_name:   command name
+ * @version:        program version
+ * @author:         program authoer
  */
 static void version(const char *command_name, const char *version, const char *author)
 {
@@ -98,13 +98,13 @@ static void version(const char *command_name, const char *version, const char *a
 }
 
 /**
- * get_sector - Get Raw-Data from any sector.
+ * get_sector - Get Raw-Data from any sector
  * @data:       Sector raw data (Output)
  * @index:      Start bytes
  * @count:      The number of sectors
  *
- * @return        0 (success)
- *               -1 (failed to read)
+ * @return       0 (success)
+ *              -1 (failed to read)
  *
  * NOTE: Need to allocate @data before call it.
  */
@@ -121,13 +121,13 @@ int get_sector(void *data, off_t index, size_t count)
 }
 
 /**
- * set_sector - Set Raw-Data from any sector.
+ * set_sector - Set Raw-Data from any sector
  * @data:       Sector raw data
  * @index:      Start bytes
  * @count:      The number of sectors
  *
- * @return        0 (success)
- *               -1 (failed to read)
+ * @return       0 (success)
+ *              -1 (failed to read)
  *
  * NOTE: Need to allocate @data before call it.
  */
@@ -144,7 +144,7 @@ int set_sector(void *data, off_t index, size_t count)
 }
 
 /**
- * get_cluster - Get Raw-Data from any cluster.
+ * get_cluster - Get Raw-Data from any cluster
  * @data:        cluster raw data (Output)
  * @index:       Start cluster index
  *
@@ -159,7 +159,7 @@ int get_cluster(void *data, off_t index)
 }
 
 /**
- * set_cluster - Set Raw-Data from any cluster.
+ * set_cluster - Set Raw-Data from any cluster
  * @data:        cluster raw data
  * @index:       Start cluster index
  *
@@ -174,13 +174,13 @@ int set_cluster(void *data, off_t index)
 }
 
 /**
- * get_clusters - Get Raw-Data from any cluster.
- * @data:        cluster raw data (Output)
- * @index:      Start cluster index
- * @num:        The number of clusters
+ * get_clusters - Get Raw-Data from any cluster
+ * @data:         cluster raw data (Output)
+ * @index:        Start cluster index
+ * @num:          The number of clusters
  *
- * @return        0 (success)
- *               -1 (failed to read)
+ * @return         0 (success)
+ *                -1 (failed to read)
  *
  * NOTE: Need to allocate @data before call it.
  */
@@ -200,13 +200,13 @@ int get_clusters(void *data, off_t index, size_t num)
 }
 
 /**
- * set_clusters - Set Raw-Data from any cluster.
- * @data:        cluster raw data
- * @index:       Start cluster index
- * @num:         The number of clusters
+ * set_clusters - Set Raw-Data from any cluster
+ * @data:         cluster raw data
+ * @index:        Start cluster index
+ * @num:          The number of clusters
  *
- * @return        0 (success)
- *               -1 (failed to read)
+ * @return         0 (success)
+ *                -1 (failed to read)
  *
  * NOTE: Need to allocate @data before call it.
  */
@@ -227,11 +227,10 @@ int set_clusters(void *data, off_t index, size_t num)
 
 /**
  * hexdump - Hex dump of a given data
- * @out:        Output stream
- * @data:       Input data
- * @index:      Input data size
+ * @data:    Input data
+ * @size:    Input data size
  */
-void hexdump(FILE *out, void *data, size_t size)
+void hexdump(void *data, size_t size)
 {
 	unsigned long skip = 0;
 	size_t line, byte = 0;
@@ -315,8 +314,8 @@ static void init_device_info(void)
  * get_device_info - get device name and store in device_info
  * @attr:            command line options
  *
- * @return        0 (success)
- *               -1 (failed to open)
+ * @return            0 (success)
+ *                   -1 (failed to open)
  */
 static int get_device_info(uint32_t attr)
 {
@@ -349,7 +348,7 @@ static int get_device_info(uint32_t attr)
 /**
  * free_dentry_list - release list2_t
  *
- * @return        Number of lists freed
+ * @return            Number of lists freed
  */
 static int free_dentry_list(void)
 {
@@ -364,17 +363,17 @@ static int free_dentry_list(void)
 
 /**
  * pseudo_check_filesystem - virtual function to check filesystem
- * @boot:      boot sector pointer
+ * @boot:                    boot sector pointer
  *
- * return:     0  (succeeded in obtaining filesystem)
- *             -1 (failed)
+ * return:                    0 (succeeded in obtaining filesystem)
+ *                           -1 (failed)
  */
 static int pseudo_check_filesystem(struct pseudo_bootsec *boot)
 {
 	size_t count = 0;
 
 	count = pread(info.fd, boot, SECSIZE, 0);
-	if (count < 0){
+	if (count < 0) {
 		pr_err("read: %s\n", strerror(errno));
 		return -1;
 	}
@@ -392,7 +391,7 @@ static int pseudo_check_filesystem(struct pseudo_bootsec *boot)
  * print_sector - print any sector
  * @sector:       sector index to display
  *
- * return:     0  (succeeded in obtaining filesystem)
+ * return:        0 (succeeded in obtaining filesystem)
  */
 static int print_sector(uint32_t sector)
 {
@@ -401,7 +400,7 @@ static int print_sector(uint32_t sector)
 	data = malloc(info.sector_size);
 	if (!get_sector(data, sector, 1)) {
 		pr_msg("Sector #%u:\n", sector);
-		hexdump(output, data, info.sector_size);
+		hexdump(data, info.sector_size);
 	}
 	free(data);
 	return 0;
@@ -420,16 +419,16 @@ int print_cluster(uint32_t index)
 	data = malloc(info.cluster_size);
 	if (!get_cluster(data, index)) {
 		pr_msg("Cluster #%u:\n", index);
-		hexdump(output, data, info.cluster_size);
+		hexdump(data, info.cluster_size);
 	}
 	free(data);
 	return 0;
 }
 
 /**
- * main - main function
- * @argc:      argument count
- * @argv:      argument vector
+ * main   - main function
+ * @argc:   argument count
+ * @argv:   argument vector
  */
 int main(int argc, char *argv[])
 {
@@ -579,7 +578,8 @@ int main(int argc, char *argv[])
 		goto device_close;
 	}
 
-	ret = info.ops->statfs();
+	if (!(attr & OPTION_QUIET))
+		ret = info.ops->statfs();
 	if (ret < 0)
 		goto device_close;
 

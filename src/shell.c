@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "shell.h"
 #include "debugfatfs.h"
 
@@ -22,6 +23,7 @@ static int cmd_release(int, char **, char **);
 static int cmd_fat(int, char **, char **);
 static int cmd_create(int, char **, char **);
 static int cmd_remove(int, char **, char **);
+static int cmd_update(int, char **, char **);
 static int cmd_trim(int, char **, char **);
 static int cmd_help(int, char **, char **);
 static int cmd_exit(int, char **, char **);
@@ -39,18 +41,19 @@ struct command cmd[] = {
 	{"fat", cmd_fat},
 	{"create", cmd_create},
 	{"remove", cmd_remove},
+	{"update", cmd_update},
 	{"trim", cmd_trim},
 	{"help", cmd_help},
 	{"exit", cmd_exit},
 };
 
 /**
- * cmd_ls     - List directory contests.
- * @argc:       argument count
- * @argv:       argument vetor
- * @envp:       environment pointer
+ * cmd_ls - List directory contests.
+ * @argc:   argument count
+ * @argv:   argument vetor
+ * @envp:   environment pointer
  *
- * @return        0 (success)
+ * @return  0 (success)
  */
 static int cmd_ls(int argc, char **argv, char **envp)
 {
@@ -97,12 +100,12 @@ static int cmd_ls(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_cd  - Change the directory.
- * @argc:    argument count
- * @argv:    argument vetor
- * @envp:    environment pointer
+ * cmd_cd - Change the directory.
+ * @argc:   argument count
+ * @argv:   argument vetor
+ * @envp:   environment pointer
  *
- * @return   0 (success)
+ * @return  0 (success)
  */
 static int cmd_cd(int argc, char **argv, char **envp)
 {
@@ -139,12 +142,12 @@ static int cmd_cd(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_cluster  - Get cluster raw data.
- * @argc:         argument count
- * @argv:         argument vetor
- * @envp:         environment pointer
+ * cmd_cluster - Get cluster raw data.
+ * @argc:        argument count
+ * @argv:        argument vetor
+ * @envp:        environment pointer
  *
- * @return        0 (success)
+ * @return       0 (success)
  */
 static int cmd_cluster(int argc, char **argv, char **envp)
 {
@@ -164,12 +167,12 @@ static int cmd_cluster(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_entry  - Print entry in current directory
- * @argc:       argument count
- * @argv:       argument vetor
- * @envp:       environment pointer
+ * cmd_entry - Print entry in current directory
+ * @argc:      argument count
+ * @argv:      argument vetor
+ * @envp:      environment pointer
  *
- * @return      0 (success)
+ * @return     0 (success)
  */
 static int cmd_entry(int argc, char **argv, char **envp)
 {
@@ -192,12 +195,12 @@ static int cmd_entry(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_alloc  - Allocate cluster in bitmap.
- * @argc:       argument count
- * @argv:       argument vetor
- * @envp:       environment pointer
+ * cmd_alloc - Allocate cluster in bitmap.
+ * @argc:      argument count
+ * @argv:      argument vetor
+ * @envp:      environment pointer
  *
- * @return      0 (success)
+ * @return     0 (success)
  */
 static int cmd_alloc(int argc, char **argv, char **envp)
 {
@@ -220,12 +223,12 @@ static int cmd_alloc(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_release  - Release cluster in bitmap.
- * @argc:         argument count
- * @argv:         argument vetor
- * @envp:         environment pointer
+ * cmd_release - Release cluster in bitmap.
+ * @argc:        argument count
+ * @argv:        argument vetor
+ * @envp:        environment pointer
  *
- * @return        0 (success)
+ * @return       0 (success)
  */
 static int cmd_release(int argc, char **argv, char **envp)
 {
@@ -248,12 +251,12 @@ static int cmd_release(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_fat  - Set/Get FAT entry.
- * @argc:     argument count
- * @argv:     argument vetor
- * @envp:     environment pointer
+ * cmd_fat - Set/Get FAT entry.
+ * @argc:    argument count
+ * @argv:    argument vetor
+ * @envp:    environment pointer
  *
- * @return    0 (success)
+ * @return   0 (success)
  */
 static int cmd_fat(int argc, char **argv, char **envp)
 {
@@ -282,24 +285,39 @@ static int cmd_fat(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_create  - Create file or Directory.
- * @argc:        argument count
- * @argv:        argument vetor
- * @envp:        environment pointer
+ * cmd_create - Create file or Directory.
+ * @argc:       argument count
+ * @argv:       argument vetor
+ * @envp:       environment pointer
  *
- * @return       0 (success)
+ * @return      0 (success)
  */
 static int cmd_create(int argc, char **argv, char **envp)
 {
-	switch (argc) {
-		case 1:
+	int opt, create_option = 0;
+
+	/* To restart scanning a new argument vector */
+	optind = 1;
+
+	while ((opt = getopt(argc, argv, "d")) != -1) {
+		switch (opt) {
+			case 'd':
+				create_option = CREATE_DIRECTORY;
+				break;
+			default:
+				fprintf(stderr,"Usage: %s [-d] FILE\n", argv[0]);
+				fprintf(stderr, "\n");
+				fprintf(stderr, "  -d\tCreate directory\n");
+				return 0;
+		}
+	}
+
+	switch (argc - optind) {
+		case 0:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
-		case 2:
-			if (info.attr & OPTION_QUIET)
-				info.ops->create(argv[1], cluster, OPTION_QUIET);
-			else
-				info.ops->create(argv[1], cluster, 0);
+		case 1:
+			info.ops->create(argv[optind], cluster, create_option);
 			info.ops->reload(cluster);
 			break;
 		default:
@@ -310,12 +328,12 @@ static int cmd_create(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_remove  - Remove file or Directory.
- * @argc:        argument count
- * @argv:        argument vetor
- * @envp:        environment pointer
+ * cmd_remove - Remove file or Directory.
+ * @argc:       argument count
+ * @argv:       argument vetor
+ * @envp:       environment pointer
  *
- * @return       0 (success)
+ * @return      0 (success)
  */
 static int cmd_remove(int argc, char **argv, char **envp)
 {
@@ -335,12 +353,40 @@ static int cmd_remove(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_trim -    Trim unsed dentry
- * @argc:        argument count
- * @argv:        argument vetor
- * @envp:        environment pointer
+ * cmd_update - Update directory entry
+ * @argc:       argument count
+ * @argv:       argument vetor
+ * @envp:       environment pointer
  *
- * @return       0 (success)
+ * @return      0 (success)
+ */
+static int cmd_update(int argc, char **argv, char **envp)
+{
+	int index;
+
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			index = strtoul(argv[1], NULL, 10);
+			info.ops->update(cluster, index);
+			info.ops->reload(cluster);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
+ * cmd_trim - Trim unsed dentry
+ * @argc:     argument count
+ * @argv:     argument vetor
+ * @envp:     environment pointer
+ *
+ * @return    0 (success)
  */
 static int cmd_trim(int argc, char **argv, char **envp)
 {
@@ -356,12 +402,12 @@ static int cmd_trim(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_help  - display help
- * @argc:      argument count
- * @argv:      argument vector
- * @envp:      environment pointer
+ * cmd_help - display help
+ * @argc:     argument count
+ * @argv:     argument vector
+ * @envp:     environment pointer
  *
- * @return     0 (success)
+ * @return    0 (success)
  */
 static int cmd_help(int argc, char **argv, char **envp)
 {
@@ -374,6 +420,7 @@ static int cmd_help(int argc, char **argv, char **envp)
 	fprintf(stderr, "fat        change File Allocation Table entry\n");
 	fprintf(stderr, "create     create directory entry.\n");
 	fprintf(stderr, "remove     remove directory entry.\n");
+	fprintf(stderr, "update     update directory entry.\n");
 	fprintf(stderr, "trim       trim deleted dentry.\n");
 	fprintf(stderr, "help       display this help.\n");
 	fprintf(stderr, "\n");
@@ -381,12 +428,12 @@ static int cmd_help(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_exit  - Cause the shell to exit.
- * @argc:      argument count
- * @argv:      argument vetor
- * @envp:      environment pointer
+ * cmd_exit - Cause the shell to exit.
+ * @argc:     argument count
+ * @argv:     argument vetor
+ * @envp:     environment pointer
  *
- * @return     1
+ * @return    1
  */
 static int cmd_exit(int argc, char **argv, char **envp)
 {
@@ -446,11 +493,11 @@ static int decode_cmd(char *str, char **argv, char **envp)
 }
 
 /**
- * read_cmd  - Prompt for a string
- * @buf:       string (Output)
+ * read_cmd - Prompt for a string
+ * @buf:      string (Output)
  *
- * @return     0 (success)
- *             1 (failed)
+ * @return    0 (success)
+ *            1 (failed)
  */
 static int read_cmd(char *buf)
 {
@@ -461,12 +508,12 @@ static int read_cmd(char *buf)
 }
 
 /**
- * set_env  - Set environment
- * @envp:     environment pointer
- * @env:      environment
- * @value:    parameter
+ * set_env - Set environment
+ * @envp:    environment pointer
+ * @env:     environment
+ * @value:   parameter
  *
- * @return    0
+ * @return   0
  */
 static int set_env(char **envp, char *env, char *value)
 {
@@ -486,13 +533,13 @@ static int set_env(char **envp, char *env, char *value)
 }
 
 /**
- * get_env  - Get environment
- * @envp:     environment pointer
- * @env:      environment
- * @value:    parameter (Output)
+ * get_env - Get environment
+ * @envp:    environment pointer
+ * @env:     environment
+ * @value:   parameter (Output)
  *
- * @return    0 (Found)
- *            1 (Not found)
+ * @return   0 (Found)
+ *           1 (Not found)
  */
 static int get_env(char **envp, char *env, char *value)
 {

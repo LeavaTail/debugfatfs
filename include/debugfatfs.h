@@ -19,7 +19,7 @@
  * displayed when 'usage' and 'version'
  */
 #define PROGRAM_NAME     "debugfatfs"
-#define PROGRAM_VERSION  "0.1.1"
+#define PROGRAM_VERSION  "0.2.0"
 #define PROGRAM_AUTHOR   "LeavaTail"
 #define COPYRIGHT_YEAR   "2020"
 
@@ -74,6 +74,11 @@ extern FILE *output;
 #define BOOTCODE32SIZE  420
 #define FSIRESV1SIZE    480
 #define FSIRESV2SIZE    12
+
+#define FAT_FSTCLUSTER  0x002
+#define FAT12_RESERVED  0xFF8
+#define FAT16_RESERVED  0xFFF8
+#define FAT32_RESERVED  0x0FFFFFF8
 /*
  * exFAT definition
  */
@@ -145,6 +150,8 @@ struct device_info {
 #define OPTION_FORCE        (1 << 11)
 #define OPTION_ENTRY        (1 << 12)
 
+#define CREATE_DIRECTORY    (1 << 0)
+
 struct directory {
 	unsigned char *name;
 	size_t namelen;
@@ -163,6 +170,7 @@ struct fat_fileinfo {
 	unsigned char *uniname;
 	size_t namelen;
 	size_t datalen;
+	uint8_t cached;
 	uint16_t attr;
 	struct tm ctime;
 	struct tm atime;
@@ -173,7 +181,9 @@ struct exfat_fileinfo {
 	unsigned char *name;
 	size_t namelen;
 	size_t datalen;
+	uint8_t cached;
 	uint16_t attr;
+	uint8_t flags;
 	struct tm ctime;
 	struct tm atime;
 	struct tm mtime;
@@ -395,6 +405,7 @@ struct operations {
 	int (*release)(uint32_t);
 	int (*create)(const char *, uint32_t, int);
 	int (*remove)(const char *, uint32_t, int);
+	int (*update)(uint32_t, int);
 	int (*trim)(uint32_t);
 };
 
@@ -427,6 +438,10 @@ struct operations {
 #define EXFAT_CATEGORY       0x40
 #define EXFAT_INUSE          0x80
 
+/* exFAT GeneralSecondaryFlags */
+#define ALLOC_POSIBLE         0x01
+#define ALLOC_NOFATCHAIN      0x02
+
 /* TimeStamp */
 #define FAT_DAY      0
 #define FAT_MONTH    5
@@ -440,6 +455,25 @@ struct operations {
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+#define input(msg, output) \
+	do { \
+		pr_msg("%s.\n", msg); \
+		pr_msg("#? "); \
+		fflush(stdout); \
+		if (fgets(output, 64, stdin) == NULL) \
+			return 1; \
+	} while (0) \
+
+#define input_time(msg, output) \
+	do { \
+		char tmp_buffer[32] = {0}; \
+		pr_msg("   %s: ", msg); \
+		fflush(stdout); \
+		if (fgets(tmp_buffer, 32, stdin) == NULL) \
+			return 1; \
+		sscanf(tmp_buffer, "%d", (int *)output); \
+	} while (0) \
 
 static inline bool is_power2(unsigned int n)
 {
@@ -456,7 +490,7 @@ int set_sector(void *, off_t, size_t);
 int set_cluster(void *, off_t);
 int set_clusters(void *, off_t, size_t);
 int print_cluster(uint32_t);
-void hexdump(FILE *, void *, size_t);
+void hexdump(void *, size_t);
 
 /* exFAT/FAT check function */
 int exfat_check_filesystem(struct pseudo_bootsec *);
