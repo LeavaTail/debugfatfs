@@ -2312,6 +2312,57 @@ int exfat_trim(uint32_t clu)
  */
 int exfat_fill(uint32_t clu, uint32_t count)
 {
-	/* TODO: Not implement */
+	int i, j;
+	void *data;
+	char name[MAX_NAME_LENGTH] = {0};
+	uint16_t uniname[MAX_NAME_LENGTH] = {0};
+	uint8_t len;
+	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
+	const size_t minimum_dentries = 3;
+	size_t need_entries = 0;
+	size_t blank_entries = 0;
+	struct exfat_dentry *d;
+
+	/* Lookup last entry */
+	data = malloc(info.cluster_size);
+	get_cluster(data, clu);
+
+	for (i = 0; i < entries; i++) {
+		d = ((struct exfat_dentry *)data) + i;
+		if (d->EntryType == DENTRY_UNUSED)
+			break;
+	}
+
+	if (i > count - 1) {
+		pr_debug("You want to fill %u dentries.\n", count);
+		pr_debug("But this directory has already contained %d dentries.\n", i);
+		goto out;
+	}
+	need_entries = count - i;
+
+	for (blank_entries = need_entries % minimum_dentries; blank_entries > 0; blank_entries--) {
+		d = ((struct exfat_dentry *)data) + i++;
+		d->EntryType = DENTRY_FILE - EXFAT_INUSE;
+	}
+
+	for (j = 0; j < (need_entries / minimum_dentries); j++) {
+		d = ((struct exfat_dentry *)data) + i + (j * minimum_dentries);
+		gen_rand(name, ENTRY_NAME_MAX);
+		len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
+		exfat_init_file(d, uniname, len);
+		d = ((struct exfat_dentry *)data) + i + (j * minimum_dentries) + 1;
+		exfat_init_stream(d, uniname, len);
+		d = ((struct exfat_dentry *)data) + i + (j * minimum_dentries) + 2;
+		exfat_init_filename(d, uniname, len);
+
+		/* Calculate File entry checksumc */
+		d = ((struct exfat_dentry *)data) + i + (j * minimum_dentries);
+		d->dentry.file.SetChecksum =
+			exfat_calculate_checksum(data + i * sizeof(struct exfat_dentry), minimum_dentries - 1);
+	}
+
+	set_cluster(data, clu);
+out:
+	free(data);
 	return 0;
 }

@@ -266,6 +266,21 @@ void hexdump(void *data, size_t size)
 }
 
 /**
+ * gen_rand - generate random string of any characters
+ * @data:     Output data (Output)
+ * @len:      data length
+ */
+void gen_rand(char *data, size_t len)
+{
+	int i;
+	const char strset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+	for (i = 0; i < len; i++)
+		data[i] = strset[rand() % (sizeof(strset) - 1)];
+	data[i] = '\0';
+}
+
+/**
  * check_mounted_filesystem - check if the image has mounted
  *
  * @return                    0 (not mount)

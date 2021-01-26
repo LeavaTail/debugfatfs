@@ -616,6 +616,7 @@ int shell(void)
 
 	fprintf(stdout, "Welcome to %s %s (Interactive Mode)\n\n", PROGRAM_NAME, PROGRAM_VERSION);
 	init_env(envp);
+	srand(time(NULL));
 	info.ops->readdir(NULL, 0, cluster);
 	while (1) {
 		get_env(envp, "PWD", buf);
