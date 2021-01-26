@@ -25,6 +25,7 @@ static int cmd_create(int, char **, char **);
 static int cmd_remove(int, char **, char **);
 static int cmd_update(int, char **, char **);
 static int cmd_trim(int, char **, char **);
+static int cmd_fill(int, char **, char **);
 static int cmd_help(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
@@ -43,6 +44,7 @@ struct command cmd[] = {
 	{"remove", cmd_remove},
 	{"update", cmd_update},
 	{"trim", cmd_trim},
+	{"fill", cmd_fill},
 	{"help", cmd_help},
 	{"exit", cmd_exit},
 };
@@ -402,6 +404,33 @@ static int cmd_trim(int argc, char **argv, char **envp)
 }
 
 /**
+ * cmd_fill - fill in directory
+ * @argc:     argument count
+ * @argv:     argument vetor
+ * @envp:     environment pointer
+ *
+ * @return    0 (success)
+ */
+static int cmd_fill(int argc, char **argv, char **envp)
+{
+	unsigned int count = 0;
+
+	switch (argc) {
+		case 1:
+			info.ops->fill(cluster, info.cluster_size / sizeof(struct exfat_dentry));
+			break;
+		case 2:
+			count = strtoul(argv[1], NULL, 10);
+			info.ops->fill(cluster, count);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
  * cmd_help - display help
  * @argc:     argument count
  * @argv:     argument vector
@@ -422,6 +451,7 @@ static int cmd_help(int argc, char **argv, char **envp)
 	fprintf(stderr, "remove     remove directory entry.\n");
 	fprintf(stderr, "update     update directory entry.\n");
 	fprintf(stderr, "trim       trim deleted dentry.\n");
+	fprintf(stderr, "fill       fill in directory.\n");
 	fprintf(stderr, "help       display this help.\n");
 	fprintf(stderr, "\n");
 	return 0;

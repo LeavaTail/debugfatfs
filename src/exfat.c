@@ -82,6 +82,7 @@ int exfat_create(const char *, uint32_t, int);
 int exfat_remove(const char *, uint32_t, int);
 int exfat_update_dentry(uint32_t, int);
 int exfat_trim(uint32_t);
+int exfat_fill(uint32_t, uint32_t);
 
 static const struct operations exfat_ops = {
 	.statfs = exfat_print_bootsec,
@@ -100,6 +101,7 @@ static const struct operations exfat_ops = {
 	.remove = exfat_remove,
 	.update = exfat_update_dentry,
 	.trim = exfat_trim,
+	.fill = exfat_fill,
 };
 
 /*************************************************************************************************/
@@ -2298,5 +2300,18 @@ int exfat_trim(uint32_t clu)
 	exfat_set_cluster(f, clu, data);
 	exfat_free_clusters(f, clu, cluster_num - allocate_cluster);
 	free(data);
+	return 0;
+}
+
+/**
+ * exfat_fill - function interface to fill in directory
+ * @clu:        Current Directory Index
+ * @count:      Number of dentry
+ *
+ * @return      0 (Success)
+ */
+int exfat_fill(uint32_t clu, uint32_t count)
+{
+	/* TODO: Not implement */
 	return 0;
 }

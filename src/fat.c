@@ -71,6 +71,7 @@ int fat_create(const char *, uint32_t, int);
 int fat_remove(const char *, uint32_t, int);
 int fat_update_dentry(uint32_t, int);
 int fat_trim(uint32_t);
+int fat_fill(uint32_t, uint32_t);
 
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
@@ -89,6 +90,7 @@ static const struct operations fat_ops = {
 	.remove = fat_remove,
 	.update = fat_update_dentry,
 	.trim = fat_trim,
+	.fill = fat_fill,
 };
 
 /*************************************************************************************************/
@@ -2037,5 +2039,18 @@ int fat_trim(uint32_t clu)
 		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
 	}
 	free(data);
+	return 0;
+}
+
+/**
+ * fat_fill -  function interface to fill in directory
+ * @clu:       Current Directory Index
+ * @count:     Number of dentry
+ *
+ * @return     0 (Success)
+ */
+int fat_fill(uint32_t clu, uint32_t count)
+{
+	/* TODO: Not implement */
 	return 0;
 }

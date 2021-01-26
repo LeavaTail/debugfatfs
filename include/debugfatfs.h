@@ -407,6 +407,7 @@ struct operations {
 	int (*remove)(const char *, uint32_t, int);
 	int (*update)(uint32_t, int);
 	int (*trim)(uint32_t);
+	int (*fill)(uint32_t, uint32_t);
 };
 
 /* FAT/exFAT File Attributes */
