@@ -1347,6 +1347,9 @@ static int exfat_update_filesize(struct exfat_fileinfo *f, uint32_t clu)
 	struct exfat_dentry d;
 	void *data;
 
+	if (clu == info.root_offset)
+		return 0;
+
 	for (i = 0; i < info.root_size && info.root[i]; i++) {
 		if (search_node2(info.root[i], clu)) {
 			parent_clu = info.root[i]->index;
