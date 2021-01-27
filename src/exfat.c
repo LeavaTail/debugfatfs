@@ -519,7 +519,7 @@ static int exfat_alloc_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t n
 			nofatchain = false;
 		exfat_update_fat_entry(next_clu, EXFAT_LASTCLUSTER);
 		exfat_update_fat_entry(clu, next_clu);
-		exfat_save_bitmap(clu, 1);
+		exfat_save_bitmap(next_clu, 1);
 		clu = next_clu;
 		if (--total_alloc == 0)
 			break;
