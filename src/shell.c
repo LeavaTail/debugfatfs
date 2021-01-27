@@ -427,6 +427,8 @@ static int cmd_fill(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
 			break;
 	}
+	info.ops->reload(cluster);
+
 	return 0;
 }
 
