@@ -21,6 +21,9 @@ static void exfat_print_upcase(void);
 static void exfat_print_label(void);
 static int exfat_load_bitmap(uint32_t);
 static int exfat_save_bitmap(uint32_t, uint32_t);
+static int exfat_load_bitmap_cluster(struct exfat_dentry);
+static int exfat_load_upcase_cluster(struct exfat_dentry);
+static int exfat_load_volume_label(struct exfat_dentry);
 
 /* FAT-entry function prototype */
 static uint32_t exfat_check_fat_entry(uint32_t);
@@ -363,6 +366,90 @@ static int exfat_save_bitmap(uint32_t clu, uint32_t value)
 	return 0;
 }
 
+/**
+ * exfat_load_bitmap_cluster - function to load Allocation Bitmap
+ * @d:                         directory entry about allocation bitmap
+ *
+ * @return                      0 (success)
+ *                             -1 (bitmap was already loaded)
+ */
+static int exfat_load_bitmap_cluster(struct exfat_dentry d)
+{
+	if (info.alloc_cluster) {
+		pr_warn("Allocation Bitmap(%u) is already loaded\n", info.alloc_cluster);
+		return -1;
+	}
+
+	pr_debug("Get: allocation table: cluster 0x%x, size: 0x%lx\n",
+			d.dentry.bitmap.FirstCluster,
+			d.dentry.bitmap.DataLength);
+	info.alloc_cluster = d.dentry.bitmap.FirstCluster;
+	info.alloc_table = malloc(info.cluster_size);
+	get_cluster(info.alloc_table, d.dentry.bitmap.FirstCluster);
+	pr_info("Allocation Bitmap (#%u):\n", d.dentry.bitmap.FirstCluster);
+
+	return 0;
+}
+
+/**
+ * exfat_load_upcase_cluster - function to load Upcase table
+ * @d:                         directory entry about Upcase table
+ *
+ * @return                      0 (success)
+ *                             -1 (bitmap was already loaded)
+ */
+static int exfat_load_upcase_cluster(struct exfat_dentry d)
+{
+	uint32_t checksum = 0;
+	uint64_t len;
+
+	if (info.upcase_size) {
+		pr_warn("Upcase-Table(%lu) is already loaded\n", info.upcase_size);
+		return -1;
+	}
+
+	info.upcase_size = d.dentry.upcase.DataLength;
+	len = (info.cluster_size / info.upcase_size) + 1;
+	info.upcase_table = malloc(info.cluster_size * len);
+	pr_debug("Get: Up-case table: cluster 0x%x, size: 0x%x\n",
+			d.dentry.upcase.FirstCluster,
+			d.dentry.upcase.DataLength);
+	get_clusters(info.upcase_table, d.dentry.upcase.FirstCluster, len);
+	checksum = exfat_calculate_tablechecksum((unsigned char *)info.upcase_table, info.upcase_size);
+	if (checksum != d.dentry.upcase.TableCheckSum)
+		pr_warn("Up-case table checksum is difference. (dentry: %x, calculate: %x)\n",
+				d.dentry.upcase.TableCheckSum,
+				checksum);
+
+	return 0;
+}
+
+/**
+ * exfat_load_volume_label - function to load volume label
+ * @d:                       directory entry about volume label
+ *
+ * @return                    0 (success)
+ *                           -1 (bitmap was already loaded)
+ */
+static int exfat_load_volume_label(struct exfat_dentry d)
+{
+	if (info.vol_length) {
+		pr_warn("Volume label(%u) is already loaded\n", info.vol_length);
+		return -1;
+	}
+
+	info.vol_length = d.dentry.vol.CharacterCount;
+	if (info.vol_length) {
+		info.vol_label = malloc(sizeof(uint16_t) * info.vol_length);
+		pr_debug("Get: Volume label: size: 0x%x\n",
+				d.dentry.vol.CharacterCount);
+		memcpy(info.vol_label, d.dentry.vol.VolumeLabel,
+				sizeof(uint16_t) * info.vol_length);
+	}
+
+	return 0;
+}
+
 /*************************************************************************************************/
 /*                                                                                               */
 /* FAT-ENTRY FUNCTION                                                                            */
@@ -692,8 +779,6 @@ static int exfat_traverse_directory(uint32_t clu)
 	int i, j, name_len;
 	uint8_t remaining;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
-	uint32_t checksum = 0;
-	uint64_t len;
 	size_t index = exfat_get_index(clu);
 	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
 	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
@@ -719,37 +804,13 @@ static int exfat_traverse_directory(uint32_t clu)
 			case DENTRY_UNUSED:
 				break;
 			case DENTRY_BITMAP:
-				pr_debug("Get: allocation table: cluster 0x%x, size: 0x%lx\n",
-						d.dentry.bitmap.FirstCluster,
-						d.dentry.bitmap.DataLength);
-				info.alloc_cluster = d.dentry.bitmap.FirstCluster;
-				info.alloc_table = malloc(info.cluster_size);
-				get_cluster(info.alloc_table, d.dentry.bitmap.FirstCluster);
-				pr_info("Allocation Bitmap (#%u):\n", d.dentry.bitmap.FirstCluster);
+				exfat_load_bitmap_cluster(d);
 				break;
 			case DENTRY_UPCASE:
-				info.upcase_size = d.dentry.upcase.DataLength;
-				len = (info.cluster_size / info.upcase_size) + 1;
-				info.upcase_table = malloc(info.cluster_size * len);
-				pr_debug("Get: Up-case table: cluster 0x%x, size: 0x%x\n",
-						d.dentry.upcase.FirstCluster,
-						d.dentry.upcase.DataLength);
-				get_clusters(info.upcase_table, d.dentry.upcase.FirstCluster, len);
-				checksum = exfat_calculate_tablechecksum((unsigned char *)info.upcase_table, info.upcase_size);
-				if (checksum != d.dentry.upcase.TableCheckSum)
-					pr_warn("Up-case table checksum is difference. (dentry: %x, calculate: %x)\n",
-							d.dentry.upcase.TableCheckSum,
-							checksum);
+				exfat_load_upcase_cluster(d);
 				break;
 			case DENTRY_VOLUME:
-				info.vol_length = d.dentry.vol.CharacterCount;
-				if (info.vol_length) {
-					info.vol_label = malloc(sizeof(uint16_t) * info.vol_length);
-					pr_debug("Get: Volume label: size: 0x%x\n",
-							d.dentry.vol.CharacterCount);
-					memcpy(info.vol_label, d.dentry.vol.VolumeLabel,
-							sizeof(uint16_t) * info.vol_length);
-				}
+				exfat_load_volume_label(d);
 				break;
 			case DENTRY_FILE:
 				remaining = d.dentry.file.SecondaryCount;
