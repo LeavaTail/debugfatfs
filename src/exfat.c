@@ -407,7 +407,7 @@ static int exfat_load_upcase_cluster(struct exfat_dentry d)
 		return -1;
 
 	info.upcase_size = d.dentry.upcase.DataLength;
-	len = (info.cluster_size / info.upcase_size) + 1;
+	len = (info.upcase_size + info.cluster_size - 1) / info.cluster_size;
 	info.upcase_table = malloc(info.cluster_size * len);
 	pr_debug("Get: Up-case table: cluster 0x%x, size: 0x%x\n",
 			d.dentry.upcase.FirstCluster,
