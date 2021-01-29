@@ -613,8 +613,8 @@ int shell(void)
 {
 	int argc = 0;
 	char buf[CMD_MAXLEN + 1] = {};
-	char **argv = malloc(sizeof(char *) * (CMD_MAXLEN + 1));
-	char **envp = malloc(sizeof(char *) * 16);
+	char **argv = calloc((CMD_MAXLEN + 1), sizeof(char *));
+	char **envp = calloc(16, sizeof(char *));
 
 	fprintf(stdout, "Welcome to %s %s (Interactive Mode)\n\n", PROGRAM_NAME, PROGRAM_VERSION);
 	init_env(envp);
