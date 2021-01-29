@@ -42,7 +42,7 @@ If you don't want, Please add `-r`(read only) option.
 
 - User can print Main Boot Sector by default. (`-q` option restrict messages)
 
-```sh
+```
 $ sudo debugfatfs /dev/sdc1
 media-relative sector offset    : 0x00000800 (sector)
 Offset of the First FAT         : 0x00000800 (sector)
@@ -62,7 +62,7 @@ The percentage of clusters      :          0 (%)
 - User can print cluster by `-c` option. (print sector by `-s` option)
 - User can print cluster by `cluster` command in Interactive Mode.
 
-```sh
+```
 $ sudo debugfatfs -q -c 4 /dev/sdc1
 Cluster #4:
 00000000:  83 05 DC 30 EA 30 E5 30 FC 30 E0 30 00 00 00 00  ...0.0.0.0.0....
@@ -113,7 +113,7 @@ Cluster #4:
 - User can print Directory entry by `-e` option.
 - User can print Directory entry by `entry` command in Interactive Mode.
 
-```sh
+```
 $ sudo debugfatfs -q -e 4 /dev/sdc1
 EntryType                       : c0
 GeneralSecondaryFlags           : 03
@@ -136,7 +136,7 @@ Please be careful while using that!
 
 - Developer can backup boot and FAT region by `-s` option. (restore by `-l` option)
 
-```sh
+```
 $ sudo debugfatfs -q -b 0x100000 /dev/sdc1
 Sector #1048576:
 00000000:  F8 FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF  ................
@@ -192,7 +192,7 @@ $ ls -l boot_fat.old
 
 - Developer can print and update FAT entry by `fat` command in Interactive Mode.
 
-```sh
+```
 $ sudo debugfatfs -i /dev/sdc1
 Welcome to debugfatfs 0.2.0 (Interactive Mode)
 
@@ -209,7 +209,7 @@ Get: Cluster 100 is FAT entry 00000008
 - Developer can create file by `create` command in Interactive Mode.
 - Developer can remove file by `remove` command in Interactive Mode.
 
-```sh
+```
 $ sudo debugfatfs -i /dev/sdc1
 Welcome to debugfatfs 0.2.0 (Interactive Mode)
 
@@ -234,7 +234,7 @@ Welcome to debugfatfs 0.2.0 (Interactive Mode)
 
 - Developer can compact deleted entry by `trim` command in Interactive Mode.
 
-```sh
+```
 $ sudo debugfatfs -i /dev/sdc1
 Welcome to debugfatfs 0.2.0 (Interactive Mode)
 
@@ -313,7 +313,7 @@ Cluster #12:
 
 - Developer can update directory entry by `update` command in Interactive Mode.
 
-```sh
+```
 $ sudo debugfatfs -i /dev/sdc1
 Welcome to debugfatfs 0.2.0 (Interactive Mode)
 
@@ -443,7 +443,7 @@ And, debugfatfs with interactive mode support these command.
 
 ## Install
 
-```sh
+```
 $ ./script/bootstrap.sh
 $ ./configure
 $ make
