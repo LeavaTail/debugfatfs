@@ -377,10 +377,8 @@ static int exfat_save_bitmap(uint32_t clu, uint32_t value)
  */
 static int exfat_load_bitmap_cluster(struct exfat_dentry d)
 {
-	if (info.alloc_cluster) {
-		pr_warn("Allocation Bitmap(%u) is already loaded\n", info.alloc_cluster);
+	if (info.alloc_cluster)
 		return -1;
-	}
 
 	pr_debug("Get: allocation table: cluster 0x%x, size: 0x%lx\n",
 			d.dentry.bitmap.FirstCluster,
@@ -405,10 +403,8 @@ static int exfat_load_upcase_cluster(struct exfat_dentry d)
 	uint32_t checksum = 0;
 	uint64_t len;
 
-	if (info.upcase_size) {
-		pr_warn("Upcase-Table(%lu) is already loaded\n", info.upcase_size);
+	if (info.upcase_size)
 		return -1;
-	}
 
 	info.upcase_size = d.dentry.upcase.DataLength;
 	len = (info.cluster_size / info.upcase_size) + 1;
@@ -435,10 +431,8 @@ static int exfat_load_upcase_cluster(struct exfat_dentry d)
  */
 static int exfat_load_volume_label(struct exfat_dentry d)
 {
-	if (info.vol_length) {
-		pr_warn("Volume label(%u) is already loaded\n", info.vol_length);
+	if (info.vol_length)
 		return -1;
-	}
 
 	info.vol_length = d.dentry.vol.CharacterCount;
 	if (info.vol_length) {
