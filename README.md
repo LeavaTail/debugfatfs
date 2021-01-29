@@ -380,6 +380,23 @@ Cluster #13:
 00007FF0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
 ```
 
+#### Case 6: Fill with temproray directory entry
+
+- Developer can fill directory by `fill` command in Interactive Mode.
+
+```
+$ sudo debugfatfs -i /dev/sdc1
+Welcome to debugfatfs 0.2.0 (Interactive Mode)
+
+/> entry 1023
+EntryType                       : 00
+/> fill
+/> entry 1023
+EntryType                       : c1
+GeneralSecondaryFlags           : 00
+FileName                        : 480050004e0058005600420044004c00540044005500350035004a003200
+```
+
 ## Usage
 
 debugfatfs support support these optoin. (Please look at man-page)
@@ -412,6 +429,7 @@ And, debugfatfs with interactive mode support these command.
 - **remove** *file* --- remove directory entry
 - **update** *index* --- update directory entry
 - **trim** --- trim deleted dentry
+- **fill** *[entry]* --- fill in directory
 - **help** --- display this help
 - **exit** --- exit interactive mode
 
