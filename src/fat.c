@@ -2051,6 +2051,57 @@ int fat_trim(uint32_t clu)
  */
 int fat_fill(uint32_t clu, uint32_t count)
 {
-	/* TODO: Not implement */
+	int i, j;
+	void *data;
+	char shortname[11] = {0};
+	size_t index = fat_get_index(clu);
+	struct fat_fileinfo *f = (struct fat_fileinfo *)info.root[index]->data;
+	size_t entries = info.cluster_size / sizeof(struct fat_dentry);
+	size_t size;
+	size_t need_entries = 0;
+	struct fat_dentry *d;
+
+	/* Lookup last entry */
+	if (clu) {
+		data = malloc(info.cluster_size);
+		get_cluster(data, clu);
+	} else {
+		size = info.root_length * info.sector_size;
+		entries = size / sizeof(struct fat_dentry);
+		data = malloc(size);
+		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	}
+
+	if (count > entries) {
+		pr_err("%s doesn't support more than %lu entries.\n", __func__, entries);
+		goto out;
+	}
+
+	for (i = 0; i < entries; i++) {
+		d = ((struct fat_dentry *)data) + i;
+		if (d->dentry.dir.DIR_Name[0] == DENTRY_UNUSED)
+			break;
+	}
+
+	if (i > count - 1) {
+		pr_debug("You want to fill %u dentries.\n", count);
+		pr_debug("But this directory has already contained %d dentries.\n", i);
+		goto out;
+	}
+	need_entries = count - i;
+
+	for (j = 0; j < need_entries; j++) {
+		d = ((struct fat_dentry *)data) + i + j;
+		gen_rand(shortname, 11);
+		fat_init_dentry(d, (unsigned char *)shortname, 11);
+	}
+
+	if (clu)
+		fat_set_cluster(f, clu, data);
+	else
+		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+
+out:
+	free(data);
 	return 0;
 }
