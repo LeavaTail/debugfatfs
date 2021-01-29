@@ -39,6 +39,7 @@ static int exfat_new_clusters(size_t);
 /* Directory chain function prototype */
 static int exfat_check_dchain(uint32_t);
 static int exfat_get_index(uint32_t);
+static int exfat_load_extra_entry(void);
 static int exfat_traverse_directory(uint32_t);
 static int exfat_clean_dchain(uint32_t);
 
@@ -233,6 +234,7 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot)
 		f->attr = ATTR_DIRECTORY;
 		f->hash = 0;
 		info.root[0] = init_node2(info.root_offset, f);
+		exfat_load_extra_entry();
 
 		info.ops = &exfat_ops;
 		ret = 1;
@@ -766,6 +768,57 @@ static int exfat_get_index(uint32_t clu)
 
 	return i;
 }
+
+/**
+ * exfat_load_extra_entry - function to load extra entry
+ *
+ * @return                  0 (success)
+ *                          1 (already traverse)
+ */
+static int exfat_load_extra_entry(void)
+{
+	int i;
+	size_t index = exfat_get_index(info.root_offset);
+	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
+	void *data;
+	struct exfat_dentry d;
+
+	if (f->cached) {
+		pr_debug("Directory %s was already traversed.\n", f->name);
+		return 1;
+	}
+
+	data = malloc(info.cluster_size);
+	get_cluster(data, info.root_offset);
+
+	for (i = 0; i < (info.cluster_size / sizeof(struct exfat_dentry)); i++) {
+		d = ((struct exfat_dentry *)data)[i];
+		switch (d.EntryType) {
+			case DENTRY_BITMAP:
+				exfat_load_bitmap_cluster(d);
+				break;
+			case DENTRY_UPCASE:
+				exfat_load_upcase_cluster(d);
+				break;
+			case DENTRY_VOLUME:
+				exfat_load_volume_label(d);
+				break;
+			case DENTRY_UNUSED:
+			case DENTRY_FILE:
+			case DENTRY_GUID:
+			case DENTRY_STREAM:
+			case DENTRY_NAME:
+			case DENTRY_VENDOR:
+			case DENTRY_VENDOR_ALLOC:
+				goto out;
+		}
+	}
+out:
+	free(data);
+	return 0;
+}
+
+
 
 /**
  * exfat_traverse_directory - function to traverse one directory
@@ -2381,7 +2434,11 @@ int exfat_fill(uint32_t clu, uint32_t count)
 	char name[MAX_NAME_LENGTH] = {0};
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint8_t len;
+	size_t index = exfat_get_index(clu);
+	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
 	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
+	size_t cluster_num = 1;
+	size_t new_cluster_num = 1;
 	const size_t minimum_dentries = 3;
 	size_t need_entries = 0;
 	size_t blank_entries = 0;
@@ -2390,6 +2447,9 @@ int exfat_fill(uint32_t clu, uint32_t count)
 	/* Lookup last entry */
 	data = malloc(info.cluster_size);
 	get_cluster(data, clu);
+
+	cluster_num = exfat_concat_cluster(f, clu, &data);
+	entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
 
 	for (i = 0; i < entries; i++) {
 		d = ((struct exfat_dentry *)data) + i;
@@ -2402,7 +2462,15 @@ int exfat_fill(uint32_t clu, uint32_t count)
 		pr_debug("But this directory has already contained %d dentries.\n", i);
 		goto out;
 	}
+
 	need_entries = count - i;
+	new_cluster_num = ((count * sizeof(struct exfat_dentry) + info.cluster_size - 1 )/ info.cluster_size);
+
+	if (new_cluster_num > cluster_num) {
+		exfat_alloc_clusters(f, clu, new_cluster_num - cluster_num);
+		cluster_num = exfat_concat_cluster(f, clu, &data);
+		entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
+	}
 
 	for (blank_entries = need_entries % minimum_dentries; blank_entries > 0; blank_entries--) {
 		d = ((struct exfat_dentry *)data) + i++;
@@ -2425,7 +2493,7 @@ int exfat_fill(uint32_t clu, uint32_t count)
 			exfat_calculate_checksum(data + i * sizeof(struct exfat_dentry), minimum_dentries - 1);
 	}
 
-	set_cluster(data, clu);
+	exfat_set_cluster(f, clu, data);
 out:
 	free(data);
 	return 0;
