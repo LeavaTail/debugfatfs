@@ -1738,7 +1738,7 @@ int fat_set_bogus_entry(uint32_t clu)
 int fat_release_cluster(uint32_t clu)
 {
 	uint32_t prev = 0;
-	
+
 	fat_get_fat_entry(clu, &prev);
 	if (!prev) {
 		pr_warn("Cluster %u is already freed.\n", clu);
@@ -1774,7 +1774,7 @@ int fat_create(const char *name, uint32_t clu, int opt)
 	size_t new_cluster_num = 1;
 	size_t name_len;
 	struct fat_dentry *d;
-	
+
 	long_len = fat_create_nameentry(name, shortname, longname);
 	if (long_len)
 		count = (long_len / 13) + 1;
