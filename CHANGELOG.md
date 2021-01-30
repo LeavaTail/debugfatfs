@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0] - 2021-01-30
+
+### Added
+
+- Support to fill temporary directory entry in fill
+
+### Fixed
+
+- Invalid update bitmap in alloc_cluster
+- Invalid update filesize in root directory
+- Invalid division calculation (round up)
+- Invalid namehash in lower-case character
+
 ## [0.2.0] - 2020-11-22
 
 ### Added

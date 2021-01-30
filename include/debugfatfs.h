@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- *  Copyright (C) 2020 LeavaTail
+ *  Copyright (C) 2021 LeavaTail
  */
 #ifndef _DEBUGFATFS_H
 #define _DEBUGFATFS_H
@@ -19,9 +19,9 @@
  * displayed when 'usage' and 'version'
  */
 #define PROGRAM_NAME     "debugfatfs"
-#define PROGRAM_VERSION  "0.2.0"
+#define PROGRAM_VERSION  "0.3.0"
 #define PROGRAM_AUTHOR   "LeavaTail"
-#define COPYRIGHT_YEAR   "2020"
+#define COPYRIGHT_YEAR   "2021"
 
 /**
  * Debug code

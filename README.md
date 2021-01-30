@@ -194,7 +194,7 @@ $ ls -l boot_fat.old
 
 ```
 $ sudo debugfatfs -i /dev/sdc1
-Welcome to debugfatfs 0.2.0 (Interactive Mode)
+Welcome to debugfatfs 0.3.0 (Interactive Mode)
 
 /> fat 100
 Get: Cluster 100 is FAT entry 00000065
@@ -211,7 +211,7 @@ Get: Cluster 100 is FAT entry 00000008
 
 ```
 $ sudo debugfatfs -i /dev/sdc1
-Welcome to debugfatfs 0.2.0 (Interactive Mode)
+Welcome to debugfatfs 0.3.0 (Interactive Mode)
 
 /> cd 03_DELETE
 /03_DELETE/> ls
@@ -236,7 +236,7 @@ Welcome to debugfatfs 0.2.0 (Interactive Mode)
 
 ```
 $ sudo debugfatfs -i /dev/sdc1
-Welcome to debugfatfs 0.2.0 (Interactive Mode)
+Welcome to debugfatfs 0.3.0 (Interactive Mode)
 
 /> cd 03_DELETE
 /03_DELETE/> ls
@@ -315,7 +315,7 @@ Cluster #12:
 
 ```
 $ sudo debugfatfs -i /dev/sdc1
-Welcome to debugfatfs 0.2.0 (Interactive Mode)
+Welcome to debugfatfs 0.3.0 (Interactive Mode)
 
 /> cd 00_SIMPLE
 /00_SIMPLE/> cluster 13
@@ -386,7 +386,7 @@ Cluster #13:
 
 ```
 $ sudo debugfatfs -i /dev/sdc1
-Welcome to debugfatfs 0.2.0 (Interactive Mode)
+Welcome to debugfatfs 0.3.0 (Interactive Mode)
 
 /> entry 1023
 EntryType                       : 00
