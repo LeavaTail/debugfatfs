@@ -69,6 +69,9 @@ static void exfat_convert_exfattime(struct tm *, uint32_t *, uint8_t *);
 static void exfat_convert_exfattimezone(uint8_t *, int);
 static int exfat_parse_timezone(char *, uint8_t *);
 
+/* File Name function prototype */
+static uint16_t exfat_convert_upper(uint16_t);
+static void exfat_convert_upper_character(uint16_t *, size_t, uint16_t *);
 /* Operations function prototype */
 int exfat_print_bootsec(void);
 int exfat_print_fsinfo(void);
@@ -1623,6 +1626,40 @@ static int exfat_parse_timezone(char *buf, uint8_t *tz)
 
 	return 0;
 }
+
+/*************************************************************************************************/
+/*                                                                                               */
+/* FILE NAME FUNCTION                                                                            */
+/*                                                                                               */
+/*************************************************************************************************/
+/**
+ * exfat_convert_upper - convert character to upper-character
+ * @c:                   character in UTF-16
+ *
+ * @return:              upper character
+ */
+static uint16_t exfat_convert_upper(uint16_t c)
+{
+	return info.upcase_table[c] ? info.upcase_table[c] : c;
+}
+
+/**
+ * exfat_convert_upper_character - convert string to upper-string
+ * @src:                           Target characters in UTF-16
+ * @len:                           Target characters length
+ * @dist:                          convert result in UTF-16 (Output)
+ */
+static void exfat_convert_upper_character(uint16_t *src, size_t len, uint16_t *dist)
+{
+	int i;
+
+	if (!info.upcase_table || (info.upcase_size == 0))
+		exfat_load_extra_entry();
+
+	for (i = 0; i < len; i++)
+		dist[i] = exfat_convert_upper(src[i]);
+}
+
 /*************************************************************************************************/
 /*                                                                                               */
 /* OPERATIONS FUNCTION                                                                           */
@@ -2124,6 +2161,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	int i, namei;
 	void *data;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
+	uint16_t uppername[MAX_NAME_LENGTH] = {0};
 	uint8_t len;
 	uint8_t count;
 	size_t index = exfat_get_index(clu);
@@ -2136,6 +2174,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 
 	/* convert UTF-8 to UTF16 */
 	len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
+	exfat_convert_upper_character(uniname, len, uppername);
 	count = ((len + ENTRY_NAME_MAX - 1) / ENTRY_NAME_MAX) + 1;
 
 	/* Lookup last entry */
@@ -2162,7 +2201,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	if (opt & CREATE_DIRECTORY)
 		d->dentry.file.FileAttributes = ATTR_DIRECTORY;
 	d = ((struct exfat_dentry *)data) + i + 1;
-	exfat_init_stream(d, uniname, len);
+	exfat_init_stream(d, uppername, len);
 	if (opt & CREATE_DIRECTORY)
 		d->dentry.stream.FirstCluster = exfat_new_clusters(1);
 	d = ((struct exfat_dentry *)data) + i + 2;
@@ -2198,6 +2237,7 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 	void *data;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint16_t uniname2[MAX_NAME_LENGTH] = {0};
+	uint16_t uppername[MAX_NAME_LENGTH] = {0};
 	uint16_t namehash = 0;
 	uint8_t remaining;
 	size_t index = exfat_get_index(clu);
@@ -2208,7 +2248,8 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 
 	/* convert UTF-8 to UTF16 */
 	name_len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
-	namehash = exfat_calculate_namehash(uniname, name_len);
+	exfat_convert_upper_character(uniname, name_len, uppername);
+	namehash = exfat_calculate_namehash(uppername, name_len);
 
 	/* Lookup last entry */
 	data = malloc(info.cluster_size);
@@ -2427,6 +2468,7 @@ int exfat_fill(uint32_t clu, uint32_t count)
 	void *data;
 	char name[MAX_NAME_LENGTH] = {0};
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
+	uint16_t uppername[MAX_NAME_LENGTH] = {0};
 	uint8_t len;
 	size_t index = exfat_get_index(clu);
 	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
@@ -2475,9 +2517,10 @@ int exfat_fill(uint32_t clu, uint32_t count)
 		d = ((struct exfat_dentry *)data) + i + (j * minimum_dentries);
 		gen_rand(name, ENTRY_NAME_MAX);
 		len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
+		exfat_convert_upper_character(uniname, len, uppername);
 		exfat_init_file(d, uniname, len);
 		d = ((struct exfat_dentry *)data) + i + (j * minimum_dentries) + 1;
-		exfat_init_stream(d, uniname, len);
+		exfat_init_stream(d, uppername, len);
 		d = ((struct exfat_dentry *)data) + i + (j * minimum_dentries) + 2;
 		exfat_init_filename(d, uniname, len);
 
