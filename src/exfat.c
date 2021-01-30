@@ -60,7 +60,6 @@ static int exfat_update_upcase(struct exfat_dentry *, struct exfat_dentry *);
 static int exfat_update_volume(struct exfat_dentry *, struct exfat_dentry *);
 static uint16_t exfat_calculate_checksum(unsigned char *, unsigned char);
 static uint32_t exfat_calculate_tablechecksum(unsigned char *, uint64_t);
-static void exfat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
 static int exfat_update_filesize(struct exfat_fileinfo *, uint32_t);
 static void exfat_convert_unixtime(struct tm *, uint32_t, uint8_t, uint8_t);
@@ -70,6 +69,7 @@ static void exfat_convert_exfattimezone(uint8_t *, int);
 static int exfat_parse_timezone(char *, uint8_t *);
 
 /* File Name function prototype */
+static void exfat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static uint16_t exfat_convert_upper(uint16_t);
 static void exfat_convert_upper_character(uint16_t *, size_t, uint16_t *);
 /* Operations function prototype */
@@ -1411,17 +1411,6 @@ static uint32_t exfat_calculate_tablechecksum(unsigned char *table, uint64_t len
 }
 
 /**
- * exfat_convert_uniname - function to get filename
- * @uniname:               filename dentry in UTF-16
- * @name_len:              filename length
- * @name:                  filename in UTF-8 (Output)
- */
-static void exfat_convert_uniname(uint16_t *uniname, uint64_t name_len, unsigned char *name)
-{
-	utf16s_to_utf8s(uniname, name_len, name);
-}
-
-/**
  * exfat_calculate_namehash - Calculate name hash
  * @name:                     points to an in-memory copy of the up-cased file name
  * @len:                      Name length
@@ -1632,6 +1621,17 @@ static int exfat_parse_timezone(char *buf, uint8_t *tz)
 /* FILE NAME FUNCTION                                                                            */
 /*                                                                                               */
 /*************************************************************************************************/
+/**
+ * exfat_convert_uniname - function to get filename
+ * @uniname:               filename dentry in UTF-16
+ * @name_len:              filename length
+ * @name:                  filename in UTF-8 (Output)
+ */
+static void exfat_convert_uniname(uint16_t *uniname, uint64_t name_len, unsigned char *name)
+{
+	utf16s_to_utf8s(uniname, name_len, name);
+}
+
 /**
  * exfat_convert_upper - convert character to upper-character
  * @c:                   character in UTF-16
