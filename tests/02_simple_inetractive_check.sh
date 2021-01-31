@@ -38,6 +38,8 @@ function test_shell () {
 	expect \"/> \"
 	send \"remove FILE.TXT\n\"
 	expect \"/> \"
+	send \"fill\n\"
+	expect \"/> \"
 	send \"help\n\"
 	expect \"/> \"
 	send \"exit\n\"

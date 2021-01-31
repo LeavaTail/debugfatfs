@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- *  Copyright (C) 2020 LeavaTail
+ *  Copyright (C) 2021 LeavaTail
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -263,6 +263,21 @@ void hexdump(void *data, size_t size)
 		}
 		pr_msg("\n");
 	}
+}
+
+/**
+ * gen_rand - generate random string of any characters
+ * @data:     Output data (Output)
+ * @len:      data length
+ */
+void gen_rand(char *data, size_t len)
+{
+	int i;
+	const char strset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+	for (i = 0; i < len; i++)
+		data[i] = strset[rand() % (sizeof(strset) - 1)];
+	data[i] = '\0';
 }
 
 /**

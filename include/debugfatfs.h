@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- *  Copyright (C) 2020 LeavaTail
+ *  Copyright (C) 2021 LeavaTail
  */
 #ifndef _DEBUGFATFS_H
 #define _DEBUGFATFS_H
@@ -19,9 +19,9 @@
  * displayed when 'usage' and 'version'
  */
 #define PROGRAM_NAME     "debugfatfs"
-#define PROGRAM_VERSION  "0.2.0"
+#define PROGRAM_VERSION  "0.3.0"
 #define PROGRAM_AUTHOR   "LeavaTail"
-#define COPYRIGHT_YEAR   "2020"
+#define COPYRIGHT_YEAR   "2021"
 
 /**
  * Debug code
@@ -407,6 +407,7 @@ struct operations {
 	int (*remove)(const char *, uint32_t, int);
 	int (*update)(uint32_t, int);
 	int (*trim)(uint32_t);
+	int (*fill)(uint32_t, uint32_t);
 };
 
 /* FAT/exFAT File Attributes */
@@ -491,6 +492,7 @@ int set_cluster(void *, off_t);
 int set_clusters(void *, off_t, size_t);
 int print_cluster(uint32_t);
 void hexdump(void *, size_t);
+void gen_rand(char *, size_t);
 
 /* exFAT/FAT check function */
 int exfat_check_filesystem(struct pseudo_bootsec *);

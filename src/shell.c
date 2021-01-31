@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- *  Copyright (C) 2020 LeavaTail
+ *  Copyright (C) 2021 LeavaTail
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +25,7 @@ static int cmd_create(int, char **, char **);
 static int cmd_remove(int, char **, char **);
 static int cmd_update(int, char **, char **);
 static int cmd_trim(int, char **, char **);
+static int cmd_fill(int, char **, char **);
 static int cmd_help(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
@@ -43,6 +44,7 @@ struct command cmd[] = {
 	{"remove", cmd_remove},
 	{"update", cmd_update},
 	{"trim", cmd_trim},
+	{"fill", cmd_fill},
 	{"help", cmd_help},
 	{"exit", cmd_exit},
 };
@@ -402,6 +404,35 @@ static int cmd_trim(int argc, char **argv, char **envp)
 }
 
 /**
+ * cmd_fill - fill in directory
+ * @argc:     argument count
+ * @argv:     argument vetor
+ * @envp:     environment pointer
+ *
+ * @return    0 (success)
+ */
+static int cmd_fill(int argc, char **argv, char **envp)
+{
+	unsigned int count = 0;
+
+	switch (argc) {
+		case 1:
+			info.ops->fill(cluster, info.cluster_size / sizeof(struct exfat_dentry));
+			break;
+		case 2:
+			count = strtoul(argv[1], NULL, 10);
+			info.ops->fill(cluster, count);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	info.ops->reload(cluster);
+
+	return 0;
+}
+
+/**
  * cmd_help - display help
  * @argc:     argument count
  * @argv:     argument vector
@@ -422,6 +453,7 @@ static int cmd_help(int argc, char **argv, char **envp)
 	fprintf(stderr, "remove     remove directory entry.\n");
 	fprintf(stderr, "update     update directory entry.\n");
 	fprintf(stderr, "trim       trim deleted dentry.\n");
+	fprintf(stderr, "fill       fill in directory.\n");
 	fprintf(stderr, "help       display this help.\n");
 	fprintf(stderr, "\n");
 	return 0;
@@ -581,11 +613,12 @@ int shell(void)
 {
 	int argc = 0;
 	char buf[CMD_MAXLEN + 1] = {};
-	char **argv = malloc(sizeof(char *) * (CMD_MAXLEN + 1));
-	char **envp = malloc(sizeof(char *) * 16);
+	char **argv = calloc((CMD_MAXLEN + 1), sizeof(char *));
+	char **envp = calloc(16, sizeof(char *));
 
 	fprintf(stdout, "Welcome to %s %s (Interactive Mode)\n\n", PROGRAM_NAME, PROGRAM_VERSION);
 	init_env(envp);
+	srand(time(NULL));
 	info.ops->readdir(NULL, 0, cluster);
 	while (1) {
 		get_env(envp, "PWD", buf);

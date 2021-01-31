@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- *  Copyright (C) 2020 LeavaTail
+ *  Copyright (C) 2021 LeavaTail
  */
 #include <stdio.h>
 #include <stdbool.h>
@@ -71,6 +71,7 @@ int fat_create(const char *, uint32_t, int);
 int fat_remove(const char *, uint32_t, int);
 int fat_update_dentry(uint32_t, int);
 int fat_trim(uint32_t);
+int fat_fill(uint32_t, uint32_t);
 
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
@@ -89,6 +90,7 @@ static const struct operations fat_ops = {
 	.remove = fat_remove,
 	.update = fat_update_dentry,
 	.trim = fat_trim,
+	.fill = fat_fill,
 };
 
 /*************************************************************************************************/
@@ -1736,7 +1738,7 @@ int fat_set_bogus_entry(uint32_t clu)
 int fat_release_cluster(uint32_t clu)
 {
 	uint32_t prev = 0;
-	
+
 	fat_get_fat_entry(clu, &prev);
 	if (!prev) {
 		pr_warn("Cluster %u is already freed.\n", clu);
@@ -1772,7 +1774,7 @@ int fat_create(const char *name, uint32_t clu, int opt)
 	size_t new_cluster_num = 1;
 	size_t name_len;
 	struct fat_dentry *d;
-	
+
 	long_len = fat_create_nameentry(name, shortname, longname);
 	if (long_len)
 		count = (long_len / 13) + 1;
@@ -2036,6 +2038,70 @@ int fat_trim(uint32_t clu)
 	} else {
 		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
 	}
+	free(data);
+	return 0;
+}
+
+/**
+ * fat_fill -  function interface to fill in directory
+ * @clu:       Current Directory Index
+ * @count:     Number of dentry
+ *
+ * @return     0 (Success)
+ */
+int fat_fill(uint32_t clu, uint32_t count)
+{
+	int i, j;
+	void *data;
+	char shortname[11] = {0};
+	size_t index = fat_get_index(clu);
+	struct fat_fileinfo *f = (struct fat_fileinfo *)info.root[index]->data;
+	size_t entries = info.cluster_size / sizeof(struct fat_dentry);
+	size_t size;
+	size_t need_entries = 0;
+	struct fat_dentry *d;
+
+	/* Lookup last entry */
+	if (clu) {
+		data = malloc(info.cluster_size);
+		get_cluster(data, clu);
+	} else {
+		size = info.root_length * info.sector_size;
+		entries = size / sizeof(struct fat_dentry);
+		data = malloc(size);
+		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	}
+
+	if (count > entries) {
+		pr_err("%s doesn't support more than %lu entries.\n", __func__, entries);
+		goto out;
+	}
+
+	for (i = 0; i < entries; i++) {
+		d = ((struct fat_dentry *)data) + i;
+		if (d->dentry.dir.DIR_Name[0] == DENTRY_UNUSED)
+			break;
+	}
+
+	if (i > count - 1) {
+		pr_debug("You want to fill %u dentries.\n", count);
+		pr_debug("But this directory has already contained %d dentries.\n", i);
+		goto out;
+	}
+	need_entries = count - i;
+
+	for (j = 0; j < need_entries; j++) {
+		d = ((struct fat_dentry *)data) + i + j;
+		gen_rand(shortname, 11);
+		fat_init_dentry(d, (unsigned char *)shortname, 11);
+	}
+
+	if (clu)
+		fat_set_cluster(f, clu, data);
+	else
+		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+
+out:
 	free(data);
 	return 0;
 }
