@@ -19,6 +19,7 @@ static uint32_t exfat_set_cluster(struct exfat_fileinfo *, uint32_t, void *);
 static int exfat_load_bootsec(struct exfat_bootsec *);
 static void exfat_print_upcase(void);
 static void exfat_print_label(void);
+static void exfat_print_fat(void);
 static int exfat_load_bitmap(uint32_t);
 static int exfat_save_bitmap(uint32_t, uint32_t);
 static int exfat_load_bitmap_cluster(struct exfat_dentry);
@@ -301,6 +302,36 @@ static void exfat_print_label(void)
 	utf16s_to_utf8s(info.vol_label, info.vol_length, name);
 	pr_msg("%s\n", name);
 	free(name);
+}
+
+/**
+ * exfat_print_fat - print FAT
+ */
+static void exfat_print_fat(void)
+{
+	uint32_t i;
+	uint32_t *fat;
+	size_t sector_num = (info.fat_length + (info.sector_size - 1)) / info.sector_size;
+
+	pr_msg("FAT:\n");
+	fat = malloc(info.sector_size * sector_num);
+	get_sector(fat, info.fat_offset * info.sector_size, sector_num);
+
+	for (i = 0; i < info.cluster_count - 2; i++) {
+		switch(fat[i]) {
+			case 0:
+			case 1:
+			case EXFAT_BADCLUSTER:
+			case EXFAT_BADCLUSTER + 1:
+				break;
+			case EXFAT_LASTCLUSTER:
+			default:
+				pr_msg("Cluster #%-8x-> %08x\n", i, fat[i]);
+				break;
+		}
+	}
+	free(fat);
+	pr_msg("\n");
 }
 
 /**
@@ -1712,6 +1743,7 @@ int exfat_print_fsinfo(void)
 {
 	exfat_print_upcase();
 	exfat_print_label();
+	exfat_print_fat();
 	return 0;
 }
 
