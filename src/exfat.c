@@ -20,6 +20,7 @@ static int exfat_load_bootsec(struct exfat_bootsec *);
 static void exfat_print_upcase(void);
 static void exfat_print_label(void);
 static void exfat_print_fat(void);
+static void exfat_print_bitmap(void);
 static int exfat_load_bitmap(uint32_t);
 static int exfat_save_bitmap(uint32_t, uint32_t);
 static int exfat_load_bitmap_cluster(struct exfat_dentry);
@@ -331,6 +332,27 @@ static void exfat_print_fat(void)
 		}
 	}
 	free(fat);
+	pr_msg("\n");
+}
+
+/**
+ * exfat_print_bitmap - print allocation bitmap
+ */
+static void exfat_print_bitmap(void)
+{
+	int offset, byte;
+	uint8_t entry;
+	uint32_t clu;
+
+	pr_msg("Allocation Bitmap:\n");
+	for (clu = 0; clu < info.cluster_size; clu += CHAR_BIT) {
+		byte = clu / CHAR_BIT;
+		entry = info.alloc_table[byte];
+		for (offset = 0; offset < CHAR_BIT; offset++) {
+			if ((entry >> offset) & 0x01)
+				pr_msg("%x ", clu + offset + EXFAT_FIRST_CLUSTER);
+		}
+	}
 	pr_msg("\n");
 }
 
@@ -1744,6 +1766,7 @@ int exfat_print_fsinfo(void)
 	exfat_print_upcase();
 	exfat_print_label();
 	exfat_print_fat();
+	exfat_print_bitmap();
 	return 0;
 }
 
