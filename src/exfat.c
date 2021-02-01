@@ -345,12 +345,28 @@ static void exfat_print_bitmap(void)
 	uint32_t clu;
 
 	pr_msg("Allocation Bitmap:\n");
-	for (clu = 0; clu < info.cluster_size; clu += CHAR_BIT) {
-		byte = clu / CHAR_BIT;
+	pr_msg("Offset    0 1 2 3 4 5 6 7 8 9 a b c d e f\n");
+	/* Allocation bitmap consider first cluster is 2 */
+	pr_msg("%08x  - - ", 0);
+
+	for (clu = EXFAT_FIRST_CLUSTER; clu < info.cluster_size; clu++) {
+
+		byte = (clu - EXFAT_FIRST_CLUSTER) / CHAR_BIT;
+		offset = (clu - EXFAT_FIRST_CLUSTER) % CHAR_BIT;
 		entry = info.alloc_table[byte];
-		for (offset = 0; offset < CHAR_BIT; offset++) {
-			if ((entry >> offset) & 0x01)
-				pr_msg("%x ", clu + offset + EXFAT_FIRST_CLUSTER);
+
+		switch (clu % 0x10) {
+			case 0x0:
+				pr_msg("%08x  ", clu);
+				pr_msg("%c ", ((entry >> offset) & 0x01) ? 'o' : '-');
+				break;
+			case 0xf:
+				pr_msg("%c ", ((entry >> offset) & 0x01) ? 'o' : '-');
+				pr_msg("\n");
+				break;
+			default:
+				pr_msg("%c ", ((entry >> offset) & 0x01) ? 'o' : '-');
+				break;
 		}
 	}
 	pr_msg("\n");
