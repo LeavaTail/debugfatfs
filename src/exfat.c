@@ -310,29 +310,58 @@ static void exfat_print_label(void)
  */
 static void exfat_print_fat(void)
 {
-	uint32_t i;
+	uint32_t i, j;
 	uint32_t *fat;
 	size_t sector_num = (info.fat_length + (info.sector_size - 1)) / info.sector_size;
+	size_t list_size = 0;
+	node2_t **fat_chain, *tmp;
 
 	pr_msg("FAT:\n");
 	fat = malloc(info.sector_size * sector_num);
 	get_sector(fat, info.fat_offset * info.sector_size, sector_num);
 
+	/* Read fat and create list */
 	for (i = 0; i < info.cluster_count - 2; i++) {
-		switch(fat[i]) {
-			case 0:
-			case 1:
-			case EXFAT_BADCLUSTER:
-			case EXFAT_BADCLUSTER + 1:
-				break;
-			case EXFAT_LASTCLUSTER:
-			default:
-				pr_msg("Cluster #%-8x-> %08x\n", i, fat[i]);
-				break;
+		if (EXFAT_FIRST_CLUSTER <= fat[i] && fat[i] < EXFAT_BADCLUSTER)
+			list_size++;
+	}
+
+	fat_chain = calloc(list_size, sizeof(node2_t *));
+	for (i = 0; i < info.cluster_count - 2; i++) {
+		if (EXFAT_FIRST_CLUSTER <= fat[i] && fat[i] < EXFAT_BADCLUSTER) {
+			for (j = 0; j < list_size; j++) {
+				if (fat_chain[j] && fat_chain[j]->index == fat[i]) {
+					insert_node2(fat_chain[j], i, NULL);
+					break;
+				} else if (fat_chain[j] && fat[last_node2(fat_chain[j])->index] == i) {
+					append_node2(fat_chain[j], i, NULL);
+					break;
+				} else if (!fat_chain[j]) {
+					fat_chain[j] = init_node2(i, NULL);
+					break;
+				}
+			}
 		}
 	}
-	free(fat);
+
+	for (j = 0; j < list_size; j++) {
+		if (fat_chain[j] && fat_chain[j]->next) {
+			tmp = fat_chain[j];
+			pr_msg("%u -> ", fat_chain[j]->index);
+			while (tmp->next != NULL) {
+				tmp = tmp->next;
+				pr_msg("%u -> ", tmp->index);
+			}
+			pr_msg("NULL\n");
+		}
+	}
 	pr_msg("\n");
+
+	/* Clean up */
+	for (i = 0; i < list_size && fat_chain[i]; i++)
+		free(fat_chain[i]);
+	free(fat_chain);
+	free(fat);
 }
 
 /**
