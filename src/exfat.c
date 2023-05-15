@@ -1772,9 +1772,9 @@ int exfat_print_bootsec(void)
 	struct exfat_bootsec *b = malloc(sizeof(struct exfat_bootsec));
 
 	exfat_load_bootsec(b);
-	pr_msg("%-28s\t: %10lu (byte)\n", "Bytes per sector",
+	pr_msg("%-28s\t: %10zu (byte)\n", "Bytes per sector",
 			info.sector_size);
-	pr_msg("%-28s\t: %10lu (byte)\n", "Bytes per cluster",
+	pr_msg("%-28s\t: %10zu (byte)\n", "Bytes per cluster",
 			info.cluster_size);
 	pr_msg("%-28s\t: 0x%08x (sector)\n", "Sector offset of the 1st FAT",
 			b->FatOffset);

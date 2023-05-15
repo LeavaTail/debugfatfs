@@ -1283,8 +1283,8 @@ int fat_print_bootsec(void)
 	struct fat_bootsec *b = malloc(sizeof(struct fat_bootsec));
 
 	fat_load_bootsec(b);
-	pr_msg("%-28s\t: %10lu (byte)\n", "Bytes per sector", info.sector_size);
-	pr_msg("%-28s\t: %10lu (sector)\n", "Bytes per cluster", info.cluster_size);
+	pr_msg("%-28s\t: %10zu (byte)\n", "Bytes per sector", info.sector_size);
+	pr_msg("%-28s\t: %10zu (sector)\n", "Bytes per cluster", info.cluster_size);
 	pr_msg("%-28s\t: %10u (sector)\n", "Sector offset of the 1st FAT", b->BPB_RevdSecCnt);
 	pr_msg("%-28s\t: %10u (sector)\n", "Length of FAT table", b->BPB_FATSz16);
 	pr_msg("%-28s\t: %10u\n", "The number of FATs", b->BPB_NumFATs);
