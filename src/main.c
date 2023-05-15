@@ -252,7 +252,7 @@ void hexdump(void *data, size_t size)
 			skip = 0;
 		}
 
-		pr_msg("%08lX:  ", line * 0x10);
+		pr_msg("%08zX:  ", line * 0x10);
 		for (byte = 0; byte < 0x10; byte++) {
 			pr_msg("%02X ", ((unsigned char *)data)[line * 0x10 + byte]);
 		}
