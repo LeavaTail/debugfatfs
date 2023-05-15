@@ -119,7 +119,7 @@ struct device_info {
 	size_t cluster_size;
 	uint16_t cluster_count;
 	enum FStype fstype;
-	unsigned short flags;
+	uint8_t flags;
 	uint32_t fat_offset;
 	uint32_t fat_length;
 	uint32_t heap_offset;

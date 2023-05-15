@@ -232,7 +232,7 @@ int set_clusters(void *data, off_t index, size_t num)
  */
 void hexdump(void *data, size_t size)
 {
-	unsigned long skip = 0;
+	size_t skip = 0;
 	size_t line, byte = 0;
 	size_t count = size / 0x10;
 	const char zero[0x10] = {0};
