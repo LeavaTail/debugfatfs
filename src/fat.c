@@ -1345,6 +1345,7 @@ int fat_lookup(uint32_t clu, char *name)
 	bool found = false;
 	char *path[MAX_NAME_LENGTH] = {};
 	char fullpath[PATHNAME_MAX + 1] = {};
+	char *saveptr = NULL;
 	node2_t *tmp;
 	struct fat_fileinfo *f;
 
@@ -1362,13 +1363,13 @@ int fat_lookup(uint32_t clu, char *name)
 
 	/* Separate pathname by slash */
 	strncpy(fullpath, name, PATHNAME_MAX);
-	path[depth] = strtok(fullpath, "/");
+	path[depth] = strtok_r(fullpath, "/", &saveptr);
 	while (path[depth] != NULL) {
 		if (depth >= MAX_NAME_LENGTH) {
 			pr_err("Pathname is too depth. (> %d)\n", MAX_NAME_LENGTH);
 			return -1;
 		}
-		path[++depth] = strtok(NULL, "/");
+		path[++depth] = strtok_r(NULL, "/", &saveptr);
 	};
 
 	for (i = 0; path[i] && i < depth + 1; i++) {

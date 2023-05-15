@@ -509,17 +509,18 @@ static int execute_cmd(int argc, char **argv, char **envp)
 static int decode_cmd(char *str, char **argv, char **envp)
 {
 	int argc = 0;
+	char *saveptr = NULL;
 	char *token;
 	char *copy;
 	size_t len;
 
-	token = strtok(str, CMD_DELIM);
+	token = strtok_r(str, CMD_DELIM, &saveptr);
 	while (token != NULL) {
 		len = strlen(token);
 		copy = malloc(sizeof(char) * (len + 1));
 		strcpy(copy, token);
 		argv[argc++] = copy;
-		token = strtok(NULL, CMD_DELIM);
+		token = strtok_r(NULL, CMD_DELIM, &saveptr);
 	}
 	return argc;
 }
@@ -551,9 +552,10 @@ static int set_env(char **envp, char *env, char *value)
 {
 	int i;
 	char *str = malloc(sizeof(char) * (CMD_MAXLEN + 1));
+	char *saveptr = NULL;
 
 	for (i = 0; envp[i]; i++) {
-		if (!strcmp(strtok(envp[i], "="), env)) {
+		if (!strcmp(strtok_r(envp[i], "=", &saveptr), env)) {
 			free(envp[i]);
 			break;
 		}
@@ -578,12 +580,13 @@ static int get_env(char **envp, char *env, char *value)
 	int i;
 	char *tp;
 	char str[CMD_MAXLEN + 1] = {};
+	char *saveptr = NULL;
 
 	for (i = 0; envp[i]; i++) {
 		strncpy(str, envp[i], CMD_MAXLEN);
-		tp = strtok(str, "=");
+		tp = strtok_r(str, "=", &saveptr);
 		if (!strcmp(tp, env)) {
-			tp = strtok(NULL, "=");
+			tp = strtok_r(NULL, "=", &saveptr);
 			strncpy(value, tp, CMD_MAXLEN);
 			return 0;
 		}
