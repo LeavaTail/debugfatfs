@@ -22,7 +22,7 @@ endif
 
 if GCOV
 AM_CPPFLAGS += -O0 --no-inline -fprofile-arcs -ftest-coverage
-LDFLAGS += -lgcov
+LDFLAGS +=  -fprofile-generate
 endif
 
 debugfatfs.8: debugfatfs$(EXEEXT)
