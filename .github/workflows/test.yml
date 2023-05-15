@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: Test
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: setup environment
       run: |
         sudo apt-get update
@@ -19,9 +19,9 @@ jobs:
       run:  script/bootstrap.sh
     - name: configure
       run: ./configure
-    - name: make
+    - name: build package
       run: make
-    - name: make check
+    - name: run test
       run: make check
     - name: confirm result
       run: cat tests/*.log

@@ -1,0 +1,40 @@
+name: Build check
+
+on:
+  pull_request:
+    branches: [ master, develop ]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, armhf, arm64]
+        include:
+        - arch: amd64
+        - arch: armhf
+          cc: arm-linux-gnueabihf
+        - arch: arm64
+          cc: aarch64-linux-gnu
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: setup environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install autoconf automake libtool help2man make
+    - name: automake
+      run:  script/bootstrap.sh
+    - name: native compiler
+      if: ${{ matrix.arch }} == 'amd64'
+      run: |
+        ./configure CFLAGS=-Werror
+    - name: cross compiler
+      if: ${{ matrix.arch }} != 'amd64'
+      run: |
+        sudo apt-get install crossbuild-essential-${{ matrix.arch }}
+        ./configure CFLAGS=-Werror --host=${{ matrix.cc }}
+    - name: build package
+      run: make
