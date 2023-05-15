@@ -2077,7 +2077,7 @@ int fat_fill(uint32_t clu, uint32_t count)
 	}
 
 	if (count > entries) {
-		pr_err("%s doesn't support more than %lu entries.\n", __func__, entries);
+		pr_err("%s doesn't support more than %zu entries.\n", __func__, entries);
 		goto out;
 	}
 
