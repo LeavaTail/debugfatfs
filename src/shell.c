@@ -123,9 +123,9 @@ static int cmd_cd(int argc, char **argv, char **envp)
 			get_env(envp, "PWD", pwd);
 			dir = info.ops->lookup(cluster, argv[1]);
 			if (argv[1][0] == '/')
-				path = argv[1];
+				snprintf(pwd, CMD_MAXLEN + 1, "%s", argv[1]);
 			else
-				path = strcat(pwd, argv[1]);
+				snprintf(pwd, CMD_MAXLEN + 1, "%s%s", pwd, argv[1]);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
@@ -133,11 +133,11 @@ static int cmd_cd(int argc, char **argv, char **envp)
 	}
 
 	if (strcmp(path, "/"))
-		path = strcat(path, "/");
+		snprintf(pwd, CMD_MAXLEN + 1, "/");
 
 	if (dir >= 0) {
 		cluster = dir;
-		set_env(envp, "PWD", path);
+		set_env(envp, "PWD", pwd);
 	}
 
 	return 0;
@@ -518,7 +518,7 @@ static int decode_cmd(char *str, char **argv, char **envp)
 	while (token != NULL) {
 		len = strlen(token);
 		copy = malloc(sizeof(char) * (len + 1));
-		strcpy(copy, token);
+		snprintf(copy, len + 1, "%s", token);
 		argv[argc++] = copy;
 		token = strtok_r(NULL, CMD_DELIM, &saveptr);
 	}
