@@ -282,7 +282,7 @@ static void exfat_print_upcase(void)
 
 	/* Output Table contents */
 	for (offset = 0; offset < length / uni_count; offset++) {
-		pr_msg("%04lxh:  ", offset * 0x10 / sizeof(uint16_t));
+		pr_msg("%04zxh:  ", offset * 0x10 / sizeof(uint16_t));
 		for (byte = 0; byte < uni_count; byte++) {
 			pr_msg("%04x ", info.upcase_table[offset * uni_count + byte]);
 		}
@@ -481,7 +481,7 @@ static int exfat_load_bitmap_cluster(struct exfat_dentry d)
 	if (info.alloc_cluster)
 		return -1;
 
-	pr_debug("Get: allocation table: cluster 0x%x, size: 0x%lx\n",
+	pr_debug("Get: allocation table: cluster 0x%x, size: 0x%" PRIx64 "\n",
 			d.dentry.bitmap.FirstCluster,
 			d.dentry.bitmap.DataLength);
 	info.alloc_cluster = d.dentry.bitmap.FirstCluster;
@@ -1351,13 +1351,13 @@ static int exfat_update_stream(struct exfat_dentry *old, struct exfat_dentry *ne
 	sscanf(buf, "%04hx", (uint16_t *)&tmp);
 	new->dentry.stream.NameHash = tmp;
 	input("Please input a Valid Data Length", buf);
-	sscanf(buf, "%08lx", (uint64_t *)&tmp);
+	sscanf(buf, "%08" PRIx64, (uint64_t *)&tmp);
 	new->dentry.stream.ValidDataLength = tmp;
 	input("Please input a First Cluster", buf);
 	sscanf(buf, "%04x", (uint32_t *)&tmp);
 	new->dentry.stream.FirstCluster = tmp;
 	input("Please input a Data Length", buf);
-	sscanf(buf, "%08lx", (uint64_t *)&tmp);
+	sscanf(buf, "%08" PRIx64, (uint64_t *)&tmp);
 	new->dentry.stream.DataLength = tmp;
 
 	return 0;
@@ -1418,7 +1418,7 @@ static int exfat_update_bitmap(struct exfat_dentry *old, struct exfat_dentry *ne
 	sscanf(buf, "%04x", (uint32_t *)&tmp);
 	new->dentry.bitmap.FirstCluster = tmp;
 	input("Please input a Data Length", buf);
-	sscanf(buf, "%08lx", (uint64_t *)&tmp);
+	sscanf(buf, "%08" PRIx64, (uint64_t *)&tmp);
 	new->dentry.bitmap.DataLength = tmp;
 
 	return 0;
@@ -1443,7 +1443,7 @@ static int exfat_update_upcase(struct exfat_dentry *old, struct exfat_dentry *ne
 	sscanf(buf, "%04x", (uint32_t *)&tmp);
 	new->dentry.upcase.FirstCluster = tmp;
 	input("Please input a Data Length", buf);
-	sscanf(buf, "%08lx", (uint64_t *)&tmp);
+	sscanf(buf, "%08" PRIx64, (uint64_t *)&tmp);
 	new->dentry.upcase.DataLength = tmp;
 
 	return 0;
@@ -1783,15 +1783,15 @@ int exfat_print_bootsec(void)
 	pr_msg("%-28s\t: %10u\n", "The number of FATs",
 			b->NumberOfFats);
 
-	pr_msg("%-28s\t: 0x%08lx (sector)\n", "media-relative sector offset",
+	pr_msg("%-28s\t: 0x%08" PRIx64 " (sector)\n", "media-relative sector offset",
 			b->PartitionOffset);
-	pr_msg("%-28s\t: 0x%08x (sector)\n", "Offset of the Cluster Heap",
+	pr_msg("%-28s\t: 0x%08" PRIx32 " (sector)\n", "Offset of the Cluster Heap",
 			b->ClusterHeapOffset);
 	pr_msg("%-28s\t: %10u (cluster)\n", "The number of clusters",
 			b->ClusterCount);
 	pr_msg("%-28s\t: %10u (cluster)\n", "The first cluster of the root",
 			b->FirstClusterOfRootDirectory);
-	pr_msg("%-28s\t: %10lu (sector)\n", "Size of exFAT volumes",
+	pr_msg("%-28s\t: %10" PRIx64 " (sector)\n", "Size of exFAT volumes",
 			b->VolumeLength);
 	pr_msg("%-28s\t: %10u (%%)\n", "The percentage of clusters",
 			b->PercentInUse);
@@ -2093,7 +2093,7 @@ int exfat_print_dentry(uint32_t clu, size_t n)
 				pr_msg("%02x", d.dentry.bitmap.Reserved[i]);
 			pr_msg("\n");
 			pr_msg("BitmapFlags                     : %08x\n", d.dentry.bitmap.FirstCluster);
-			pr_msg("DataLength                      : %016lx\n", d.dentry.bitmap.DataLength);
+			pr_msg("DataLength                      : %016" PRIx64 "\n", d.dentry.bitmap.DataLength);
 			break;
 		case DENTRY_UPCASE:
 			pr_msg("Reserved1                       : ");
@@ -2193,13 +2193,13 @@ int exfat_print_dentry(uint32_t clu, size_t n)
 			for (i = 0; i < 2; i++)
 				pr_msg("%02x", d.dentry.stream.Reserved2[i]);
 			pr_msg("\n");
-			pr_msg("ValidDataLength                 : %016lx\n", d.dentry.stream.ValidDataLength);
+			pr_msg("ValidDataLength                 : %016" PRIx64 "\n", d.dentry.stream.ValidDataLength);
 			pr_msg("Reserved3                       : ");
 			for (i = 0; i < 4; i++)
 				pr_msg("%02x", d.dentry.stream.Reserved3[i]);
 			pr_msg("\n");
 			pr_msg("FirstCluster                    : %08x\n", d.dentry.stream.FirstCluster);
-			pr_msg("DataLength                      : %016lx\n", d.dentry.stream.DataLength);
+			pr_msg("DataLength                      : %016" PRIx64 "\n", d.dentry.stream.DataLength);
 			break;
 		case DENTRY_NAME:
 			pr_msg("GeneralSecondaryFlags           : %02x\n", d.dentry.name.GeneralSecondaryFlags);
