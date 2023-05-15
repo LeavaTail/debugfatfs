@@ -82,8 +82,8 @@ static int cmd_ls(int argc, char **argv, char **envp)
 
 	for (i = 0; i < ret; i++) {
 		t = dirs[i].ctime;
-		sprintf(len, "%8zu", dirs[i].datalen);
-		sprintf(time, "%d-%02d-%02d %02d:%02d:%02d",
+		snprintf(len, 16, "%8zu", dirs[i].datalen);
+		snprintf(time, 64, "%d-%02d-%02d %02d:%02d:%02d",
 			1980 + t.tm_year, t.tm_mon, t.tm_mday,
 			t.tm_hour, t.tm_min, t.tm_sec);
 		fprintf(stdout, "%c", (dirs[i].attr & ATTR_READ_ONLY) ? ro : '-');
