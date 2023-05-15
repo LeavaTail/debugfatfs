@@ -329,7 +329,7 @@ static int fat32_print_bootsec(struct fat_bootsec *b)
 		pr_msg("%c", b->reserved_info.fat32_reserved_info.BS_VolLab[i]);
 	pr_msg("\n");
 
-	pr_msg("%-28s\t: 0x%08x\n", "Sectors Per FAT",
+	pr_msg("%-28s\t: 0x%08x (sector)\n", "Sectors Per FAT",
 			b->reserved_info.fat32_reserved_info.BPB_FATSz32);
 	pr_msg("%-28s\t: 0x%08x (sector)\n", "The first sector of the Root",
 			b->reserved_info.fat32_reserved_info.BPB_RootClus);
@@ -1282,10 +1282,12 @@ int fat_print_bootsec(void)
 	struct fat_bootsec *b = malloc(sizeof(struct fat_bootsec));
 
 	fat_load_bootsec(b);
-	pr_msg("%-28s\t: %10u (byte)\n", "Bytes per Sector", b->BPB_BytesPerSec);
-	pr_msg("%-28s\t: %10u (sector)\n", "Sectors per cluster", b->BPB_SecPerClus);
-	pr_msg("%-28s\t: %10u (sector)\n", "Reserved Sector", b->BPB_RevdSecCnt);
-	pr_msg("%-28s\t: %10u\n", "FAT count", b->BPB_NumFATs);
+	pr_msg("%-28s\t: %10lu (byte)\n", "Bytes per sector", info.sector_size);
+	pr_msg("%-28s\t: %10lu (sector)\n", "Bytes per cluster", info.cluster_size);
+	pr_msg("%-28s\t: %10u (sector)\n", "Sector offset of the 1st FAT", b->BPB_RevdSecCnt);
+	pr_msg("%-28s\t: %10u (sector)\n", "Length of FAT table", b->BPB_FATSz16);
+	pr_msg("%-28s\t: %10u\n", "The number of FATs", b->BPB_NumFATs);
+
 	pr_msg("%-28s\t: %10u\n", "Root Directory entry count", b->BPB_RootEntCnt);
 	pr_msg("%-28s\t: %10u (sector)\n", "Sector count in Volume", b->BPB_TotSec16);
 

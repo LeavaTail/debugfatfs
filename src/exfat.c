@@ -1773,12 +1773,19 @@ int exfat_print_bootsec(void)
 	struct exfat_bootsec *b = malloc(sizeof(struct exfat_bootsec));
 
 	exfat_load_bootsec(b);
-	pr_msg("%-28s\t: 0x%08lx (sector)\n", "media-relative sector offset",
-			b->PartitionOffset);
-	pr_msg("%-28s\t: 0x%08x (sector)\n", "Offset of the First FAT",
+	pr_msg("%-28s\t: %10lu (byte)\n", "Bytes per sector",
+			info.sector_size);
+	pr_msg("%-28s\t: %10lu (byte)\n", "Bytes per cluster",
+			info.cluster_size);
+	pr_msg("%-28s\t: 0x%08x (sector)\n", "Sector offset of the 1st FAT",
 			b->FatOffset);
 	pr_msg("%-28s\t: %10u (sector)\n", "Length of FAT table",
 			b->FatLength);
+	pr_msg("%-28s\t: %10u\n", "The number of FATs",
+			b->NumberOfFats);
+
+	pr_msg("%-28s\t: 0x%08lx (sector)\n", "media-relative sector offset",
+			b->PartitionOffset);
 	pr_msg("%-28s\t: 0x%08x (sector)\n", "Offset of the Cluster Heap",
 			b->ClusterHeapOffset);
 	pr_msg("%-28s\t: %10u (cluster)\n", "The number of clusters",
@@ -1787,12 +1794,6 @@ int exfat_print_bootsec(void)
 			b->FirstClusterOfRootDirectory);
 	pr_msg("%-28s\t: %10lu (sector)\n", "Size of exFAT volumes",
 			b->VolumeLength);
-	pr_msg("%-28s\t: %10lu (byte)\n", "Bytes per sector",
-			info.sector_size);
-	pr_msg("%-28s\t: %10lu (byte)\n", "Bytes per cluster",
-			info.cluster_size);
-	pr_msg("%-28s\t: %10u\n", "The number of FATs",
-			b->NumberOfFats);
 	pr_msg("%-28s\t: %10u (%%)\n", "The percentage of clusters",
 			b->PercentInUse);
 	pr_msg("\n");

@@ -44,16 +44,16 @@ If you don't want, Please add `-r`(read only) option.
 
 ```
 $ sudo debugfatfs /dev/sdc1
-media-relative sector offset    : 0x00000800 (sector)
-Offset of the First FAT         : 0x00000800 (sector)
+Bytes per sector                :        512 (byte)
+Bytes per cluster               :      32768 (byte)
+Sector offset of the 1st FAT    : 0x00000800 (sector)
 Length of FAT table             :       1088 (sector)
+The number of FATs              :          1
+media-relative sector offset    : 0x00000800 (sector)
 Offset of the Cluster Heap      : 0x00001000 (sector)
 The number of clusters          :      65472 (cluster)
 The first cluster of the root   :          4 (cluster)
 Size of exFAT volumes           :    8388608 (sector)
-Bytes per sector                :        512 (byte)
-Bytes per cluster               :      32768 (byte)
-The number of FATs              :          1
 The percentage of clusters      :          0 (%)
 ```
 
