@@ -899,9 +899,10 @@ static int fat_init_dentry(struct fat_dentry *d, unsigned char *shortname, size_
 	uint16_t __date, __time;
 	uint8_t __subsec;
 	time_t t = time(NULL);
-	struct tm *utc = gmtime(&t);
+	struct tm utc;
 
-	fat_convert_fattime(utc, &__date, &__time, &__subsec);
+	gmtime_r(&t, &utc);
+	fat_convert_fattime(&utc, &__date, &__time, &__subsec);
 	memcpy(d->dentry.dir.DIR_Name, shortname, 11);
 	d->dentry.dir.DIR_Attr = ATTR_ARCHIVE;
 	d->dentry.dir.DIR_NTRes = 0;

@@ -1103,14 +1103,15 @@ static int exfat_init_file(struct exfat_dentry *d, uint16_t *name, size_t namele
 	uint32_t timestamp;
 	uint8_t subsec, tz;
 	time_t t = time(NULL);
-	struct tm *tm = localtime(&t);
+	struct tm tm;
 	char buf[8] = {0};
 
 	/* obrain current timezone */
-	strftime(buf, 8, "%z", tm);
+	localtime_r(&t, &tm);
+	strftime(buf, 8, "%z", &tm);
 	exfat_parse_timezone(buf, &tz);
-	tm = gmtime(&t);
-	exfat_convert_exfattime(tm, &timestamp, &subsec);
+	gmtime_r(&t, &tm);
+	exfat_convert_exfattime(&tm, &timestamp, &subsec);
 
 	d->EntryType = 0x85;
 	d->dentry.file.SetChecksum = 0;
@@ -1607,11 +1608,9 @@ static void exfat_convert_unixtime(struct tm *t, uint32_t time, uint8_t subsec, 
 	if (tz & 0x80) {
 		int min = 0;
 		time_t tmp_time = mktime(t);
-		struct tm *t2;
 		min = exfat_convert_timezone(tz);
 		tmp_time += (min * 60);
-		t2 = localtime(&tmp_time);
-		*t = *t2;
+		localtime_r(&tmp_time, t);
 	}
 }
 
