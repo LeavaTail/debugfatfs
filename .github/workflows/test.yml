@@ -5,8 +5,18 @@ on:
     branches: [ master, develop ]
 
 jobs:
-  build:
+  static_test:
+    runs-on: ubuntu-latest
 
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - run: pip install cpplint
+    - run: cpplint --recursive --filter=-whitespace,-build,-readability .
+
+  dynamic_test:
     runs-on: ubuntu-latest
 
     steps:
