@@ -1775,12 +1775,12 @@ int exfat_print_bootsec(void)
 	pr_msg("Sector size:     \t%zu\n", info.sector_size);
 	pr_msg("Cluster size:    \t%zu\n", info.cluster_size);
 	pr_msg("FAT offset:      \t%u\n", b->FatOffset);
-	pr_msg("FAT size:        \t%lu\n", b->FatLength * info.sector_size);
+	pr_msg("FAT size:        \t%zu\n", b->FatLength * info.sector_size);
 	pr_msg("FAT count:       \t%u\n", b->NumberOfFats);
 
 	pr_msg("Partition offset:\t%" PRIu64 "\n", b->PartitionOffset * info.sector_size);
 	pr_msg("Volume size:     \t%" PRIu64 "\n", b->VolumeLength * info.sector_size);
-	pr_msg("Cluster offset:  \t%" PRIu64 "\n", b->ClusterHeapOffset * info.sector_size);
+	pr_msg("Cluster offset:  \t%zu\n", b->ClusterHeapOffset * info.sector_size);
 	pr_msg("Cluster count:   \t%u\n", b->ClusterCount);
 	pr_msg("First cluster:   \t%u\n", b->FirstClusterOfRootDirectory);
 	pr_msg("Volume serial:   \t0x%x\n", b->VolumeSerialNumber);

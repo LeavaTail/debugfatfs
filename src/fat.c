@@ -1290,7 +1290,7 @@ int fat_print_bootsec(void)
 	pr_msg("Sector size:     \t%zu\n", info.sector_size);
 	pr_msg("Cluster size:    \t%zu\n", info.cluster_size);
 	pr_msg("FAT offset:      \t%u\n", b->BPB_RevdSecCnt);
-	pr_msg("FAT size:        \t%lu\n", b->BPB_FATSz16 * info.sector_size);
+	pr_msg("FAT size:        \t%zu\n", b->BPB_FATSz16 * info.sector_size);
 	pr_msg("FAT count:       \t%u\n", b->BPB_NumFATs);
 
 	pr_msg("Dentry count:    \t%u\n", b->BPB_RootEntCnt);
