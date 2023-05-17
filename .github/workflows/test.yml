@@ -1,6 +1,8 @@
 name: Test
 
 on:
+  push:
+    branches: [ main ]
   pull_request:
     branches: [ main, develop ]
 
@@ -28,10 +30,17 @@ jobs:
     - name: automake
       run:  script/bootstrap.sh
     - name: configure
-      run: ./configure
+      run: ./configure --enable-gcov
     - name: build package
       run: make
     - name: run test
       run: make check
     - name: confirm result
       run: cat tests/*.log
+    - name: Upload coverage reports to Codecov with GitHub Action
+      uses: codecov/codecov-action@v3
+      with:
+        gcov: true
+        fail_ci_if_error: true
+        verbose: true
+
