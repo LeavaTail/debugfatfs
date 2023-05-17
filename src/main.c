@@ -232,7 +232,7 @@ int set_clusters(void *data, off_t index, size_t num)
  */
 void hexdump(void *data, size_t size)
 {
-	unsigned long skip = 0;
+	size_t skip = 0;
 	size_t line, byte = 0;
 	size_t count = size / 0x10;
 	const char zero[0x10] = {0};
@@ -252,7 +252,7 @@ void hexdump(void *data, size_t size)
 			skip = 0;
 		}
 
-		pr_msg("%08lX:  ", line * 0x10);
+		pr_msg("%08zX:  ", line * 0x10);
 		for (byte = 0; byte < 0x10; byte++) {
 			pr_msg("%02X ", ((unsigned char *)data)[line * 0x10 + byte]);
 		}

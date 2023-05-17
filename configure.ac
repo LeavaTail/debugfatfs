@@ -25,6 +25,18 @@ AS_HELP_STRING([--enable-debug],
 
 AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
 
+AC_ARG_ENABLE(gcov,
+AS_HELP_STRING([--enable-gcov],
+               [enable gcov, default: no]),
+               [case "${enableval}" in
+                       yes) gcov=true ;;
+                       no)  gcov=false ;;
+                       *)   AC_MSG_ERROR([bad value ${enableval} for --enable-gcov]) ;;
+               esac],
+               [debug=false])
+
+AM_CONDITIONAL(GCOV, test x"$gcov" = x"true")
+
 # Checks for libraries.
 
 # Checks for header files.

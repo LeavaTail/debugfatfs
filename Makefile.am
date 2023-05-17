@@ -20,5 +20,10 @@ else
 AM_CPPFLAGS += -O2
 endif
 
+if GCOV
+AM_CPPFLAGS += -O0 --no-inline -fprofile-arcs -ftest-coverage
+LDFLAGS +=  -fprofile-generate
+endif
+
 debugfatfs.8: debugfatfs$(EXEEXT)
 	help2man --no-discard-stderr --section=8 -N -o debugfatfs.8 ./debugfatfs

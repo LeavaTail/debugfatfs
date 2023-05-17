@@ -82,8 +82,8 @@ static int cmd_ls(int argc, char **argv, char **envp)
 
 	for (i = 0; i < ret; i++) {
 		t = dirs[i].ctime;
-		sprintf(len, "%8lu", dirs[i].datalen);
-		sprintf(time, "%d-%02d-%02d %02d:%02d:%02d",
+		snprintf(len, sizeof(len), "%8zu", dirs[i].datalen);
+		snprintf(time, sizeof(time), "%d-%02d-%02d %02d:%02d:%02d",
 			1980 + t.tm_year, t.tm_mon, t.tm_mday,
 			t.tm_hour, t.tm_min, t.tm_sec);
 		fprintf(stdout, "%c", (dirs[i].attr & ATTR_READ_ONLY) ? ro : '-');
@@ -123,9 +123,9 @@ static int cmd_cd(int argc, char **argv, char **envp)
 			get_env(envp, "PWD", pwd);
 			dir = info.ops->lookup(cluster, argv[1]);
 			if (argv[1][0] == '/')
-				path = argv[1];
+				snprintf(pwd, CMD_MAXLEN + 1, "%s", argv[1]);
 			else
-				path = strcat(pwd, argv[1]);
+				snprintf(pwd, CMD_MAXLEN + 1, "%s%s", pwd, argv[1]);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
@@ -133,11 +133,11 @@ static int cmd_cd(int argc, char **argv, char **envp)
 	}
 
 	if (strcmp(path, "/"))
-		path = strcat(path, "/");
+		snprintf(pwd, CMD_MAXLEN + 1, "/");
 
 	if (dir >= 0) {
 		cluster = dir;
-		set_env(envp, "PWD", path);
+		set_env(envp, "PWD", pwd);
 	}
 
 	return 0;
@@ -509,17 +509,18 @@ static int execute_cmd(int argc, char **argv, char **envp)
 static int decode_cmd(char *str, char **argv, char **envp)
 {
 	int argc = 0;
+	char *saveptr = NULL;
 	char *token;
 	char *copy;
 	size_t len;
 
-	token = strtok(str, CMD_DELIM);
+	token = strtok_r(str, CMD_DELIM, &saveptr);
 	while (token != NULL) {
 		len = strlen(token);
 		copy = malloc(sizeof(char) * (len + 1));
-		strcpy(copy, token);
+		snprintf(copy, len + 1, "%s", token);
 		argv[argc++] = copy;
-		token = strtok(NULL, CMD_DELIM);
+		token = strtok_r(NULL, CMD_DELIM, &saveptr);
 	}
 	return argc;
 }
@@ -551,9 +552,10 @@ static int set_env(char **envp, char *env, char *value)
 {
 	int i;
 	char *str = malloc(sizeof(char) * (CMD_MAXLEN + 1));
+	char *saveptr = NULL;
 
 	for (i = 0; envp[i]; i++) {
-		if (!strcmp(strtok(envp[i], "="), env)) {
+		if (!strcmp(strtok_r(envp[i], "=", &saveptr), env)) {
 			free(envp[i]);
 			break;
 		}
@@ -578,12 +580,13 @@ static int get_env(char **envp, char *env, char *value)
 	int i;
 	char *tp;
 	char str[CMD_MAXLEN + 1] = {};
+	char *saveptr = NULL;
 
 	for (i = 0; envp[i]; i++) {
 		strncpy(str, envp[i], CMD_MAXLEN);
-		tp = strtok(str, "=");
+		tp = strtok_r(str, "=", &saveptr);
 		if (!strcmp(tp, env)) {
-			tp = strtok(NULL, "=");
+			tp = strtok_r(NULL, "=", &saveptr);
 			strncpy(value, tp, CMD_MAXLEN);
 			return 0;
 		}
