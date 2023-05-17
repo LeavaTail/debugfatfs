@@ -295,12 +295,12 @@ static int fat16_print_bootsec(struct fat_bootsec *b)
 	if (strncmp(type, "FAT", 3))
 		pr_warn("BS_FilSysType is expected \"FAT     \", But this is %s\n", type);
 
-	pr_msg("%-28s\t: 0x", "Volume ID");
+	pr_msg("Volume ID:      \t");
 	for (i = 0; i < VOLIDSIZE; i++)
 		pr_msg("%02x", b->reserved_info.fat16_reserved_info.BS_VolID[i]);
 	pr_msg("\n");
 
-	pr_msg("%-28s\t: ", "Volume Label");
+	pr_msg("Volume name:    \t");
 	for (i = 0; i < VOLLABSIZE; i++)
 		pr_msg("%c", b->reserved_info.fat16_reserved_info.BS_VolLab[i]);
 	pr_msg("\n");
@@ -319,24 +319,20 @@ static int fat32_print_bootsec(struct fat_bootsec *b)
 	if (strncmp(type, "FAT32", 5))
 		pr_warn("BS_FilSysType is expected \"FAT32   \", But this is %s\n", type);
 
-	pr_msg("%-28s\t: 0x", "Volume ID");
+	pr_msg("Volume ID:      \t");
 	for (i = 0; i < VOLIDSIZE; i++)
 		pr_msg("%02x", b->reserved_info.fat32_reserved_info.BS_VolID[i]);
 	pr_msg("\n");
 
-	pr_msg("%-28s\t: ", "Volume Label");
+	pr_msg("Volume name:    \t");
 	for (i = 0; i < VOLLABSIZE; i++)
 		pr_msg("%c", b->reserved_info.fat32_reserved_info.BS_VolLab[i]);
 	pr_msg("\n");
 
-	pr_msg("%-28s\t: 0x%08x (sector)\n", "Sectors Per FAT",
-			b->reserved_info.fat32_reserved_info.BPB_FATSz32);
-	pr_msg("%-28s\t: 0x%08x (sector)\n", "The first sector of the Root",
-			b->reserved_info.fat32_reserved_info.BPB_RootClus);
-	pr_msg("%-28s\t: 0x%08x (sector)\n", "FSINFO sector",
-			b->reserved_info.fat32_reserved_info.BPB_FSInfo);
-	pr_msg("%-28s\t: 0x%08x (sector)\n", "Backup Boot sector",
-			b->reserved_info.fat32_reserved_info.BPB_BkBootSec);
+	pr_msg("Sectors per FAT:\t%u\n", b->reserved_info.fat32_reserved_info.BPB_FATSz32);
+	pr_msg("First sector:   \t%u\n", b->reserved_info.fat32_reserved_info.BPB_RootClus);
+	pr_msg("FSINFO sector:  \t%u\n", b->reserved_info.fat32_reserved_info.BPB_FSInfo);
+	pr_msg("Backup sector:  \t%u\n", b->reserved_info.fat32_reserved_info.BPB_BkBootSec);
 	return 0;
 }
 
@@ -351,8 +347,8 @@ static int fat32_print_fsinfo(struct fat32_fsinfo *fsi)
 			(fsi->FSI_TrailSig != 0xAA550000))
 		pr_warn("FSinfo is expected specific sigunature, But this is difference.\n");
 
-	pr_msg("%-28s\t: %10u (cluster)\n", "free cluster count", fsi->FSI_Free_Count);
-	pr_msg("%-28s\t: %10u (cluster)\n", "first available cluster", fsi->FSI_Nxt_Free);
+	pr_msg("Free cluster:   \t%u\n", fsi->FSI_Free_Count);
+	pr_msg("First available \t%u\n", fsi->FSI_Nxt_Free);
 	return 0;
 }
 
@@ -1283,14 +1279,14 @@ int fat_print_bootsec(void)
 	struct fat_bootsec *b = malloc(sizeof(struct fat_bootsec));
 
 	fat_load_bootsec(b);
-	pr_msg("%-28s\t: %10zu (byte)\n", "Bytes per sector", info.sector_size);
-	pr_msg("%-28s\t: %10zu (sector)\n", "Bytes per cluster", info.cluster_size);
-	pr_msg("%-28s\t: %10u (sector)\n", "Sector offset of the 1st FAT", b->BPB_RevdSecCnt);
-	pr_msg("%-28s\t: %10u (sector)\n", "Length of FAT table", b->BPB_FATSz16);
-	pr_msg("%-28s\t: %10u\n", "The number of FATs", b->BPB_NumFATs);
+	pr_msg("Sector size:     \t%zu\n", info.sector_size);
+	pr_msg("Cluster size:    \t%zu\n", info.cluster_size);
+	pr_msg("FAT offset:      \t%u\n", b->BPB_RevdSecCnt);
+	pr_msg("FAT size:        \t%lu\n", b->BPB_FATSz16 * info.sector_size);
+	pr_msg("FAT count:       \t%u\n", b->BPB_NumFATs);
 
-	pr_msg("%-28s\t: %10u\n", "Root Directory entry count", b->BPB_RootEntCnt);
-	pr_msg("%-28s\t: %10u (sector)\n", "Sector count in Volume", b->BPB_TotSec16);
+	pr_msg("Dentry count:    \t%u\n", b->BPB_RootEntCnt);
+	pr_msg("Sector count:    \t%u\n", b->BPB_TotSec16);
 
 	switch (info.fstype) {
 		case FAT12_FILESYSTEM:
