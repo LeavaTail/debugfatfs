@@ -1,6 +1,8 @@
 name: Build check
 
 on:
+  push:
+    branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
 
