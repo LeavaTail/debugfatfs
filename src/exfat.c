@@ -1980,7 +1980,7 @@ int exfat_convert_character(const char *src, size_t len, char *dist)
 
 	free(utf16_upper);
 	free(utf16_src);
-	return utf8_len;
+	return 0;
 }
 
 /**
