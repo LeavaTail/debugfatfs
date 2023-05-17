@@ -64,7 +64,7 @@ static void usage(void)
 	fprintf(stderr, "  -b, --byte=offset\tdump the any byte after dump filesystem information.\n");
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
 	fprintf(stderr, "  -d, --direcotry=path\tread directory entry from path.\n");
-	fprintf(stderr, "  -e --entry=index\tread raw directory entry in current directory.\n");
+	fprintf(stderr, "  -e, --entry=index\tread raw directory entry in current directory.\n");
 	fprintf(stderr, "  -f, --fource\twrite foucibly even if filesystem image has already mounted.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -l, --load=file\tLoad Main boot region and FAT region from file.\n");
