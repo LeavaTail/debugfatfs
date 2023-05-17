@@ -36,8 +36,8 @@ ${Detail}
  * 3rd line - Detail
 
 ## Branch rules
- * master: release branch. [Protected]
- * develop: developing branch. Will merge into master.
+ * main: release branch. [Protected]
+ * develop: developing branch. Will merge into main.
  
 ## Coding Style
  * Please check https://github.com/LeavaTail/debugfatfs/wiki/CodingStyle
