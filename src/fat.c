@@ -290,8 +290,9 @@ static int fat_validate_bootsec(struct fat_bootsec *b)
 static int fat16_print_bootsec(struct fat_bootsec *b)
 {
 	int i;
-	const char *type = (char *)b->reserved_info.fat16_reserved_info.BS_FilSysType;
+	char type[FILSYSTYPESIZE + 1] = {0};
 
+	strncpy(type, b->reserved_info.fat16_reserved_info.BS_FilSysType, FILSYSTYPESIZE);
 	if (strncmp(type, "FAT", 3))
 		pr_warn("BS_FilSysType is expected \"FAT     \", But this is %s\n", type);
 
@@ -314,8 +315,9 @@ static int fat16_print_bootsec(struct fat_bootsec *b)
 static int fat32_print_bootsec(struct fat_bootsec *b)
 {
 	int i;
-	const char *type = (char *)b->reserved_info.fat32_reserved_info.BS_FilSysType;
+	char type[FILSYSTYPESIZE + 1] = {0};
 
+	strncpy(type, b->reserved_info.fat32_reserved_info.BS_FilSysType, FILSYSTYPESIZE);
 	if (strncmp(type, "FAT32", 5))
 		pr_warn("BS_FilSysType is expected \"FAT32   \", But this is %s\n", type);
 
