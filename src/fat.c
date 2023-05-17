@@ -295,6 +295,10 @@ static int fat16_print_bootsec(struct fat_bootsec *b)
 	strncpy(type, b->reserved_info.fat16_reserved_info.BS_FilSysType, FILSYSTYPESIZE);
 	if (strncmp(type, "FAT", 3))
 		pr_warn("BS_FilSysType is expected \"FAT     \", But this is %s\n", type);
+	else
+		pr_msg("Filesystem type:\t%s\n", type);
+
+	pr_msg("Total sector:   \t%" PRIu64 "\n", b->BPB_TotSec16 + (uint64_t)b->BPB_TotSec32 << 16);
 
 	pr_msg("Volume ID:      \t");
 	for (i = 0; i < VOLIDSIZE; i++)
@@ -320,6 +324,8 @@ static int fat32_print_bootsec(struct fat_bootsec *b)
 	strncpy(type, b->reserved_info.fat32_reserved_info.BS_FilSysType, FILSYSTYPESIZE);
 	if (strncmp(type, "FAT32", 5))
 		pr_warn("BS_FilSysType is expected \"FAT32   \", But this is %s\n", type);
+	else
+		pr_msg("Filesystem type:\t%s\n", type);
 
 	pr_msg("Volume ID:      \t");
 	for (i = 0; i < VOLIDSIZE; i++)

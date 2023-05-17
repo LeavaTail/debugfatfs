@@ -50,10 +50,12 @@ FAT offset:             2048
 FAT size:               557056
 FAT count:              1
 Partition offset:       1048576
+Volume size:            4294967296
 Cluster offset:         2097152
 Cluster count:          65472
 First cluster:          4
-Volume size:            4294967296
+Volume serial:          0xd6423d82
+Filesystem revision:    1.00
 Usage rate:             0
 ```
 

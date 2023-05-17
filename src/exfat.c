@@ -1779,10 +1779,14 @@ int exfat_print_bootsec(void)
 	pr_msg("FAT count:       \t%u\n", b->NumberOfFats);
 
 	pr_msg("Partition offset:\t%" PRIu64 "\n", b->PartitionOffset * info.sector_size);
+	pr_msg("Volume size:     \t%" PRIu64 "\n", b->VolumeLength * info.sector_size);
 	pr_msg("Cluster offset:  \t%" PRIu64 "\n", b->ClusterHeapOffset * info.sector_size);
 	pr_msg("Cluster count:   \t%u\n", b->ClusterCount);
 	pr_msg("First cluster:   \t%u\n", b->FirstClusterOfRootDirectory);
-	pr_msg("Volume size:     \t%" PRIu64 "\n", b->VolumeLength * info.sector_size);
+	pr_msg("Volume serial:   \t0x%x\n", b->VolumeSerialNumber);
+	pr_msg("Filesystem revision:\t%x.%02x\n",
+			b->FileSystemRevision / 0x100,
+			b->FileSystemRevision % 0x100);
 	pr_msg("Usage rate:      \t%u\n", b->PercentInUse);
 	pr_msg("\n");
 
