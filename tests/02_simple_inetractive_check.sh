@@ -8,6 +8,8 @@ function test_shell () {
 	set timeout 5
 	spawn ./debugfatfs -iq $1
 	expect \"/> \"
+	send \"cd\n\"
+	expect \"/> \"
 	send \"cd 00_SIMPLE\n\"
 	expect \"00_SIMPLE> \"
 	send \"ls\n\"
@@ -30,7 +32,9 @@ function test_shell () {
 	expect \"/03_DELETE> \"
 	send \"release 100\n\"
 	expect \"/03_DELETE> \"
-	send \"fat 100\n\"
+	send \"fat 101 0\n\"
+	expect \"/03_DELETE> \"
+	send \"fat 101\n\"
 	expect \"/03_DELETE> \"
 	send \"cd /00_SIMPLE\n\"
 	expect \"/00_SIMPLE> \"
@@ -39,6 +43,8 @@ function test_shell () {
 	send \"remove FILE.TXT\n\"
 	expect \"/00_SIMPLE> \"
 	send \"fill\n\"
+	expect \"/00_SIMPLE> \"
+	send \"entry 1\n\"
 	expect \"/00_SIMPLE> \"
 	send \"help\n\"
 	expect \"/00_SIMPLE> \"
