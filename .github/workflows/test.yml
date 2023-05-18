@@ -37,6 +37,11 @@ jobs:
       run: make check
     - name: confirm result
       run: cat tests/*.log
+    - uses: actions/upload-artifact@v3
+      with:
+        name: artifact
+        path: src/*.gc??
+        retention-days: 1
     - name: Upload coverage reports to Codecov with GitHub Action
       uses: codecov/codecov-action@v3
       with:
