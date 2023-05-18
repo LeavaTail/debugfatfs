@@ -118,6 +118,7 @@ static int cmd_cd(int argc, char **argv, char **envp)
 	switch (argc) {
 		case 1:
 			dir = info.root_offset;
+			snprintf(pwd, CMD_MAXLEN + 1, "/");
 			break;
 		case 2:
 			get_env(envp, "PWD", pwd);
