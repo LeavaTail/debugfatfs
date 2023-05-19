@@ -584,7 +584,10 @@ int main(int argc, char *argv[])
 		} else {
 			/* load Phase */
 			for (i = 0; i < info.heap_offset; i++) {
-				fwrite(s, info.sector_size, 1, bfile);
+				if (!fread(s, info.sector_size, 1, bfile)) {
+					pr_err("fread: %s\n", strerror(errno));
+					break;
+				}
 				set_sector(s, i * info.sector_size, 1);
 			}
 		}

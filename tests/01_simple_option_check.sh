@@ -17,7 +17,11 @@ function test_options () {
 	./debugfatfs -q $1
 	./debugfatfs -r $1
 	./debugfatfs -u a $1
+	./debugfatfs -s boot_$1 $1
+	./debugfatfs -l boot_$1 $1
 	./debugfatfs -v $1
+
+	rm -f boot_${1}
 }
 
 ### main function ###
