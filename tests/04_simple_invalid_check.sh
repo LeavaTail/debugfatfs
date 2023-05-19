@@ -32,6 +32,8 @@ function test_shell () {
 	send \"update\n\"
 	expect \"/> \"
 	send \"exit\n\"
+	expect eof
+	exit
 	"
 	echo ""
 	expect -c "
@@ -65,6 +67,8 @@ function test_shell () {
 	send \"nothing\n\"
 	expect \"/> \"
 	send \"exit\n\"
+	expect eof
+	exit
 	"
 	echo ""
 }

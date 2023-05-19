@@ -49,10 +49,11 @@ function test_shell () {
 	send \"help\n\"
 	expect \"/00_SIMPLE> \"
 	send \"exit\n\"
+	expect eof
+	exit
 	"
 	echo ""
 	sync
-	sleep 5
 }
 
 function check_mount () {
