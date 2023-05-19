@@ -3,16 +3,7 @@
 [![Test](https://github.com/LeavaTail/debugfatfs/actions/workflows/test.yml/badge.svg)](https://github.com/LeavaTail/debugfatfs/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/LeavaTail/debugfatfs/branch/main/graph/badge.svg)](https://codecov.io/gh/LeavaTail/debugfatfs)
 
-FAT/exFAT file system debugger.
-
-## Table of Contents
-
-- [Description](#Description)
-- [Example](#Example)
-- [Usage](#Usage)
-- [Requirement](#Requirements)
-- [Install](#Install)
-- [Authors](#Authors)
+debugfatfs is a utilities to check/update FAT/exFAT Volume image without mounting file system.
 
 ## Introduction
 
