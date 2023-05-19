@@ -9,7 +9,7 @@ FAT/exFAT file system debugger.
 - [Description](#Description)
 - [Example](#Example)
 - [Usage](#Usage)
-- [Requirement](#Requirement)
+- [Requirement](#Requirements)
 - [Install](#Install)
 - [Authors](#Authors)
 
