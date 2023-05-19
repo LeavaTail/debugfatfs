@@ -14,12 +14,14 @@ FAT/exFAT file system debugger.
 - [Install](#Install)
 - [Authors](#Authors)
 
-## Description
+## Introduction
 
 FAT/exFAT has filesystem information in first sector.
 (e.g. cluster size, root directory cluster index, ...)  
 Some users want to obtain these information to confirm filesystem status.  
 In addition, Some developer want to create any FAT/exFAT filesystem image.
+
+## Features
 
 debugfatfs can ontain these inforamtion.
 
