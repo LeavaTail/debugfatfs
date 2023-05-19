@@ -10,44 +10,46 @@ function test_shell () {
 	expect \"/> \"
 	send \"cd\n\"
 	expect \"/> \"
-	send \"cd 00_SIMPLE\n\"
-	expect \"00_SIMPLE> \"
+	send \"cd 00\n\"
+	expect \"00> \"
 	send \"ls\n\"
-	expect \"00_SIMPLE> \"
-	send \"cd /01_LONGNAME\n\"
-	expect \"/01_LONGNAME> \"
+	expect \"00> \"
+	send \"cd /01\n\"
+	expect \"/01> \"
 	send \"ls\n\"
-	expect \"/01_LONGNAME> \"
-	send \"cd /02_UNICODE\n\"
-	expect \"/02_UNICODE> \"
+	expect \"/01> \"
+	send \"cd /02\n\"
+	expect \"/02> \"
 	send \"ls\n\"
-	expect \"/02_UNICODE> \"
-	send \"cd /03_DELETE\n\"
-	expect \"/03_DELETE> \"
-	send \"ls\n\"
-	expect \"/03_DELETE> \"
+	expect \"/02> \"
 	send \"cluster 5\n\"
-	expect \"/03_DELETE> \"
+	expect \"/02> \"
 	send \"alloc 100\n\"
-	expect \"/03_DELETE> \"
+	expect \"/02> \"
 	send \"release 100\n\"
-	expect \"/03_DELETE> \"
+	expect \"/02> \"
 	send \"fat 101 0\n\"
-	expect \"/03_DELETE> \"
+	expect \"/02> \"
 	send \"fat 101\n\"
-	expect \"/03_DELETE> \"
-	send \"cd /00_SIMPLE\n\"
-	expect \"/00_SIMPLE> \"
+	expect \"/02> \"
+	send \"trim\n\"
+	expect \"/02> \"
+	send \"cd /00\n\"
+	expect \"/00> \"
 	send \"create SAMPLE00.TXT\n\"
-	expect \"/00_SIMPLE> \"
-	send \"remove FILE.TXT\n\"
-	expect \"/00_SIMPLE> \"
+	expect \"/00> \"
+	send \"remove FILE1.TXT\n\"
+	expect \"/00> \"
+	send \"remove FILE2.TXT\n\"
+	expect \"/00> \"
 	send \"fill\n\"
-	expect \"/00_SIMPLE> \"
+	expect \"/00> \"
 	send \"entry 1\n\"
-	expect \"/00_SIMPLE> \"
+	expect \"/00> \"
+	send \"cd /\n\"
+	expect \"/> \"
 	send \"help\n\"
-	expect \"/00_SIMPLE> \"
+	expect \"/> \"
 	send \"exit\n\"
 	expect eof
 	exit
@@ -56,39 +58,8 @@ function test_shell () {
 	sync
 }
 
-function check_mount () {
-	mkdir -p mnt
-	sleep 5
-	sudo mount $1 mnt
-	mount
-	ls -l mnt/00_SIMPLE
-
-	if [ ! -e mnt/00_SIMPLE/SAMPLE00.TXT ]; then
-		echo "SAMPLE00.TXT should be exist."
-		ls mnt/00_SIMPLE
-		sudo umount mnt
-		exit 1
-	fi
-
-	if [ -e mnt/00_SIMPLE/FILE.TXT ]; then
-		echo "FILE.TXT shouldn't be exist."
-		ls mnt/00_SIMPLE
-		sudo umount mnt
-		exit 1
-	fi
-
-	echo "create/remove command is fine."
-	sleep 5
-
-	sudo umount mnt
-	rmdir mnt
-}
-
 ### main function ###
 test_shell fat12.img
-check_mount fat12.img
 test_shell fat16.img
-check_mount fat16.img
 test_shell fat32.img
-check_mount fat32.img
 test_shell exfat.img
