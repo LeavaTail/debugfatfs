@@ -37,6 +37,18 @@ AS_HELP_STRING([--enable-gcov],
 
 AM_CONDITIONAL(GCOV, test x"$gcov" = x"true")
 
+AC_ARG_ENABLE(help2man,
+AS_HELP_STRING([--enable-help2man],
+               [enable help2man, default: no]),
+               [case "${enableval}" in
+                       yes) help2man=true ;;
+                       no)  help2man=false ;;
+                       *)   AC_MSG_ERROR([bad value ${enableval} for --enable-help2man]) ;;
+               esac],
+               [debug=false])
+
+AM_CONDITIONAL(HELP2MAN, test x"$help2man" = x"true")
+
 # Checks for libraries.
 
 # Checks for header files.

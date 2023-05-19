@@ -5,7 +5,6 @@ debugfatfs_SOURCES = src/main.c \
                      src/fat.c \
                      src/exfat.c
 
-man_MANS = debugfatfs.8
 TESTS = tests/00_init.sh \
         tests/01_simple_option_check.sh \
         tests/02_simple_inetractive_check.sh \
@@ -25,5 +24,9 @@ AM_CPPFLAGS += -O0 --no-inline -fprofile-arcs -ftest-coverage
 LDFLAGS +=  -fprofile-generate
 endif
 
+if HELP2MAN
+man_MANS = debugfatfs.8
+
 debugfatfs.8: debugfatfs$(EXEEXT)
 	help2man --no-discard-stderr --section=8 -N -o debugfatfs.8 ./debugfatfs
+endif
