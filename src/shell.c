@@ -136,7 +136,7 @@ static int cmd_cd(int argc, char **argv, char **envp)
 	if (strcmp(path, "/"))
 		snprintf(pwd, CMD_MAXLEN + 1, "/");
 
-	if (dir >= 0) {
+	if (dir >= 0 && *pwd) {
 		cluster = dir;
 		set_env(envp, "PWD", pwd);
 	}
