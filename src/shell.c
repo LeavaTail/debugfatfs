@@ -473,6 +473,40 @@ static int cmd_exit(int argc, char **argv, char **envp)
 }
 
 /**
+ * format_path - format pathname
+ * @dist:        formatted file path (Output)
+ * @len:         filepath length
+ * @str          filepath
+ *
+ * @return       0
+ */
+static int format_path(char *dist, size_t len, char *str)
+{
+	int i = 1;
+	char *saveptr = NULL;
+	char *token;
+	char *buf;
+
+	buf = calloc(len, sizeof(char *));
+
+	token = strtok_r(str, "/", &saveptr);
+	if (str[0] == '/')
+		dist[0] = '/';
+	
+	snprintf(buf, len + 1, "%s%s", dist, token);
+	strncpy(dist, buf, len);
+
+	while ((token = strtok_r(NULL, "/", &saveptr)) != NULL) {
+		snprintf(buf, len + 1, "%s/%s", dist, token);
+		strncpy(dist, buf, len);
+	}
+
+	free(buf);
+
+	return 0;
+}
+
+/**
  * execute_cmd - Execute registerd command
  * @argc:        argument count
  * @argv:        argument vetor
@@ -516,8 +550,11 @@ static int decode_cmd(char *str, char **argv, char **envp)
 	token = strtok_r(str, CMD_DELIM, &saveptr);
 	while (token != NULL) {
 		len = strlen(token);
-		copy = malloc(sizeof(char) * (len + 1));
-		snprintf(copy, len + 1, "%s", token);
+		copy = calloc(len + 1, sizeof(char *));
+		if (argc)
+			format_path(copy, len + 1, token);
+		else
+			snprintf(copy, len + 1, "%s", token);
 		argv[argc++] = copy;
 		token = strtok_r(NULL, CMD_DELIM, &saveptr);
 	}
