@@ -26,6 +26,7 @@ static int cmd_remove(int, char **, char **);
 static int cmd_update(int, char **, char **);
 static int cmd_trim(int, char **, char **);
 static int cmd_fill(int, char **, char **);
+static int cmd_tail(int, char **, char **);
 static int cmd_help(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
@@ -45,6 +46,7 @@ struct command cmd[] = {
 	{"update", cmd_update},
 	{"trim", cmd_trim},
 	{"fill", cmd_fill},
+	{"tail", cmd_tail},
 	{"help", cmd_help},
 	{"exit", cmd_exit},
 };
@@ -434,6 +436,32 @@ static int cmd_fill(int argc, char **argv, char **envp)
 }
 
 /**
+ * cmd_tail - Display file contents.
+ * @argc:       argument count
+ * @argv:       argument vetor
+ * @envp:       environment pointer
+ *
+ * @return      0 (success)
+ */
+static int cmd_tail(int argc, char **argv, char **envp)
+{
+	uint32_t clu = 0;
+
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			info.ops->contents(argv[1], cluster, 0);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
  * cmd_help - display help
  * @argc:     argument count
  * @argv:     argument vector
@@ -455,6 +483,7 @@ static int cmd_help(int argc, char **argv, char **envp)
 	fprintf(stderr, "update     update directory entry.\n");
 	fprintf(stderr, "trim       trim deleted dentry.\n");
 	fprintf(stderr, "fill       fill in directory.\n");
+	fprintf(stderr, "tail       output the last part of files.\n");
 	fprintf(stderr, "help       display this help.\n");
 	fprintf(stderr, "\n");
 	return 0;

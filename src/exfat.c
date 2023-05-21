@@ -92,6 +92,7 @@ int exfat_remove(const char *, uint32_t, int);
 int exfat_update_dentry(uint32_t, int);
 int exfat_trim(uint32_t);
 int exfat_fill(uint32_t, uint32_t);
+int exfat_contents(const char *, uint32_t, int);
 
 static const struct operations exfat_ops = {
 	.statfs = exfat_print_bootsec,
@@ -111,6 +112,7 @@ static const struct operations exfat_ops = {
 	.update = exfat_update_dentry,
 	.trim = exfat_trim,
 	.fill = exfat_fill,
+	.contents = exfat_contents,
 };
 
 /*************************************************************************************************/
@@ -2629,3 +2631,62 @@ out:
 	free(data);
 	return 0;
 }
+
+/**
+ * exfat_contents - function interface to display file contents
+ * @name:           Filename in UTF-8
+ * @clu:            Current Directory Index
+ * @opt:            create option
+ *
+ * @return         0 (Success)
+ *                -1 (Not found)
+ */
+int exfat_contents(const char *name, uint32_t clu, int opt)
+{
+	int i, ret = 0;
+	void *data;
+	uint32_t fclu = 0;
+	size_t index = 0;
+	size_t lines = 0;
+	size_t cluster_num = 1;
+	char *ptr;
+	struct exfat_fileinfo *f;
+
+	fclu = exfat_lookup(clu, (char *)name);
+	if (fclu < 0) {
+		pr_err("File is not found.\n");
+		return -1;
+	}
+
+	index = exfat_get_index(clu);
+	f = search_node2(info.root[index], fclu)->data;
+
+	data = malloc(info.cluster_size);
+	get_cluster(data, fclu);
+	cluster_num = exfat_concat_cluster(f, fclu, &data);
+	if (!cluster_num) {
+		pr_err("Someting wrong in FAT chain.\n");
+		ret = -1;
+		goto out;
+	}
+
+	ptr = data + f->datalen - 1;
+	for (i = 0; i < f->datalen - 1; i++) {
+		if (*ptr == '\n')
+			lines++;
+
+		if (lines > TAIL_COUNT) {
+			ptr++;
+			break;
+		}
+
+		ptr--;
+	}
+
+	pr_msg("%s\n", ptr);
+
+out:
+	free(data);
+	return ret;
+}
+

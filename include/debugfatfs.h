@@ -409,7 +409,10 @@ struct operations {
 	int (*update)(uint32_t, int);
 	int (*trim)(uint32_t);
 	int (*fill)(uint32_t, uint32_t);
+	int (*contents)(const char *, uint32_t, int);
 };
+
+#define TAIL_COUNT           10
 
 /* FAT/exFAT File Attributes */
 #define ATTR_READ_ONLY       0x01

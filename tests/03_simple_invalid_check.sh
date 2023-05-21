@@ -31,6 +31,8 @@ function test_shell () {
 	expect \"/> \"
 	send \"update\n\"
 	expect \"/> \"
+	send \"tail\n\"
+	expect \"/> \"
 	send \"exit\n\"
 	expect eof
 	exit
@@ -63,6 +65,8 @@ function test_shell () {
 	send \"trim A\n\"
 	expect \"/> \"
 	send \"fill A B\n\"
+	expect \"/> \"
+	send \"tail A B\n\"
 	expect \"/> \"
 	send \"nothing\n\"
 	expect \"/> \"

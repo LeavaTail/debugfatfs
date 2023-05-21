@@ -19,6 +19,7 @@ debugfatfs can ontain these inforamtion.
 - Print Main Boot Sector Field
 - Print Cluster/Sector raw data
 - Print Directory entry
+- Print File contents
 - Backup/Restore FAT region
 - Update FAT entry
 - Create/Remove file
@@ -426,6 +427,7 @@ And, debugfatfs with interactive mode support these command.
 - **update** *index* --- update directory entry
 - **trim** --- trim deleted dentry
 - **fill** *[entry]* --- fill in directory
+- **tail** *[file]* --- output the last part of files
 - **help** --- display this help
 - **exit** --- exit interactive mode
 

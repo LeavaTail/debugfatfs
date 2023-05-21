@@ -72,6 +72,7 @@ int fat_remove(const char *, uint32_t, int);
 int fat_update_dentry(uint32_t, int);
 int fat_trim(uint32_t);
 int fat_fill(uint32_t, uint32_t);
+int fat_contents(const char *, uint32_t, int);
 
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
@@ -91,6 +92,7 @@ static const struct operations fat_ops = {
 	.update = fat_update_dentry,
 	.trim = fat_trim,
 	.fill = fat_fill,
+	.contents = fat_contents,
 };
 
 /*************************************************************************************************/
@@ -2113,3 +2115,62 @@ out:
 	free(data);
 	return 0;
 }
+
+/**
+ * fat_contents - function interface to display file contents
+ * @name:         Filename in UTF-8
+ * @index:        Current Directory Index
+ * @opt:          create option
+ *
+ * @return       0 (Success)
+ *              -1 (Not found)
+ */
+int fat_contents(const char *name, uint32_t clu, int opt)
+{
+	int i, ret = 0;
+	void *data;
+	uint32_t fclu = 0;
+	size_t index = 0;
+	size_t lines = 0;
+	size_t cluster_num = 1;
+	char *ptr;
+	struct fat_fileinfo *f;
+
+	fclu = fat_lookup(clu, (char *)name);
+	if (fclu < 0) {
+		pr_err("File is not found.\n");
+		return -1;
+	}
+
+	index = fat_get_index(clu);
+	f = search_node2(info.root[index], fclu)->data;
+
+	data = malloc(info.cluster_size);
+	get_cluster(data, fclu);
+	cluster_num = fat_concat_cluster(f, fclu, &data);
+	if (!cluster_num) {
+		pr_err("Someting wrong in FAT chain.\n");
+		ret = -1;
+		goto out;
+	}
+
+	ptr = data + f->datalen - 1;
+	for (i = 0; i < f->datalen - 1; i++) {
+		if (*ptr == '\n')
+			lines++;
+
+		if (lines > TAIL_COUNT) {
+			ptr++;
+			break;
+		}
+
+		ptr--;
+	}
+
+	pr_msg("%s\n", ptr);
+
+out:
+	free(data);
+	return ret;
+}
+
