@@ -24,7 +24,6 @@ debugfatfs can ontain these inforamtion.
 - Update FAT entry
 - Create/Remove file
 - Cluster compaction
-- Create Directory entry
 
 :warning: debugfatfs can write filesystem image.
 If you don't want, Please add `-r`(read only) option.
@@ -306,78 +305,7 @@ Cluster #12:
 00007FF0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
 ```
 
-#### Case 5: Create Directory entry
-
-- Developer can update directory entry by `update` command in Interactive Mode.
-
-```
-$ sudo debugfatfs -i /dev/sdc1
-Welcome to debugfatfs 0.3.0 (Interactive Mode)
-
-/> cd 00_SIMPLE
-/00_SIMPLE/> cluster 13
-Cluster #13:
-00000000:  85 02 44 C9 20 00 00 00 C2 7B 2D 51 D4 A0 2C 51  ..D. ....{-Q..,Q
-00000010:  C2 7B 2D 51 35 00 A4 A4 A4 00 00 00 00 00 00 00  .{-Q5...........
-00000020:  C0 03 00 08 0C 2B 00 00 13 00 00 00 00 00 00 00  .....+..........
-00000030:  00 00 00 00 0E 00 00 00 13 00 00 00 00 00 00 00  ................
-00000040:  C1 00 46 00 49 00 4C 00 45 00 2E 00 54 00 58 00  ..F.I.L.E...T.X.
-00000050:  54 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  T...............
-00000060:  85 02 69 D1 30 00 00 00 C2 7B 2D 51 2A 7A 2D 51  ..i.0....{-Q*z-Q
-00000070:  C2 7B 2D 51 36 00 A4 A4 A4 00 00 00 00 00 00 00  .{-Q6...........
-00000080:  C0 03 00 03 34 40 00 00 00 80 00 00 00 00 00 00  ....4@..........
-00000090:  00 00 00 00 0F 00 00 00 00 80 00 00 00 00 00 00  ................
-000000A0:  C1 00 44 00 49 00 52 00 00 00 00 00 00 00 00 00  ..D.I.R.........
-000000B0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-*
-00007FF0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-/00_SIMPLE/> update 6
-Please select a Entry type.
-1) File
-2) Stream
-3) File Name
-4) Allocation Bitmap
-5) Up-case Table
-6) Volume Label
-7) Other
-#? 2
-
-Please select a GeneralSecondaryFlags
-   AllocationPossible [N/y]
-   NoFatChain [N/y]
-Please input a Name Length.
-#? 20
-Please input a Name Hash.
-#? 0
-Please input a Valid Data Length.
-#? 10
- Please input a First Cluster.
-#? 100
-Please input a Data Length.
-#? 30
-c0 3 0 20 0 0 0 0 10 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 30 0 0 0 0 0 0 0
-/00_SIMPLE/> cluster 13
-Cluster #13:
-00000000:  85 02 44 C9 20 00 00 00 C2 7B 2D 51 D4 A0 2C 51  ..D. ....{-Q..,Q
-00000010:  C2 7B 2D 51 35 00 A4 A4 A4 00 00 00 00 00 00 00  .{-Q5...........
-00000020:  C0 03 00 08 0C 2B 00 00 13 00 00 00 00 00 00 00  .....+..........
-00000030:  00 00 00 00 0E 00 00 00 13 00 00 00 00 00 00 00  ................
-00000040:  C1 00 46 00 49 00 4C 00 45 00 2E 00 54 00 58 00  ..F.I.L.E...T.X.
-00000050:  54 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  T...............
-00000060:  85 02 69 D1 30 00 00 00 C2 7B 2D 51 2A 7A 2D 51  ..i.0....{-Q*z-Q
-00000070:  C2 7B 2D 51 36 00 A4 A4 A4 00 00 00 00 00 00 00  .{-Q6...........
-00000080:  C0 03 00 03 34 40 00 00 00 80 00 00 00 00 00 00  ....4@..........
-00000090:  00 00 00 00 0F 00 00 00 00 80 00 00 00 00 00 00  ................
-000000A0:  C1 00 44 00 49 00 52 00 00 00 00 00 00 00 00 00  ..D.I.R.........
-000000B0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-000000C0:  C0 03 00 20 00 00 00 00 10 00 00 00 00 00 00 00  ... ............
-000000D0:  00 00 00 00 00 01 00 00 30 00 00 00 00 00 00 00  ........0.......
-000000E0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-*
-00007FF0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-```
-
-#### Case 6: Fill with temproray directory entry
+#### Case 5: Fill with temproray directory entry
 
 - Developer can fill directory by `fill` command in Interactive Mode.
 
@@ -424,7 +352,6 @@ And, debugfatfs with interactive mode support these command.
 - **fat** *index* *[entry]* --- change File Allocation Table entry
 - **create** *file* --- create directory entry
 - **remove** *file* --- remove directory entry
-- **update** *index* --- update directory entry
 - **trim** --- trim deleted dentry
 - **fill** *[entry]* --- fill in directory
 - **tail** *[file]* --- output the last part of files

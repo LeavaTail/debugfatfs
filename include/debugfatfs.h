@@ -406,7 +406,6 @@ struct operations {
 	int (*release)(uint32_t);
 	int (*create)(const char *, uint32_t, int);
 	int (*remove)(const char *, uint32_t, int);
-	int (*update)(uint32_t, int);
 	int (*trim)(uint32_t);
 	int (*fill)(uint32_t, uint32_t);
 	int (*contents)(const char *, uint32_t, int);
@@ -460,25 +459,6 @@ struct operations {
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-
-#define input(msg, output) \
-	do { \
-		pr_msg("%s.\n", msg); \
-		pr_msg("#? "); \
-		fflush(stdout); \
-		if (fgets(output, 64, stdin) == NULL) \
-			return 1; \
-	} while (0) \
-
-#define input_time(msg, output) \
-	do { \
-		char tmp_buffer[32] = {0}; \
-		pr_msg("   %s: ", msg); \
-		fflush(stdout); \
-		if (fgets(tmp_buffer, 32, stdin) == NULL) \
-			return 1; \
-		sscanf(tmp_buffer, "%d", (int *)output); \
-	} while (0) \
 
 static inline bool is_power2(unsigned int n)
 {

@@ -69,7 +69,6 @@ int fat_set_bogus_entry(uint32_t);
 int fat_release_cluster(uint32_t);
 int fat_create(const char *, uint32_t, int);
 int fat_remove(const char *, uint32_t, int);
-int fat_update_dentry(uint32_t, int);
 int fat_trim(uint32_t);
 int fat_fill(uint32_t, uint32_t);
 int fat_contents(const char *, uint32_t, int);
@@ -89,7 +88,6 @@ static const struct operations fat_ops = {
 	.release = fat_release_cluster,
 	.create = fat_create,
 	.remove = fat_remove,
-	.update = fat_update_dentry,
 	.trim = fat_trim,
 	.fill = fat_fill,
 	.contents = fat_contents,
@@ -950,131 +948,6 @@ static int fat_init_lfn(struct fat_dentry *d,
 }
 
 /**
- * fat_update_file - Update directory entry
- * @old:             directory entry before update
- * @new:             directory entry after update (Output)
- *
- * @return           0 (Success)
- */
-static int fat_update_file(struct fat_dentry *old, struct fat_dentry *new)
-{
-	int i;
-	uint32_t tmp = 0;
-	struct tm tm;
-	char buf[64] = {0};
-	const char attrchar[][16] = {
-		"ReadOnly",
-		"Hidden",
-		"System",
-		"Volume ID",
-		"Directory",
-		"Archive",
-		"Long Filename",
-	};
-	const char timechar[][16] = {
-		"Create",
-		"LastModified",
-		"LastAccess",
-	};
-	uint16_t dates[3] = {0};
-	uint16_t times[3] = {0};
-	uint8_t subsecs[3] = {0};
-
-	input("Please input a FileName", buf);
-	memcpy(new->dentry.dir.DIR_Name, buf, 11);
-
-	pr_msg("Please select a File Attribute.\n");
-	for (i = 0; i < 7; i++) {
-		pr_msg("   %s [N/y] ", attrchar[i]);
-		fflush(stdout);
-		if (fgets(buf, 8, stdin) == NULL)
-			return 1;
-		if (toupper(buf[0]) == 'Y' && buf[1] == '\n')
-			new->dentry.dir.DIR_Attr |= (1 << i);
-	}
-
-	for (i = 0; i < 3; i++) {
-		pr_msg("Please input a %s Timestamp.\n", timechar[i]);
-		do {
-			input_time("Year", &tmp);
-		} while (tmp < 1980 || tmp > 2107);
-		tm.tm_year = tmp - 1900;
-		do {
-			input_time("Month", &tmp);
-		} while (tmp < 1 || tmp > 12);
-		tm.tm_mon = tmp - 1;
-		do {
-			input_time("Day", &tmp);
-		} while (tmp < 1 || tmp > 31);
-		tm.tm_mday = tmp;
-
-		if (i == 2)
-			break;
-
-		do {
-			input_time("Hour", &tmp);
-		} while (tmp < 0 || tmp > 23);
-		tm.tm_hour = tmp;
-		do {
-			input_time("Min", &tmp);
-		} while (tmp < 0 || tmp > 59);
-		tm.tm_min = tmp;
-		do {
-			input_time("Sec", &tmp);
-		} while (tmp < 0 || tmp > 59);
-		tm.tm_sec = tmp;
-		fat_convert_fattime(&tm, dates + i, times + i, subsecs + i);
-	}
-
-	new->dentry.dir.DIR_CrtTimeTenth = subsecs[0];
-	new->dentry.dir.DIR_CrtTime = times[0];
-	new->dentry.dir.DIR_CrtDate = dates[0];
-	new->dentry.dir.DIR_LstAccDate = dates[1];
-	new->dentry.dir.DIR_WrtTime= times[2];
-	new->dentry.dir.DIR_WrtDate = times[2];
-
-	input("Please input a First Cluster", buf);
-	sscanf(buf, "%04x", (uint32_t *)&tmp);
-	new->dentry.dir.DIR_FstClusHI = tmp >> 16;
-	new->dentry.dir.DIR_FstClusLO = tmp & 0x0000ffff;
-	input("Please input a Data Length", buf);
-	sscanf(buf, "%04x", (uint32_t *)&tmp);
-	new->dentry.dir.DIR_FileSize = tmp;
-
-	return 0;
-}
-
-/**
- * fat_update_lfn - Update Long filename entry
- * @old:            directory entry before update
- * @new:            directory entry after update (Output)
- *
- * @return          0 (Success)
- */
-static int fat_update_lfn(struct fat_dentry *old, struct fat_dentry *new)
-{
-	char shortname[11] = {0};
-	uint16_t longname[MAX_NAME_LENGTH] = {0};
-	uint32_t tmp = 0;
-	char buf[64] = {0};
-
-	input("Please input a FileName", buf);
-	fat_create_nameentry(buf, shortname, longname);
-	memcpy(new->dentry.lfn.LDIR_Name1, longname, sizeof(uint16_t) * 5);
-	memcpy(new->dentry.lfn.LDIR_Name2, longname + 5, sizeof(uint16_t) * 6);
-	memcpy(new->dentry.lfn.LDIR_Name3, longname + 11, sizeof(uint16_t) * 2);
-
-	input("Please input a the order of this entry", buf);
-	sscanf(buf, "%02hhx", (uint8_t *)&tmp);
-	new->dentry.lfn.LDIR_Ord = tmp;
-	input("Please input a Checksum", buf);
-	sscanf(buf, "%02hhx", (uint8_t *)&tmp);
-	new->dentry.lfn.LDIR_Chksum = tmp;
-
-	return 0;
-}
-
-/**
  * fat_convert_uniname - function to get filename
  * @uniname:             filename dentry in UTF-16
  * @name_len:            filename length
@@ -1922,71 +1795,6 @@ out:
 		fat_set_cluster(f, clu, data);
 	else
 		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
-	free(data);
-	return 0;
-}
-
-/**
- * fat_update_dentry - function interface to update directory entry
- * @clu:               Current Directory cluster
- * @i:                 Directory entry index
- *
- * @return             0 (Success)
- */
-int fat_update_dentry(uint32_t clu, int i)
-{
-	int type = 0;
-	char buf[64] = {0};
-	struct fat_dentry new = {0};
-	void *data;
-	size_t size = info.cluster_size;
-	struct fat_dentry *old;
-
-	/* Lookup last entry */
-	data = malloc(size);
-	get_cluster(data, clu);
-
-	old = ((struct fat_dentry *)data) + i;
-
-	pr_msg("Please select a Entry type.\n");
-	pr_msg("1) Directory Structure\n");
-	pr_msg("2) Long File Name\n");
-	pr_msg("3) Other\n");
-
-	while (1) {
-		pr_msg("#? ");
-		fflush(stdout);
-		if (fgets(buf, 32, stdin) == NULL)
-			continue;
-		sscanf(buf, "%d", &type);
-		if (0 < type && type < 4)
-			break;
-	}
-	pr_msg("\n");
-
-	switch (type) {
-		case 1:
-			fat_init_dentry(&new, (unsigned char *)"", 0);
-			fat_update_file(old, &new);
-			break;
-		case 2:
-			fat_init_lfn(&new, (uint16_t *)"", 0, (unsigned char*)"", 0);
-			fat_update_lfn(old, &new);
-			break;
-		default:
-			memset(buf, 0x00, 64);
-			input("Please input any strings", buf);
-			for (i = 0; i < sizeof(struct fat_dentry); i++)
-				sscanf(buf + (i * 2), "%02hhx", ((uint8_t *)&new) + i);
-			break;
-	}
-	for (i = 0; i < sizeof(struct fat_dentry); i++) {
-		pr_msg("%x ", *(((uint8_t *)&new) + i));
-	}
-	pr_msg("\n");
-	memcpy(old, &new, sizeof(struct fat_dentry));
-
-	set_cluster(data, clu);
 	free(data);
 	return 0;
 }
