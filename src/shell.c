@@ -487,18 +487,19 @@ static int format_path(char *dist, size_t len, char *str, char **envp)
 	char *token;
 	char *buf;
 
-	buf = calloc(CMD_MAXLEN + 1, sizeof(char *));
+	if ((token = strtok_r(str, "/", &saveptr)) == NULL) {
+		snprintf(dist, strlen("/") + 1, "/");
+		return 0;
+	}
 
+	buf = calloc(CMD_MAXLEN + 1, sizeof(char *));
 	/* Create full path */
 	get_env(envp, "PWD", buf);
-	token = strtok_r(str, "/", &saveptr);
-	if (str[0] == '/')
+
+	if (!strncmp(buf, "/", strlen("/") + 1))
 		snprintf(dist, strlen("/") + 1, "/");
 	else 
-		strncpy(dist, buf, len);
-
-	if (!token)
-		goto out;
+		snprintf(dist, len + strlen("/") + 1, "%s/", buf);
 
 	/* Remove redundant "/" */
 	snprintf(buf, len + 1, "%s%s", dist, token);
@@ -509,7 +510,6 @@ static int format_path(char *dist, size_t len, char *str, char **envp)
 		strncpy(dist, buf, len);
 	}
 
-out:
 	free(buf);
 
 	return 0;
@@ -558,8 +558,8 @@ static int decode_cmd(char *str, char **argv, char **envp)
 
 	token = strtok_r(str, CMD_DELIM, &saveptr);
 	while (token != NULL) {
-		len = strlen(token);
-		copy = calloc(CMD_MAXLEN, sizeof(char *));
+		len = CMD_MAXLEN;
+		copy = calloc(len + 1, sizeof(char *));
 		if (argc)
 			format_path(copy, len + 1, token, envp);
 		else
