@@ -121,12 +121,8 @@ static int cmd_cd(int argc, char **argv, char **envp)
 			snprintf(pwd, CMD_MAXLEN + 1, "/");
 			break;
 		case 2:
-			get_env(envp, "PWD", pwd);
 			dir = info.ops->lookup(cluster, argv[1]);
-			if (argv[1][0] == '/')
-				snprintf(pwd, CMD_MAXLEN + 1, "%s", argv[1]);
-			else
-				snprintf(pwd, CMD_MAXLEN + 1, "%s%s", pwd, argv[1]);
+			snprintf(pwd, CMD_MAXLEN + 1, "%s", argv[1]);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
