@@ -492,7 +492,8 @@ static int format_path(char *dist, size_t len, char *str, char **envp)
 	/* Create full path */
 	get_env(envp, "PWD", buf);
 
-	if (!strncmp(buf, "/", strlen("/") + 1))
+	/* If str is "/A/B/C" or "/", then "/" else concatenate PWD */
+	if ((str[0] == '/') || (!strncmp(buf, "/", strlen("/") + 1)))
 		snprintf(dist, strlen("/") + 1, "/");
 	else 
 		snprintf(dist, len + strlen("/") + 1, "%s/", buf);
