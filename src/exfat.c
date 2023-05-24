@@ -1278,6 +1278,7 @@ static int exfat_update_filesize(struct exfat_fileinfo *f, uint32_t clu)
 			d = ((struct exfat_dentry *)data) + j;
 			if (d->EntryType == DENTRY_STREAM && d->dentry.stream.FirstCluster == clu) {
 				d->dentry.stream.DataLength = f->datalen;
+				d->dentry.stream.ValidDataLength = f->datalen;
 				d->dentry.stream.GeneralSecondaryFlags = f->flags;
 				goto out;
 			}
