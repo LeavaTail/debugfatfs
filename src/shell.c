@@ -566,7 +566,7 @@ static int decode_cmd(char *str, char **argv, char **envp)
 	char *token;
 
 	token = strtok_r(str, CMD_DELIM, &saveptr);
-	while ((token != NULL) && (argc < ARG_MAXLEN)) {
+	while ((token != NULL) && (argc < ARG_MAXNUM)) {
 		snprintf(argv[argc++], ARG_MAXLEN, "%s", token);
 		token = strtok_r(NULL, CMD_DELIM, &saveptr);
 	}
