@@ -507,7 +507,7 @@ static int format_path(char *dist, size_t len, char *str, char **envp)
 		return 0;
 	}
 
-	buf = calloc(ARG_MAXLEN + 1, sizeof(char));
+	buf = calloc(ARG_MAXLEN, sizeof(char));
 	/* Create full path */
 	get_env(envp, "PWD", buf);
 
@@ -515,14 +515,14 @@ static int format_path(char *dist, size_t len, char *str, char **envp)
 	if ((str[0] == '/') || (!strncmp(buf, "/", strlen("/") + 1)))
 		snprintf(dist, strlen("/") + 1, "/");
 	else 
-		snprintf(dist, len + strlen("/") + 1, "%s/", buf);
+		snprintf(dist, len, "%s/", buf);
 
 	/* Remove redundant "/" */
-	snprintf(buf, len + 1, "%s%s", dist, token);
+	snprintf(buf, len, "%s%s", dist, token);
 	strncpy(dist, buf, len);
 
 	while ((token = strtok_r(NULL, "/", &saveptr)) != NULL) {
-		snprintf(buf, len + 1, "%s/%s", dist, token);
+		snprintf(buf, len, "%s/%s", dist, token);
 		strncpy(dist, buf, len);
 	}
 
