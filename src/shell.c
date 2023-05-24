@@ -299,6 +299,7 @@ static int cmd_create(int argc, char **argv, char **envp)
 {
 	int opt, create_option = 0;
 	char buf[ARG_MAXLEN] = {};
+	char *filename;
 
 	/* To restart scanning a new argument vector */
 	optind = 1;
@@ -321,8 +322,12 @@ static int cmd_create(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 1:
-			format_path(buf, ARG_MAXLEN, argv[optind], envp);
-			info.ops->create(buf, cluster, create_option);
+			filename = strtok_dir(argv[optind]);
+			if (filename != argv[optind]) {
+				pr_warn("Create doesn't support Absolute path.\n");
+				break;
+			}
+			info.ops->create(filename, cluster, create_option);
 			info.ops->reload(cluster);
 			break;
 		default:
@@ -343,14 +348,19 @@ static int cmd_create(int argc, char **argv, char **envp)
 static int cmd_remove(int argc, char **argv, char **envp)
 {
 	char buf[ARG_MAXLEN] = {};
+	char *filename;
 
 	switch (argc) {
 		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
-			format_path(buf, ARG_MAXLEN, argv[1], envp);
-			info.ops->remove(buf, cluster, 0);
+			filename = strtok_dir(argv[1]);
+			if (filename != argv[1]) {
+				pr_warn("Create doesn't support Absolute path.\n");
+				break;
+			}
+			info.ops->remove(filename, cluster, 0);
 			info.ops->reload(cluster);
 			break;
 		default:

@@ -465,6 +465,23 @@ static inline bool is_power2(unsigned int n)
 	return (n != 0 && ((n & (n - 1)) == 0));
 }
 
+/**
+ * Divide pathname into directory and file
+ *
+ * @param[in] path pathname
+ * @return filename
+ * @attention pathname will be overwritten
+ */
+static inline char* strtok_dir(char *path)
+{
+	int i;
+
+	for(i = strlen(path) - 1; i >= 0; i--)
+		if (path[i] == '/')
+			return path + i + 1;
+	return path;
+}
+
 extern struct device_info info;
 
 /* General function */
