@@ -79,6 +79,7 @@ static inline node2_t *search_node2(node2_t *node, uint32_t i)
 	return NULL;
 }
 
+#ifdef DEBUGFATFS_DEBUG
 static inline void print_node2(node2_t *node)
 {
 	while (node->next != NULL) {
@@ -87,5 +88,6 @@ static inline void print_node2(node2_t *node)
 	}
 	fprintf(stdout, "NULL\n");
 }
+#endif
 
 #endif /*_LIST2_H */

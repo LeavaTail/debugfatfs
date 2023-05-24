@@ -785,7 +785,7 @@ static int exfat_new_clusters(size_t num_alloc)
 /* DIRECTORY CHAIN FUNCTION                                                                      */
 /*                                                                                               */
 /*************************************************************************************************/
-#if 0
+#ifdef DEBUGFATFS_DEBUG
 /**
  * exfat_print_dchain - print directory chain
  */
