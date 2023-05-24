@@ -1250,7 +1250,7 @@ static int exfat_update_filesize(struct exfat_fileinfo *f, uint32_t clu)
 	uint32_t parent_clu = 0;
 	size_t cluster_num;
 	struct exfat_fileinfo *dir;
-	struct exfat_dentry d;
+	struct exfat_dentry *d;
 	void *data;
 
 	if (clu == info.root_offset)
@@ -1275,10 +1275,10 @@ static int exfat_update_filesize(struct exfat_fileinfo *f, uint32_t clu)
 	for (i = 0; i < cluster_num; i++) {
 		get_cluster(data, parent_clu);
 		for (j = 0; j < (info.cluster_size / sizeof(struct exfat_dentry)); j++) {
-			d = ((struct exfat_dentry *)data)[j];
-			if (d.EntryType == DENTRY_STREAM && d.dentry.stream.FirstCluster == clu) {
-				d.dentry.stream.DataLength = f->datalen;
-				d.dentry.stream.GeneralSecondaryFlags = f->flags;
+			d = ((struct exfat_dentry *)data) + j;
+			if (d->EntryType == DENTRY_STREAM && d->dentry.stream.FirstCluster == clu) {
+				d->dentry.stream.DataLength = f->datalen;
+				d->dentry.stream.GeneralSecondaryFlags = f->flags;
 				goto out;
 			}
 		}
