@@ -2,6 +2,9 @@
 
 set -u
 
+source tests/common.sh
+
+IMAGES=("exfat.img")
 OUTPUT=data.dat
 
 function test_options () {
@@ -71,6 +74,14 @@ function test_shell () {
 	echo ""
 }
 
+function main() {
+	init_image
+
+	for fs in ${IMAGES[@]}; do
+		test_options ${fs}
+		test_shell ${fs}
+	done
+}
+
 ### main function ###
-test_options exfat.img
-test_shell exfat.img
+main "$@"

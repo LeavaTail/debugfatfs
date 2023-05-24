@@ -3,6 +3,9 @@
 set -eu -o pipefail
 trap 'echo "ERROR: l.$LINENO, exit status = $?" >&2; exit 1' ERR
 
+source tests/common.sh
+
+IMAGES=("fat12.img" "fat16.img" "fat32.img" "exfat.img")
 OUTPUT=data.dat
 
 function test_options () {
@@ -24,8 +27,13 @@ function test_options () {
 	rm -f boot_${1}
 }
 
+function main() {
+	init_image
+
+	for fs in ${IMAGES[@]}; do
+		test_options ${fs}
+	done
+}
+
 ### main function ###
-test_options fat12.img
-test_options fat16.img
-test_options fat32.img
-test_options exfat.img
+main "$@"

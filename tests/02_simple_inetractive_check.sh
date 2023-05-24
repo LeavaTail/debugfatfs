@@ -3,6 +3,10 @@
 set -eu -o pipefail
 trap 'echo "ERROR: l.$LINENO, exit status = $?" >&2; exit 1' ERR
 
+source tests/common.sh
+
+IMAGES=("fat12.img" "fat16.img" "fat32.img" "exfat.img")
+
 function test_shell () {
 	expect -c "
 	set timeout 5
@@ -62,8 +66,13 @@ function test_shell () {
 	sync
 }
 
+function main() {
+	init_image
+
+	for fs in ${IMAGES[@]}; do
+		test_shell ${fs}
+	done
+}
+
 ### main function ###
-test_shell fat12.img
-test_shell fat16.img
-test_shell fat32.img
-test_shell exfat.img
+main "$@"

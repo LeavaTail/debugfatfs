@@ -5,7 +5,7 @@ debugfatfs_SOURCES = src/main.c \
                      src/fat.c \
                      src/exfat.c
 
-TESTS = tests/00_init.sh \
+TESTS = \
         tests/01_simple_option_check.sh \
         tests/02_simple_inetractive_check.sh \
         tests/03_simple_invalid_check.sh
