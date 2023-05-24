@@ -113,16 +113,16 @@ static int cmd_cd(int argc, char **argv, char **envp)
 {
 	int dir = 0;
 	char *path = "/";
-	char pwd[CMD_MAXLEN + 1] = {};
+	char pwd[ARG_MAXLEN] = {};
 
 	switch (argc) {
 		case 1:
 			dir = info.root_offset;
-			snprintf(pwd, CMD_MAXLEN + 1, "/");
+			snprintf(pwd, ARG_MAXLEN, "/");
 			break;
 		case 2:
 			dir = info.ops->lookup(cluster, argv[1]);
-			snprintf(pwd, CMD_MAXLEN + 1, "%s", argv[1]);
+			snprintf(pwd, ARG_MAXLEN, "%s", argv[1]);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
@@ -130,7 +130,7 @@ static int cmd_cd(int argc, char **argv, char **envp)
 	}
 
 	if (strcmp(path, "/"))
-		snprintf(pwd, CMD_MAXLEN + 1, "/");
+		snprintf(pwd, ARG_MAXLEN, "/");
 
 	if (dir >= 0 && *pwd) {
 		cluster = dir;
@@ -488,7 +488,7 @@ static int format_path(char *dist, size_t len, char *str, char **envp)
 		return 0;
 	}
 
-	buf = calloc(CMD_MAXLEN + 1, sizeof(char *));
+	buf = calloc(ARG_MAXLEN + 1, sizeof(char));
 	/* Create full path */
 	get_env(envp, "PWD", buf);
 
@@ -550,18 +550,13 @@ static int decode_cmd(char *str, char **argv, char **envp)
 	int argc = 0;
 	char *saveptr = NULL;
 	char *token;
-	char *copy;
-	size_t len;
 
 	token = strtok_r(str, CMD_DELIM, &saveptr);
-	while (token != NULL) {
-		len = CMD_MAXLEN;
-		copy = calloc(len + 1, sizeof(char *));
+	while ((token != NULL) && (argc < ARG_MAXLEN)) {
 		if (argc)
-			format_path(copy, len + 1, token, envp);
+			format_path(argv[argc++], ARG_MAXLEN, token, envp);
 		else
-			snprintf(copy, len + 1, "%s", token);
-		argv[argc++] = copy;
+			snprintf(argv[argc++], ARG_MAXLEN, "%s", token);
 		token = strtok_r(NULL, CMD_DELIM, &saveptr);
 	}
 	return argc;
@@ -593,17 +588,17 @@ static int read_cmd(char *buf)
 static int set_env(char **envp, char *env, char *value)
 {
 	int i;
-	char *str = malloc(sizeof(char) * (CMD_MAXLEN + 1));
+	char str[ARG_MAXLEN] = {0};
 	char *saveptr = NULL;
+	char *token;
 
-	for (i = 0; envp[i]; i++) {
-		if (!strcmp(strtok_r(envp[i], "=", &saveptr), env)) {
-			free(envp[i]);
+	for (i = 0; i < ENV_MAXNUM - 1; i++) {
+		strncpy(str, envp[i], ARG_MAXLEN);
+		token = strtok_r(str, "=", &saveptr);
+		if (token && !strcmp(token, env))
 			break;
-		}
 	}
-	snprintf(str, CMD_MAXLEN, "%s=%s", env, value);
-	envp[i] = str;
+	snprintf(envp[i], CMD_MAXLEN, "%s=%s", env, value);
 
 	return 0;
 }
@@ -621,15 +616,15 @@ static int get_env(char **envp, char *env, char *value)
 {
 	int i;
 	char *tp;
-	char str[CMD_MAXLEN + 1] = {};
+	char str[ARG_MAXLEN] = {0};
 	char *saveptr = NULL;
 
 	for (i = 0; envp[i]; i++) {
-		strncpy(str, envp[i], CMD_MAXLEN);
+		strncpy(str, envp[i], ARG_MAXLEN);
 		tp = strtok_r(str, "=", &saveptr);
-		if (!strcmp(tp, env)) {
+		if (tp && !strcmp(tp, env)) {
 			tp = strtok_r(NULL, "=", &saveptr);
-			strncpy(value, tp, CMD_MAXLEN);
+			strncpy(value, tp, ARG_MAXLEN);
 			return 0;
 		}
 	}
@@ -656,10 +651,15 @@ static int init_env(char **envp)
  */
 int shell(void)
 {
-	int argc = 0;
-	char buf[CMD_MAXLEN + 1] = {};
-	char **argv = calloc((CMD_MAXLEN + 1), sizeof(char *));
-	char **envp = calloc(16, sizeof(char *));
+	int i, argc = 0;
+	char buf[CMD_MAXLEN] = {};
+	char **argv = calloc(ARG_MAXNUM, sizeof(char *));
+	char **envp = calloc(ENV_MAXNUM, sizeof(char *));
+
+	for (i = 0; i < ARG_MAXNUM; i++)
+		argv[i] = calloc(ARG_MAXLEN, sizeof(char));
+	for (i = 0; i < ENV_MAXNUM; i++)
+		envp[i] = calloc(ARG_MAXLEN, sizeof(char));
 
 	fprintf(stdout, "Welcome to %s %s (Interactive Mode)\n\n", PROGRAM_NAME, PROGRAM_VERSION);
 	init_env(envp);
@@ -675,6 +675,11 @@ int shell(void)
 		if (execute_cmd(argc, argv, envp))
 			break;
 	}
+
+	for (i = 0; i < ENV_MAXNUM; i++)
+		free(envp[i]);
+	for (i = 0; i < ARG_MAXNUM; i++)
+		free(argv[i]);
 
 	free(argv);
 	free(envp);
