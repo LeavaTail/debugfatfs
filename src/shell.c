@@ -298,7 +298,6 @@ static int cmd_fat(int argc, char **argv, char **envp)
 static int cmd_create(int argc, char **argv, char **envp)
 {
 	int opt, create_option = 0;
-	char buf[ARG_MAXLEN] = {};
 	char *filename;
 
 	/* To restart scanning a new argument vector */
@@ -347,7 +346,6 @@ static int cmd_create(int argc, char **argv, char **envp)
  */
 static int cmd_remove(int argc, char **argv, char **envp)
 {
-	char buf[ARG_MAXLEN] = {};
 	char *filename;
 
 	switch (argc) {
@@ -430,8 +428,6 @@ static int cmd_fill(int argc, char **argv, char **envp)
  */
 static int cmd_tail(int argc, char **argv, char **envp)
 {
-	uint32_t clu = 0;
-
 	switch (argc) {
 		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
@@ -497,7 +493,6 @@ static int cmd_exit(int argc, char **argv, char **envp)
  */
 static int format_path(char *dist, size_t len, char *str, char **envp)
 {
-	int i = 1;
 	char *saveptr = NULL;
 	char *token;
 	char *buf;
