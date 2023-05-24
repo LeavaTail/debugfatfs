@@ -26,15 +26,19 @@ jobs:
     - name: setup environment
       run: |
         sudo apt-get update
-        sudo apt-get install autoconf automake libtool make expect exfat-fuse
+        sudo apt-get install autoconf automake libtool make expect libcunit1-dev
     - name: automake
       run:  script/bootstrap.sh
     - name: configure
       run: ./configure --enable-gcov
     - name: build package
       run: make
+    - name: build test
+      run: make -C tests/unit_test
     - name: run test
       run: make check
+    - name: unit test
+      run: ./tests/unit_test/test
     - name: confirm result
       run: cat tests/*.log
     - uses: actions/upload-artifact@v3
@@ -48,4 +52,3 @@ jobs:
         gcov: true
         fail_ci_if_error: true
         verbose: true
-
