@@ -11,6 +11,7 @@ TESTS = \
         tests/03_simple_command_check.sh \
         tests/04_simple_invalid_check.sh \
         tests/05_show_dentry_check.sh \
+        tests/06_invalid_usage_check.sh \
         tests/11_alloc_free_check.sh
 
 EXTRA_DIST = include
