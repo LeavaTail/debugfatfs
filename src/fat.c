@@ -43,8 +43,6 @@ int fat_clean_dchain(uint32_t);
 static void fat_create_fileinfo(node2_t *, uint32_t, struct fat_dentry *, uint16_t *, size_t);
 static int fat_init_dentry(struct fat_dentry *, unsigned char *, size_t);
 static int fat_init_lfn(struct fat_dentry *, uint16_t *, size_t, unsigned char *, uint8_t);
-static int fat_update_file(struct fat_dentry *, struct fat_dentry *);
-static int fat_update_lfn(struct fat_dentry *, struct fat_dentry *);
 static void fat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static int fat_create_shortname(uint16_t *, char *);
 static int fat_convert_shortname(const char *, char *);
