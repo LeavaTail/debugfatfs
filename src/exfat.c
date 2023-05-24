@@ -44,6 +44,7 @@ static int exfat_get_index(uint32_t);
 static int exfat_load_extra_entry(void);
 static int exfat_traverse_directory(uint32_t);
 static int exfat_clean_dchain(uint32_t);
+static struct exfat_fileinfo *exfat_search_file(node2_t *, uint16_t);
 
 /* File function prototype */
 static void exfat_create_fileinfo(node2_t *,
@@ -1021,6 +1022,19 @@ static int exfat_clean_dchain(uint32_t index)
 	return 0;
 }
 
+static struct exfat_fileinfo *exfat_search_file(node2_t *node, uint16_t hash)
+{
+	struct exfat_fileinfo *f;
+
+	while (node->next != NULL) {
+		node = node->next;
+		f = (struct exfat_fileinfo *)(node->data);
+		if (f->hash == hash)
+			return f;
+	}
+	return NULL;
+}
+
 /*************************************************************************************************/
 /*                                                                                               */
 /* FILE FUNCTION                                                                                 */
@@ -1949,6 +1963,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	void *data;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint16_t uppername[MAX_NAME_LENGTH] = {0};
+	uint16_t namehash = 0;
 	uint8_t len;
 	uint8_t count;
 	size_t index = exfat_get_index(clu);
@@ -1963,6 +1978,13 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
 	exfat_convert_upper_character(uniname, len, uppername);
 	count = ((len + ENTRY_NAME_MAX - 1) / ENTRY_NAME_MAX) + 1;
+
+	/* Prohibit duplicate filename */
+	namehash = exfat_calculate_namehash(uppername, len);
+	if (exfat_search_file(info.root[index], namehash)) {
+		pr_err("cannot create %s: File exists\n", name);
+		return -1;
+	}
 
 	/* Lookup last entry */
 	data = malloc(info.cluster_size);
