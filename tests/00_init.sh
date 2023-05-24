@@ -5,10 +5,10 @@ trap 'echo "ERROR: l.$LINENO, exit status = $?" >&2; exit 1' ERR
 
 # md5sum
 declare -A images=(
-	["fat12"]="4e6295437cb89e037e2ed2da0e905223"
-	["fat16"]="58caf1854910887b39e30187ec0848d0"
-	["fat32"]="353aa3c5111f0ed8ca1db8ceda06c163"
-	["exfat"]="02c3746447149897b941f000d3f89690"
+	["fat12"]="fcef9fc31b1b5b9c33236053a408e145"
+	["fat16"]="dca95fc0446cdb62ba99ab1518196fa6"
+	["fat32"]="342fe173ee5ad2797a69d3da412ec8bb"
+	["exfat"]="81740a8e624141c1459a439db2311eb9"
 )
 
 for image in $( ls tests/sample | grep .tar.bz2$ ); do
