@@ -1681,7 +1681,7 @@ int fat_create(const char *name, uint32_t clu, int opt)
 	}
 
 	if (clu) {
-		new_cluster_num = (i + count + 1) * sizeof(struct fat_dentry) / info.cluster_size;
+		new_cluster_num = ROUNDUP((i + count + 1) * sizeof(struct fat_dentry), info.cluster_size);
 		if (new_cluster_num > cluster_num) {
 			fat_alloc_clusters(f, clu, new_cluster_num - cluster_num);
 			cluster_num = fat_concat_cluster(f, clu, &data);
