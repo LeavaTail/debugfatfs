@@ -2005,6 +2005,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 		exfat_alloc_clusters(f, clu, new_cluster_num - cluster_num);
 		cluster_num = exfat_concat_cluster(f, clu, &data);
 		entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
+		d = ((struct exfat_dentry *)data) + i;
 	}
 
 	exfat_init_file(d, uniname, len);

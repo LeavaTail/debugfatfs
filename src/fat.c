@@ -1686,6 +1686,7 @@ int fat_create(const char *name, uint32_t clu, int opt)
 			fat_alloc_clusters(f, clu, new_cluster_num - cluster_num);
 			cluster_num = fat_concat_cluster(f, clu, &data);
 			entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
+			d = ((struct fat_dentry *)data) + i;
 		}
 	} else {
 		if (((i + count + 1) * info.sector_size) > size) {
