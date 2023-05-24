@@ -290,7 +290,7 @@ static int fat16_print_bootsec(struct fat_bootsec *b)
 	int i;
 	char type[FILSYSTYPESIZE + 1] = {0};
 
-	strncpy(type, b->reserved_info.fat16_reserved_info.BS_FilSysType, FILSYSTYPESIZE);
+	strncpy(type, (const char *)b->reserved_info.fat16_reserved_info.BS_FilSysType, FILSYSTYPESIZE);
 	if (strncmp(type, "FAT", 3))
 		pr_warn("BS_FilSysType is expected \"FAT     \", But this is %s\n", type);
 	else
@@ -300,7 +300,7 @@ static int fat16_print_bootsec(struct fat_bootsec *b)
 
 	pr_msg("Volume ID:      \t");
 	for (i = 0; i < VOLIDSIZE; i++)
-		pr_msg("%02x", b->reserved_info.fat16_reserved_info.BS_VolID[i]);
+		pr_msg("%02x", ((const char *)b->reserved_info.fat16_reserved_info.BS_VolID)[i]);
 	pr_msg("\n");
 
 	pr_msg("Volume name:    \t");
@@ -319,7 +319,7 @@ static int fat32_print_bootsec(struct fat_bootsec *b)
 	int i;
 	char type[FILSYSTYPESIZE + 1] = {0};
 
-	strncpy(type, b->reserved_info.fat32_reserved_info.BS_FilSysType, FILSYSTYPESIZE);
+	strncpy(type, (const char *)b->reserved_info.fat32_reserved_info.BS_FilSysType, FILSYSTYPESIZE);
 	if (strncmp(type, "FAT32", 5))
 		pr_warn("BS_FilSysType is expected \"FAT32   \", But this is %s\n", type);
 	else
