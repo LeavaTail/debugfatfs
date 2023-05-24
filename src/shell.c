@@ -11,6 +11,8 @@
 
 static uint32_t cluster = 0;
 
+static int format_path(char *, size_t, char *, char **);
+
 static int set_env(char **, char *, char *);
 static int get_env(char **, char *, char *);
 
@@ -113,6 +115,7 @@ static int cmd_cd(int argc, char **argv, char **envp)
 {
 	int dir = 0;
 	char *path = "/";
+	char buf[ARG_MAXLEN] = {};
 	char pwd[ARG_MAXLEN] = {};
 
 	switch (argc) {
@@ -121,8 +124,9 @@ static int cmd_cd(int argc, char **argv, char **envp)
 			snprintf(pwd, ARG_MAXLEN, "/");
 			break;
 		case 2:
-			dir = info.ops->lookup(cluster, argv[1]);
-			snprintf(pwd, ARG_MAXLEN, "%s", argv[1]);
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			dir = info.ops->lookup(cluster, buf);
+			snprintf(pwd, ARG_MAXLEN, "%s", buf);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
@@ -294,6 +298,7 @@ static int cmd_fat(int argc, char **argv, char **envp)
 static int cmd_create(int argc, char **argv, char **envp)
 {
 	int opt, create_option = 0;
+	char buf[ARG_MAXLEN] = {};
 
 	/* To restart scanning a new argument vector */
 	optind = 1;
@@ -316,7 +321,8 @@ static int cmd_create(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 1:
-			info.ops->create(argv[optind], cluster, create_option);
+			format_path(buf, ARG_MAXLEN, argv[optind], envp);
+			info.ops->create(buf, cluster, create_option);
 			info.ops->reload(cluster);
 			break;
 		default:
@@ -336,12 +342,15 @@ static int cmd_create(int argc, char **argv, char **envp)
  */
 static int cmd_remove(int argc, char **argv, char **envp)
 {
+	char buf[ARG_MAXLEN] = {};
+
 	switch (argc) {
 		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
-			info.ops->remove(argv[1], cluster, 0);
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			info.ops->remove(buf, cluster, 0);
 			info.ops->reload(cluster);
 			break;
 		default:
@@ -553,10 +562,7 @@ static int decode_cmd(char *str, char **argv, char **envp)
 
 	token = strtok_r(str, CMD_DELIM, &saveptr);
 	while ((token != NULL) && (argc < ARG_MAXLEN)) {
-		if (argc)
-			format_path(argv[argc++], ARG_MAXLEN, token, envp);
-		else
-			snprintf(argv[argc++], ARG_MAXLEN, "%s", token);
+		snprintf(argv[argc++], ARG_MAXLEN, "%s", token);
 		token = strtok_r(NULL, CMD_DELIM, &saveptr);
 	}
 	return argc;
