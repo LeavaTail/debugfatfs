@@ -39,11 +39,9 @@ static struct option const longopts[] =
 	{"entry", required_argument, NULL, 'e'},
 	{"force", required_argument, NULL, 'f'},
 	{"interactive", no_argument, NULL, 'i'},
-	{"load", required_argument, NULL, 'l'},
 	{"output", required_argument, NULL, 'o'},
 	{"quiet", no_argument, NULL, 'q'},
 	{"ro", no_argument, NULL, 'r'},
-	{"save", required_argument, NULL, 's'},
 	{"upper", required_argument, NULL, 'u'},
 	{"verbose", no_argument, NULL, 'v'},
 	{"help", no_argument, NULL, GETOPT_HELP_CHAR},
@@ -67,11 +65,9 @@ static void usage(void)
 	fprintf(stderr, "  -e, --entry=index\tread raw directory entry in current directory.\n");
 	fprintf(stderr, "  -f, --fource\twrite foucibly even if filesystem image has already mounted.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
-	fprintf(stderr, "  -l, --load=file\tLoad Main boot region and FAT region from file.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
 	fprintf(stderr, "  -q, --quiet\tSuppress message about Main boot Sector.\n");
 	fprintf(stderr, "  -r, --ro\tread only mode. \n");
-	fprintf(stderr, "  -s, --save=file\tSave Main boot region and FAT region in file.\n");
 	fprintf(stderr, "  -u, --upper\tconvert into uppercase latter by up-case Table.\n");
 	fprintf(stderr, "  -v, --verbose\tVersion mode.\n");
 	fprintf(stderr, "  --help\tdisplay this help and exit.\n");
@@ -458,12 +454,9 @@ int main(int argc, char *argv[])
 	uint32_t index = 0;
 	uint32_t sector = 0;
 	char *outfile = NULL;
-	char *backup = NULL;
 	char *dir = NULL;
 	char *input = NULL;
 	char out[MAX_NAME_LENGTH + 1] = {};
-	char *s;
-	FILE *bfile = NULL;
 	struct pseudo_bootsec bootsec;
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
@@ -496,10 +489,6 @@ int main(int argc, char *argv[])
 			case 'i':
 				attr |= OPTION_INTERACTIVE;
 				break;
-			case 'l':
-				attr |= OPTION_LOAD;
-				backup = optarg;
-				break;
 			case 'o':
 				attr |= OPTION_OUTPUT;
 				outfile = optarg;
@@ -509,10 +498,6 @@ int main(int argc, char *argv[])
 				break;
 			case 'q':
 				attr |= OPTION_QUIET;
-				break;
-			case 's':
-				attr |= OPTION_SAVE;
-				backup = optarg;
 				break;
 			case 'u':
 				attr |= OPTION_UPPER;
@@ -565,34 +550,6 @@ int main(int argc, char *argv[])
 	/* Interactive Mode: -i option */
 	if (attr & OPTION_INTERACTIVE) {
 		shell();
-		goto device_close;
-	}
-
-	/* Command line: -s, -l option */
-	if ((attr & OPTION_SAVE) || (attr & OPTION_LOAD)) {
-		if ((bfile = fopen(backup, "ab+")) == NULL) {
-			pr_err("open: %s\n", strerror(errno));
-			goto device_close;
-		}
-		s = malloc(sizeof(char) * info.sector_size);
-		if (attr & OPTION_SAVE) {
-			/* Save Phase */
-			for (i = 0; i < info.heap_offset; i++) {
-				get_sector(s, i * info.sector_size, 1);
-				fwrite(s, info.sector_size, 1, bfile);
-			}
-		} else {
-			/* load Phase */
-			for (i = 0; i < info.heap_offset; i++) {
-				if (!fread(s, info.sector_size, 1, bfile)) {
-					pr_err("fread: %s\n", strerror(errno));
-					break;
-				}
-				set_sector(s, i * info.sector_size, 1);
-			}
-		}
-		free(s);
-		fclose(bfile);
 		goto device_close;
 	}
 
