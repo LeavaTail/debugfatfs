@@ -125,7 +125,7 @@ static uint32_t exfat_concat_cluster(struct exfat_fileinfo *f, uint32_t clu, voi
 	void *tmp;
 	uint32_t tmp_clu = 0;
 	size_t allocated = 1;
-	size_t cluster_num = (f->datalen + (info.cluster_size - 1)) / info.cluster_size;
+	size_t cluster_num = ROUNDUP(f->datalen, info.cluster_size);
 
 	if (cluster_num <= 1)
 		return cluster_num;
@@ -177,7 +177,7 @@ static uint32_t exfat_concat_cluster(struct exfat_fileinfo *f, uint32_t clu, voi
 static uint32_t exfat_set_cluster(struct exfat_fileinfo *f, uint32_t clu, void *data)
 {
 	size_t allocated = 0;
-	size_t cluster_num = (f->datalen + (info.cluster_size - 1)) / info.cluster_size;
+	size_t cluster_num = ROUNDUP(f->datalen, info.cluster_size);
 
 	if (cluster_num <= 1) {
 		set_cluster(data, clu);
@@ -625,7 +625,7 @@ static uint32_t exfat_update_fat_entry(uint32_t clu, uint32_t entry)
  */
 static int exfat_create_fat_chain(struct exfat_fileinfo *f, uint32_t clu)
 {
-	size_t cluster_num = (f->datalen + (info.cluster_size - 1)) / info.cluster_size;
+	size_t cluster_num = ROUNDUP(f->datalen, info.cluster_size);
 
 	while (--cluster_num) {
 		exfat_update_fat_entry(clu, clu + 1);
@@ -651,7 +651,7 @@ static int exfat_get_last_cluster(struct exfat_fileinfo *f, uint32_t clu)
 {
 	int i;
 	uint32_t next_clu;
-	size_t cluster_num = (f->datalen + (info.cluster_size - 1)) / info.cluster_size;
+	size_t cluster_num = ROUNDUP(f->datalen, info.cluster_size);
 
 	/* NO_FAT_CHAIN */
 	if (f->flags & ALLOC_NOFATCHAIN)
@@ -723,7 +723,7 @@ static int exfat_free_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t nu
 	int i;
 	uint32_t tmp = clu;
 	uint32_t next_clu;
-	size_t cluster_num = (f->datalen + (info.cluster_size - 1)) / info.cluster_size;
+	size_t cluster_num = ROUNDUP(f->datalen, info.cluster_size);
 
 	/* NO_FAT_CHAIN */
 	if (f->flags & ALLOC_NOFATCHAIN) {
@@ -1269,7 +1269,7 @@ static int exfat_update_filesize(struct exfat_fileinfo *f, uint32_t clu)
 		return -1;
 	}
 
-	cluster_num = (dir->datalen + (info.cluster_size - 1)) / info.cluster_size;
+	cluster_num = ROUNDUP(dir->datalen, info.cluster_size);
 	data = malloc(info.cluster_size);
 
 	for (i = 0; i < cluster_num; i++) {
@@ -1977,7 +1977,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	/* convert UTF-8 to UTF16 */
 	len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
 	exfat_convert_upper_character(uniname, len, uppername);
-	count = ((len + ENTRY_NAME_MAX - 1) / ENTRY_NAME_MAX) + 1;
+	count = ROUNDUP(len, ENTRY_NAME_MAX) + 1;
 
 	/* Prohibit duplicate filename */
 	namehash = exfat_calculate_namehash(uppername, len);

@@ -457,6 +457,7 @@ struct operations {
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define ROUNDUP(a, b)  ((a + b - 1) / b)
 
 static inline bool is_power2(unsigned int n)
 {
