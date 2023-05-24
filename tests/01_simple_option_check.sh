@@ -21,6 +21,7 @@ function test_options () {
 	./debugfatfs -r $1
 	./debugfatfs -u a $1
 	./debugfatfs -v $1
+	./debugfatfs --help
 	./debugfatfs --version
 }
 
