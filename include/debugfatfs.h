@@ -147,6 +147,7 @@ struct device_info {
 #define OPTION_READONLY     (1 << 7)
 #define OPTION_DIRECTORY    (1 << 8)
 #define OPTION_ENTRY        (1 << 9)
+#define OPTION_FATENT       (1 << 10)
 
 #define CREATE_DIRECTORY    (1 << 0)
 

@@ -37,6 +37,7 @@ static struct option const longopts[] =
 	{"cluster", required_argument, NULL, 'c'},
 	{"directory", required_argument, NULL, 'd'},
 	{"entry", required_argument, NULL, 'e'},
+	{"fat", required_argument, NULL, 'f'},
 	{"interactive", no_argument, NULL, 'i'},
 	{"output", required_argument, NULL, 'o'},
 	{"quiet", no_argument, NULL, 'q'},
@@ -62,6 +63,7 @@ static void usage(void)
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
 	fprintf(stderr, "  -d, --direcotry=path\tread directory entry from path.\n");
 	fprintf(stderr, "  -e, --entry=index\tread raw directory entry in current directory.\n");
+	fprintf(stderr, "  -f, --fource\twrite foucibly even if filesystem image has already mounted.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
 	fprintf(stderr, "  -q, --quiet\tSuppress message about Main boot Sector.\n");
@@ -449,6 +451,8 @@ int main(int argc, char *argv[])
 	uint32_t attr = 0;
 	uint32_t cluster = 0;
 	uint32_t index = 0;
+	uint32_t fatent = 0;
+	uint32_t value = 0;
 	uint32_t sector = 0;
 	char *outfile = NULL;
 	char *dir = NULL;
@@ -458,7 +462,7 @@ int main(int argc, char *argv[])
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ab:c:d:e:il:o:qrs:u:v",
+					"ab:c:d:e:f:il:o:qrs:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
@@ -479,6 +483,10 @@ int main(int argc, char *argv[])
 			case 'e':
 				attr |= OPTION_ENTRY;
 				index = strtoul(optarg, NULL, 0);
+				break;
+			case 'f':
+				attr |= OPTION_FATENT;
+				fatent = strtoul(optarg, NULL, 0);
 				break;
 			case 'i':
 				attr |= OPTION_INTERACTIVE;
@@ -591,6 +599,14 @@ int main(int argc, char *argv[])
 	/* Command line: -a option */
 	if (attr & OPTION_ALL) {
 		ret = info.ops->info();
+		if (ret < 0)
+			goto device_close;
+	}
+
+	/* Command line: -f option */
+	if (attr & OPTION_FATENT) {
+		ret = info.ops->getfat(fatent, &value);
+		pr_msg("Get: Cluster %u is FAT entry %08x\n", fatent, value);
 		if (ret < 0)
 			goto device_close;
 	}

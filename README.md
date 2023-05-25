@@ -274,6 +274,7 @@ debugfatfs support support these optoin. (Please look at man-page)
 - **-c**, **--cluster**=*index* --- dump the cluster after dump filesystem information
 - **-d**, **--direcotry**=*path* --- read directory entry from path
 - **-e**, **--entry=index** --- read raw directory entry in current directory
+- **-f**, **--fat=index** --- read FAT entry value for index
 - **-i**, **--interactive** --- prompt the user operate filesystem
 - **-o**, **--output**=*file* --- send output to file rather than stdout
 - **-q**, **--quiet** --- Suppress message about Main boot Sector
