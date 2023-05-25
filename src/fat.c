@@ -538,11 +538,13 @@ static int fat_check_last_cluster(uint32_t clu)
  */
 static int fat_get_last_cluster(struct fat_fileinfo *f, uint32_t clu)
 {
-	uint32_t ret = FAT_FSTCLUSTER;
-	size_t allocated = 1;
+	uint32_t next_clu = clu;
 
-	for (allocated = 0; fat_check_last_cluster(ret) == 0; allocated++, clu = ret)
-		fat_get_fat_entry(clu, &ret);
+	for (fat_get_fat_entry(clu, &next_clu);
+			fat_check_last_cluster(next_clu) == 0;
+			clu = next_clu) {
+		fat_get_fat_entry(clu, &next_clu);
+	}
 
 	return clu;
 }
