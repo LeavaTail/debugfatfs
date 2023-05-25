@@ -207,14 +207,13 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 	info.cluster_count = CountofClusters;
 	info.fat_offset = b->BPB_RevdSecCnt;
 	info.fat_length = b->BPB_NumFATs * FATSz;
+	info.heap_offset = (b->BPB_RevdSecCnt + info.fat_length) + RootDirSectors;
 	if (info.fstype == FAT32_FILESYSTEM) {
 		info.root_offset = b->reserved_info.fat32_reserved_info.BPB_RootClus;
 		info.root_length = info.cluster_size;
-		info.heap_offset = info.fat_offset + info.fat_length;
 	} else {
 		info.root_offset = 0;
 		info.root_length = (32 * b->BPB_RootEntCnt + b->BPB_BytesPerSec - 1) / b->BPB_BytesPerSec;
-		info.heap_offset = info.fat_offset + info.fat_length + info.root_length;
 	}
 
 	f = malloc(sizeof(struct fat_fileinfo));
