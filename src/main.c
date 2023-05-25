@@ -37,7 +37,6 @@ static struct option const longopts[] =
 	{"cluster", required_argument, NULL, 'c'},
 	{"directory", required_argument, NULL, 'd'},
 	{"entry", required_argument, NULL, 'e'},
-	{"force", required_argument, NULL, 'f'},
 	{"interactive", no_argument, NULL, 'i'},
 	{"output", required_argument, NULL, 'o'},
 	{"quiet", no_argument, NULL, 'q'},
@@ -63,7 +62,6 @@ static void usage(void)
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
 	fprintf(stderr, "  -d, --direcotry=path\tread directory entry from path.\n");
 	fprintf(stderr, "  -e, --entry=index\tread raw directory entry in current directory.\n");
-	fprintf(stderr, "  -f, --fource\twrite foucibly even if filesystem image has already mounted.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
 	fprintf(stderr, "  -q, --quiet\tSuppress message about Main boot Sector.\n");
@@ -334,7 +332,6 @@ static int get_device_info(uint32_t attr)
 	struct stat s;
 
 	if (check_mounted_filesystem() &&
-			!(attr & OPTION_FORCE) &&
 			!(attr & OPTION_READONLY)) {
 		pr_err("Error has occurred becasue %s has already mounted.\n", info.name);
 		return -1;
@@ -461,7 +458,7 @@ int main(int argc, char *argv[])
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ab:c:d:e:fil:o:qrs:u:v",
+					"ab:c:d:e:il:o:qrs:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
@@ -482,9 +479,6 @@ int main(int argc, char *argv[])
 			case 'e':
 				attr |= OPTION_ENTRY;
 				index = strtoul(optarg, NULL, 0);
-				break;
-			case 'f':
-				attr |= OPTION_FORCE;
 				break;
 			case 'i':
 				attr |= OPTION_INTERACTIVE;

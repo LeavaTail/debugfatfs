@@ -15,7 +15,6 @@ function test_options () {
 	./debugfatfs -c 4 $1
 	./debugfatfs -d /00_SIMPLE $1
 	./debugfatfs -e 4 $1
-	./debugfatfs -f $1
 	./debugfatfs -o $OUTPUT $1
 	./debugfatfs -q $1
 	./debugfatfs -r $1
