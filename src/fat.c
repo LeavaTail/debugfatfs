@@ -561,12 +561,17 @@ static int fat_alloc_clusters(struct fat_fileinfo *f, uint32_t clu, size_t num_a
 {
 	uint32_t next_clu;
 	uint32_t last_clu;
+	uint32_t entry = 0;
 	int total_alloc = num_alloc;
 
 	clu = next_clu = last_clu = fat_get_last_cluster(f, clu);
 	for (next_clu = last_clu + 1; next_clu != last_clu; next_clu++) {
 		if (next_clu > info.cluster_count - 1)
 			next_clu = FAT_FSTCLUSTER;
+
+		fat_get_fat_entry(next_clu, &entry);
+		if (entry)
+			continue;
 
 		fat_set_fat_entry(next_clu, EXFAT_LASTCLUSTER);
 		fat_set_fat_entry(clu, next_clu);
