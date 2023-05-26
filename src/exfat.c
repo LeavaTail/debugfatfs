@@ -337,12 +337,13 @@ static void exfat_print_fat(void)
 			continue;
 
 		pr_msg("%u", i);
-		while (offset = exfat_check_fat_entry(i)) {
-			if (!exfat_load_bitmap(i))
+		j = i;
+		while (offset = exfat_check_fat_entry(j)) {
+			if (!exfat_load_bitmap(j))
 				break;
 
 			pr_msg(" -> %zu", offset);
-			i = offset;
+			j = offset;
 		}
 
 		pr_msg("\n");
