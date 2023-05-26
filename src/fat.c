@@ -373,16 +373,16 @@ static int fat12_set_fat_entry(uint32_t clu, uint32_t entry)
 {
 	uint32_t FATOffset = clu + (clu / 2);
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
-	uint16_t *fat;
+	uint8_t *fat;
 
-	fat = malloc(info.sector_size);
+	fat = malloc(info.sector_size * info.fat_length);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	if (clu % 2) {
 		*(fat + ThisFATEntOffset) = (fat[ThisFATEntOffset] & 0x0F) | entry << 4;
 		*(fat + ThisFATEntOffset + 1) = entry >> 4;
 	} else {
-		*(fat + ThisFATEntOffset) = entry;
-		*(fat + ThisFATEntOffset + 1) = (fat[ThisFATEntOffset + 1] & 0xF0) | ((entry >> 8) & 0x0F);
+		*(fat + ThisFATEntOffset) = entry & 0xff;
+		*(fat + ThisFATEntOffset + 1) = (fat[ThisFATEntOffset + 1] & 0xF0) | (entry >> 8);
 	}
 	set_sector(fat, info.fat_offset * info.sector_size, 1);
 	free(fat);
@@ -398,14 +398,16 @@ static int fat12_set_fat_entry(uint32_t clu, uint32_t entry)
  */
 static int fat16_set_fat_entry(uint32_t clu, uint32_t entry)
 {
-	uint32_t FATOffset = clu * sizeof(uint16_t);
-	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
+	uint32_t ret = 0;
+	size_t entry_per_sector = info.sector_size / sizeof(uint16_t);
+	uint32_t fat_index = (info.fat_offset +  clu / entry_per_sector) * info.sector_size;
 	uint16_t *fat;
+	uint32_t offset = (clu) % entry_per_sector;
 
 	fat = malloc(info.sector_size);
-	get_sector(fat, info.fat_offset * info.sector_size, 1);
-	*(fat + ThisFATEntOffset) = (uint16_t)entry;
-	set_sector(fat, info.fat_offset * info.sector_size, 1);
+	get_sector(fat, fat_index, 1);
+	fat[offset] = (uint16_t)entry;
+	set_sector(fat, fat_index, 1);
 	free(fat);
 	return 0;
 }
@@ -419,13 +421,16 @@ static int fat16_set_fat_entry(uint32_t clu, uint32_t entry)
  */
 static int fat32_set_fat_entry(uint32_t clu, uint32_t entry)
 {
-	uint32_t ThisFATEntOffset = clu % info.sector_size;
+	uint32_t ret = 0;
+	size_t entry_per_sector = info.sector_size / sizeof(uint32_t);
+	uint32_t fat_index = (info.fat_offset +  clu / entry_per_sector) * info.sector_size;
 	uint32_t *fat;
+	uint32_t offset = (clu) % entry_per_sector;
 
 	fat = malloc(info.sector_size);
-	get_sector(fat, info.fat_offset * info.sector_size, 1);
-	fat[ThisFATEntOffset] = entry & 0x0FFFFFFF;
-	set_sector(fat, info.fat_offset * info.sector_size, 1);
+	get_sector(fat, fat_index, 1);
+	fat[offset] = entry & 0x0FFFFFFF;
+	set_sector(fat, fat_index, 1);
 	free(fat);
 	return 0;
 }
@@ -443,16 +448,16 @@ static uint32_t fat12_get_fat_entry(uint32_t clu)
 	uint32_t FATOffset = clu + (clu / 2);
 	uint32_t ThisFATSecNum = info.fat_offset + (FATOffset / info.sector_size); 
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
-	uint16_t *fat;
+	uint8_t *fat;
 
-	fat = malloc(info.sector_size);
-	get_sector(fat, ThisFATSecNum * info.sector_size, 1);
+	fat = malloc(info.sector_size * info.fat_length);
+	get_sector(fat, ThisFATSecNum * info.sector_size, info.fat_length);
 	if (clu % 2) {
 		ret = (fat[ThisFATEntOffset] >> 4)
 			| (fat[ThisFATEntOffset + 1] << 4);
 	} else {
 		ret = fat[ThisFATEntOffset]
-			| ((fat[ThisFATEntOffset + 1] & 0x0F) << 8);
+			| (fat[ThisFATEntOffset + 1] << 8);
 	}
 	free(fat);
 	return ret;
@@ -468,12 +473,14 @@ static uint32_t fat12_get_fat_entry(uint32_t clu)
 static uint32_t fat16_get_fat_entry(uint32_t clu)
 {
 	uint32_t ret = 0;
-	uint32_t ThisFATEntOffset = clu % info.sector_size;
+	size_t entry_per_sector = info.sector_size / sizeof(uint16_t);
+	uint32_t fat_index = (info.fat_offset +  clu / entry_per_sector) * info.sector_size;
 	uint16_t *fat;
+	uint32_t offset = (clu) % entry_per_sector;
 
 	fat = malloc(info.sector_size);
-	get_sector(fat, info.fat_offset * info.sector_size, 1);
-	ret = fat[ThisFATEntOffset];
+	get_sector(fat, fat_index, 1);
+	ret = fat[offset];
 	free(fat);
 
 	return ret;
@@ -489,12 +496,14 @@ static uint32_t fat16_get_fat_entry(uint32_t clu)
 static uint32_t fat32_get_fat_entry(uint32_t clu)
 {
 	uint32_t ret = 0;
-	uint32_t ThisFATEntOffset = clu % info.sector_size;
+	size_t entry_per_sector = info.sector_size / sizeof(uint32_t);
+	uint32_t fat_index = (info.fat_offset +  clu / entry_per_sector) * info.sector_size;
 	uint32_t *fat;
+	uint32_t offset = (clu) % entry_per_sector;
 
 	fat = malloc(info.sector_size);
-	get_sector(fat, info.fat_offset * info.sector_size, 1);
-	ret = fat[ThisFATEntOffset] & 0x0FFFFFFF;
+	get_sector(fat, fat_index, 1);
+	ret = fat[offset] & 0x0FFFFFFF;
 	free(fat);
 
 	return ret;
