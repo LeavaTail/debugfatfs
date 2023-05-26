@@ -15,6 +15,7 @@ static uint32_t fat_set_cluster(struct fat_fileinfo *, uint32_t, void *);
 static int fat_load_bootsec(struct fat_bootsec *);
 static int fat_print_label(void);
 static void fat_print_fat(void);
+static void fat_print_bitmap(void);
 static int fat_validate_bootsec(struct fat_bootsec *);
 static int fat16_print_bootsec(struct fat_bootsec *);
 static int fat32_print_bootsec(struct fat_bootsec *);
@@ -305,6 +306,38 @@ static void fat_print_fat(void)
 	}
 
 	free_bitmap(&b);
+}
+
+/**
+ * fat_print_bitmap - print FAT alloc/release bitmap
+ */
+static void fat_print_bitmap(void)
+{
+	uint32_t clu, entry;
+
+	pr_msg("Allocation Bitmap:\n");
+	pr_msg("Offset    0 1 2 3 4 5 6 7 8 9 a b c d e f\n");
+	/* Allocation bitmap consider first cluster is 2 */
+	pr_msg("%08x  - - ", 0);
+
+	for (clu = EXFAT_FIRST_CLUSTER; clu < info.cluster_size; clu++) {
+		fat_get_fat_entry(clu, &entry);
+
+		switch (clu % 0x10) {
+			case 0x0:
+				pr_msg("%08x  ", clu);
+				pr_msg("%c ", entry ? 'o' : '-');
+				break;
+			case 0xf:
+				pr_msg("%c ", entry ? 'o' : '-');
+				pr_msg("\n");
+				break;
+			default:
+				pr_msg("%c ", entry ? 'o' : '-');
+				break;
+		}
+	}
+	pr_msg("\n");
 }
 
 /**
@@ -1286,6 +1319,7 @@ int fat_print_fsinfo(void)
 {
 	fat_print_label();
 	fat_print_fat();
+	fat_print_bitmap();
 	return 0;
 }
 
