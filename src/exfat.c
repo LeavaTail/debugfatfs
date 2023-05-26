@@ -305,54 +305,50 @@ static void exfat_print_fat(void)
 	uint32_t i, j;
 	uint32_t *fat;
 	size_t sector_num = (info.fat_length + (info.sector_size - 1)) / info.sector_size;
-	size_t list_size = 0;
-	node2_t **fat_chain, *tmp;
+	size_t offset = 0;
+	bitmap_t b;
 
-	pr_msg("FAT:\n");
+	init_bitmap(&b, info.cluster_count);
+
 	fat = malloc(info.sector_size * sector_num);
 	get_sector(fat, info.fat_offset * info.sector_size, sector_num);
 
-	/* Read fat and create list */
-	for (i = 0; i < info.cluster_count - 2; i++) {
-		if (EXFAT_FIRST_CLUSTER <= fat[i] && fat[i] < EXFAT_BADCLUSTER)
-			list_size++;
-	}
+	for (i = EXFAT_FIRST_CLUSTER; i < info.cluster_count; i++) {
+		if (!exfat_load_bitmap(i)) {
+			set_bitmap(&b, i);
+			continue;
+		}
 
-	fat_chain = calloc(list_size, sizeof(node2_t *));
-	for (i = 0; i < info.cluster_count - 2; i++) {
-		if (EXFAT_FIRST_CLUSTER <= fat[i] && fat[i] < EXFAT_BADCLUSTER) {
-			for (j = 0; j < list_size; j++) {
-				if (fat_chain[j] && fat_chain[j]->index == fat[i]) {
-					insert_node2(fat_chain[j], i, NULL);
-					break;
-				} else if (fat_chain[j] && fat[last_node2(fat_chain[j])->index] == i) {
-					append_node2(fat_chain[j], i, NULL);
-					break;
-				} else if (!fat_chain[j]) {
-					fat_chain[j] = init_node2(i, NULL);
-					break;
-				}
-			}
+		if (get_bitmap(&b, i))
+			continue;
+
+		offset = fat[i];
+		if (offset >= EXFAT_FIRST_CLUSTER && offset < info.cluster_count) {
+			set_bitmap(&b, offset);
+			unset_bitmap(&b, i);
+		} else {
+			set_bitmap(&b, i);
 		}
 	}
 
-	for (j = 0; j < list_size; j++) {
-		if (fat_chain[j] && fat_chain[j]->next) {
-			tmp = fat_chain[j];
-			pr_msg("%u -> ", fat_chain[j]->index);
-			while (tmp->next != NULL) {
-				tmp = tmp->next;
-				pr_msg("%u -> ", tmp->index);
-			}
-			pr_msg("NULL\n");
-		}
-	}
-	pr_msg("\n");
+	pr_msg("FAT:\n");
+	for (i = EXFAT_FIRST_CLUSTER; i < info.cluster_count; i++) {
+		if (get_bitmap(&b, i))
+			continue;
 
-	/* Clean up */
-	for (i = 0; i < list_size && fat_chain[i]; i++)
-		free(fat_chain[i]);
-	free(fat_chain);
+		pr_msg("%u", i);
+		while (offset = exfat_check_fat_entry(i)) {
+			if (!exfat_load_bitmap(i))
+				break;
+
+			pr_msg(" -> %zu", offset);
+			i = offset;
+		}
+
+		pr_msg("\n");
+	}
+
+	free_bitmap(&b);
 	free(fat);
 }
 

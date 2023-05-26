@@ -13,6 +13,7 @@
 #include <inttypes.h>
 
 #include "list.h"
+#include "bitmap.h"
 #include "nls.h"
 #include "shell.h"
 /**
