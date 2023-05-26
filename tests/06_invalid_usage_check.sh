@@ -8,6 +8,7 @@ IMAGES=("fat12.img" "fat16.img" "fat32.img" "exfat.img")
 OUTPUT=data.dat
 
 function test_options () {
+	./debugfatfs -c $1
 	./debugfatfs -c 0 $1
 }
 
