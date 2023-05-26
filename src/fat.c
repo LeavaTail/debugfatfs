@@ -13,6 +13,8 @@ static uint32_t fat_set_cluster(struct fat_fileinfo *, uint32_t, void *);
 
 /* Boot sector function prototype */
 static int fat_load_bootsec(struct fat_bootsec *);
+static int fat_print_label(void);
+static void fat_print_fat(void);
 static int fat_validate_bootsec(struct fat_bootsec *);
 static int fat16_print_bootsec(struct fat_bootsec *);
 static int fat32_print_bootsec(struct fat_bootsec *);
@@ -54,7 +56,7 @@ static int fat_validate_character(const char);
 
 /* Operations function prototype */
 int fat_print_bootsec(void);
-int fat_print_vollabel(void);
+int fat_print_fsinfo(void);
 int fat_lookup(uint32_t, char *);
 int fat_readdir(struct directory *, size_t, uint32_t);
 int fat_reload_directory(uint32_t);
@@ -73,7 +75,7 @@ int fat_contents(const char *, uint32_t, int);
 
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
-	.info = fat_print_vollabel,
+	.info = fat_print_fsinfo,
 	.lookup =  fat_lookup,
 	.readdir = fat_readdir,
 	.reload = fat_reload_directory,
@@ -239,6 +241,70 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 static int fat_load_bootsec(struct fat_bootsec *b)
 {
 	return get_sector(b, 0, 1);
+}
+
+/**
+ * fat_print_label - print volume label
+ *
+ * @return           0 (success)
+ */
+static int fat_print_label(void)
+{
+	pr_msg("volume Label: ");
+	pr_msg("%s\n", (char *)info.vol_label);
+	return 0;
+}
+
+/**
+ * fat_print_fat - print FAT
+ */
+static void fat_print_fat(void)
+{
+	uint32_t i, j;
+	uint32_t *fat, offset;
+	size_t sector_num = (info.fat_length + (info.sector_size - 1)) / info.sector_size;
+	bitmap_t b;
+
+	init_bitmap(&b, info.cluster_count);
+
+
+	for (i = FAT_FSTCLUSTER; i < info.cluster_count; i++) {
+		if (get_bitmap(&b, i))
+			continue;
+
+		fat_get_fat_entry(i, &offset);
+		if (!offset) {
+			set_bitmap(&b, i);
+			continue;
+		}
+
+		if (offset >= FAT_FSTCLUSTER && offset < info.cluster_count) {
+			set_bitmap(&b, offset);
+			unset_bitmap(&b, i);
+		} else {
+			set_bitmap(&b, i);
+		}
+	}
+
+	pr_msg("FAT:\n");
+	for (i = FAT_FSTCLUSTER; i < info.cluster_count; i++) {
+		if (get_bitmap(&b, i))
+			continue;
+
+		pr_msg("%u", i);
+		offset = i;
+		
+		while (1) {
+			fat_get_fat_entry(offset, &offset);
+			if (fat_check_last_cluster(offset))
+				break;
+			pr_msg(" -> %u", offset);
+		}
+
+		pr_msg("\n");
+	}
+
+	free_bitmap(&b);
 }
 
 /**
@@ -1214,12 +1280,12 @@ int fat_print_bootsec(void)
 /**
  * fat_print_fsinfo - print filesystem information in FAT
  *
- * @return            0 (success)
+ * @return              0 (success)
  */
-int fat_print_vollabel(void)
+int fat_print_fsinfo(void)
 {
-	pr_msg("volume Label: ");
-	pr_msg("%s\n", (char *)info.vol_label);
+	fat_print_label();
+	fat_print_fat();
 	return 0;
 }
 
