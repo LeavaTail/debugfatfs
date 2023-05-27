@@ -11,7 +11,7 @@ $ tree
 .
 |-- 00
 |   |-- FILE1.TXT    (FATCHAIN)
-    |-- FILE2.TXT
+|   |-- FILE2.TXT
 |   `-- DIR
 |       `-- SUBFILE.TXT
 |-- 01
@@ -19,8 +19,7 @@ $ tree
 |  |-- ¼
 |  |-- Ō
 |  |-- あいうえお
-|  `-- U10000
-|      `-- 𠮷
+|  `-- 𠮷
 `-- 02
     |-- DELETED.TXT  (Deleted)
     `-- FILE3.TXT
@@ -44,6 +43,7 @@ New-Item ABCDEFGHIJKLMNOPQRSTUVWXYZ
 New-Item ¼
 New-Item Ō
 New-Item あいうえお
+New-Item 𠮷
 cd \02
 New-Item DELETED.TXT
 New-Item FILE3.TXT
