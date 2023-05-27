@@ -94,6 +94,7 @@ int utf8s_to_utf16s(unsigned char *src, uint16_t namelen, uint16_t* dist)
 	int size = 0, len = 0, out_len = 0;
 	unsigned char *u = src;
 	uint32_t w;
+	uint32_t s;
 
 	while (len < namelen) {
 		u = src + len;
@@ -104,8 +105,10 @@ int utf8s_to_utf16s(unsigned char *src, uint16_t namelen, uint16_t* dist)
 			len += size;
 			out_len ++;
 		} else if (w <= UNICODE_MAX) {
-			/* TODO: Implement surrogate pair */
-			return 0;
+			w -= 0x10000;
+			*(dist + out_len++) = SURROGATE_PAIR_UPPER | ((w >> 10) & SURROGATE_BITS);
+			*(dist + out_len++) = SURROGATE_PAIR_LOWER | (w & SURROGATE_BITS);
+			len += size;
 		} else {
 			fprintf(stderr, "Unicode doesn't support. (%0x)\n", w);
 			return 0;
@@ -126,6 +129,7 @@ int utf16s_to_utf8s(uint16_t *src, uint16_t namelen, unsigned char* dist)
 {
 	int size, len = 0;
 	uint16_t *u;
+	uint16_t upper, lower;
 	uint32_t w;
 
 	while (namelen--) {
@@ -139,9 +143,11 @@ int utf16s_to_utf8s(uint16_t *src, uint16_t namelen, unsigned char* dist)
 			/* mult bytes character */
 			switch (*u & SURROGATE_PAIR_MASK) {
 				case SURROGATE_PAIR_UPPER:
-					/* FALLTHROUGH */
-				case SURROGATE_PAIR_LOWER:
+					upper = *u & SURROGATE_BITS;
 					break;
+				case SURROGATE_PAIR_LOWER:
+					lower = *u & SURROGATE_BITS;
+					w = (upper << 10) + lower + 0x10000;
 				default:
 					/* convert UTF32(w) to UTF8(dist) */
 					size = utf32_to_utf8(w, dist + len);
