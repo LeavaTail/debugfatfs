@@ -476,9 +476,12 @@ static inline char* strtok_dir(char *path)
 {
 	int i;
 
-	for(i = strlen(path) - 1; i >= 0; i--)
-		if (path[i] == '/')
+	for(i = strlen(path) - 1; i >= 0; i--) {
+		if (path[i] == '/') {
+			path[i] = '\0';
 			return path + i + 1;
+		}
+	}
 	return path;
 }
 
