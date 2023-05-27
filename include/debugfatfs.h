@@ -22,7 +22,7 @@
  * displayed when 'usage' and 'version'
  */
 #define PROGRAM_NAME     "debugfatfs"
-#define PROGRAM_VERSION  "0.3.0"
+#define PROGRAM_VERSION  "0.4.0"
 #define PROGRAM_AUTHOR   "LeavaTail"
 #define COPYRIGHT_YEAR   "2021"
 
