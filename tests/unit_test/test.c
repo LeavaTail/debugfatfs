@@ -53,6 +53,18 @@ void utf8_to_utf16_test_4(void)
 	return;
 }
 
+void utf8_to_utf16_test_5(void)
+{
+	char *src = "𠮷";
+	uint16_t dist[2] = {0};
+
+	utf8s_to_utf16s(src, 4, dist);
+	CU_ASSERT_EQUAL(dist[0], 0xD842);
+	CU_ASSERT_EQUAL(dist[1], 0xDFB7);
+
+	return;
+}
+
 int main(void) {
 	int ret;
 	CU_pSuite suite;
@@ -64,6 +76,7 @@ int main(void) {
 	CU_add_test(suite, "NLS_Test_2", utf8_to_utf16_test_2);
 	CU_add_test(suite, "NLS_Test_3", utf8_to_utf16_test_3);
 	CU_add_test(suite, "NLS_Test_4", utf8_to_utf16_test_4);
+	CU_add_test(suite, "NLS_Test_5", utf8_to_utf16_test_5);
 
 	CU_basic_run_tests();
 	ret = CU_get_number_of_failures();
