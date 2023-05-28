@@ -1000,7 +1000,6 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 		struct fat_dentry *file, uint16_t *uniname, size_t namelen)
 {
 	int index, next_clu = 0;
-	uint16_t longname[MAX_NAME_LENGTH] = {0};
 	uint16_t hash = 0;
 	struct fat_fileinfo *f;
 
@@ -1018,7 +1017,7 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 		uint16_t n[MAX_NAME_LENGTH] = {0};
 		size_t name_len;
 
-		name_len = utf8s_to_utf16s((unsigned char *)f->name, strlen(f->name), n);
+		name_len = utf8s_to_utf16s((unsigned char *)f->name, strlen((const char *)f->name), n);
 		hash = fat_calculate_namehash(n, name_len);
 	}
 
@@ -2199,8 +2198,6 @@ out:
 int fat_stat(const char *name, uint32_t clu)
 {
 	size_t index = 0;
-	char shortname[11] = {0};
-	uint16_t longname[MAX_NAME_LENGTH] = {0};
 	struct fat_fileinfo *f;
 
 	index = fat_get_index(clu);
