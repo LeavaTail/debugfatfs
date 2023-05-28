@@ -89,7 +89,6 @@ static const struct operations fat_ops = {
 	.setfat = fat_set_fat_entry,
 	.getfat = fat_get_fat_entry,
 	.validfat = fat_validate_fat_entry,
-	.dentry = fat_print_dentry,
 	.alloc = fat_set_bogus_entry,
 	.release = fat_release_cluster,
 	.create = fat_create,
@@ -1664,126 +1663,6 @@ int fat_validate_fat_entry(uint32_t clu)
 		is_valid = 1;
 
 	return is_valid;
-}
-
-/**
- * fat_print_dentry - function to print any directory entry
- * @clu:              index of the cluster want to check
- * @n:                directory entry index
- *
- * @return             0 (success)
- *                    -1 (failed to read)
- */
-int fat_print_dentry(uint32_t clu, size_t n)
-{
-	int i;
-	uint8_t ord = 0, attr = 0;
-	uint32_t next_clu;
-	size_t size = info.cluster_size;
-	size_t entries = size / sizeof(struct fat_dentry);
-	void *data;
-	struct fat_dentry d;
-	struct tm ctime, mtime, atime;
-
-	fat_traverse_directory(clu);
-	while (n > entries) {
-		fat_get_fat_entry(clu, &next_clu);
-		if (!fat_check_last_cluster(next_clu)) {
-			pr_err("Directory size limit exceeded.\n");
-			return -1;
-		}
-		n -= entries;
-		clu = next_clu;
-	}
-
-	if (clu) {
-		data = malloc(size);
-		get_cluster(data, clu);
-	} else {
-		size = info.root_length * info.sector_size;
-		entries = size / sizeof(struct fat_dentry);
-		data = malloc(size);
-		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
-	}
-
-	d = ((struct fat_dentry *)data)[n];
-	ord = d.dentry.lfn.LDIR_Ord;
-	attr = d.dentry.lfn.LDIR_Attr;
-
-	/* Empty entry */
-	if (ord == 0x00 || ord == 0xe5)
-		goto out;
-	/* Long File Name */
-	if (attr == ATTR_LONG_FILE_NAME) {
-		pr_msg("LDIR_Ord                        : %02x\n", d.dentry.lfn.LDIR_Ord);
-		pr_msg("LDIR_Name1                      : ");
-		for (i = 0; i < 10; i++)
-			pr_msg("%02x", ((uint8_t *)d.dentry.lfn.LDIR_Name1)[i]);
-		pr_msg("\n");
-		pr_msg("LDIR_Attr                       : %02x\n", d.dentry.lfn.LDIR_Attr);
-		pr_msg("LDIR_Type                       : %02x\n", d.dentry.lfn.LDIR_Type);
-		pr_msg("LDIR_Chksum                     : %02x\n", d.dentry.lfn.LDIR_Chksum);
-		pr_msg("LDIR_Name2                      : ");
-		for (i = 0; i < 12; i++)
-			pr_msg("%02x", ((uint8_t *)d.dentry.lfn.LDIR_Name2)[i]);
-		pr_msg("\n");
-		pr_msg("LDIR_FstClusLO                  : %02x\n", d.dentry.lfn.LDIR_FstClusLO);
-		pr_msg("LDIR_Name3                      : ");
-		for (i = 0; i < 4; i++)
-			pr_msg("%02x", ((uint8_t *)d.dentry.lfn.LDIR_Name3)[i]);
-		pr_msg("\n");
-	} else {
-		/* Directory Structure */
-		pr_msg("DIR_Name                        : ");
-		for (i = 0; i < 11; i++)
-			pr_msg("%02x", d.dentry.dir.DIR_Name[i]);
-		pr_msg("\n");
-		pr_info("  ");
-		for (i = 0; i < 11; i++)
-			pr_info("%c", d.dentry.dir.DIR_Name[i]);
-		pr_info("\n");
-		pr_msg("DIR_Attr                        : %02x\n", d.dentry.dir.DIR_Attr);
-		if (d.dentry.dir.DIR_Attr & ATTR_READ_ONLY)
-			pr_info("  * ReadOnly\n");
-		if (d.dentry.dir.DIR_Attr & ATTR_HIDDEN)
-			pr_info("  * Hidden\n");
-		if (d.dentry.dir.DIR_Attr & ATTR_SYSTEM)
-			pr_info("  * System\n");
-		if (d.dentry.dir.DIR_Attr & ATTR_VOLUME_ID)
-			pr_info("  * Volume\n");
-		if (d.dentry.dir.DIR_Attr & ATTR_DIRECTORY)
-			pr_info("  * Directory\n");
-		if (d.dentry.dir.DIR_Attr & ATTR_ARCHIVE)
-			pr_info("  * Archive\n");
-		pr_msg("DIR_NTRes                       : %02x\n", d.dentry.dir.DIR_NTRes);
-		fat_convert_unixtime(&ctime, d.dentry.dir.DIR_CrtDate, d.dentry.dir.DIR_CrtTime, 0);
-		pr_msg("DIR_CrtTimeTenth                : %02x\n", d.dentry.dir.DIR_CrtTimeTenth);
-		pr_msg("DIR_CrtTime                     : %04x\n", d.dentry.dir.DIR_CrtTime);
-		pr_msg("DIR_CrtDate                     : %04x\n", d.dentry.dir.DIR_CrtDate);
-		pr_info("  %d-%02d-%02d %02d:%02d:%02d +%0d.%02d(s)\n",
-				ctime.tm_year + 1980, ctime.tm_mon, ctime.tm_mday,
-				ctime.tm_hour, ctime.tm_min, ctime.tm_sec,
-				d.dentry.dir.DIR_CrtTimeTenth / 100,
-				d.dentry.dir.DIR_CrtTimeTenth % 100);
-		fat_convert_unixtime(&atime, d.dentry.dir.DIR_LstAccDate, 0, 0);
-		pr_msg("DIR_LstAccDate                  : %04x\n", d.dentry.dir.DIR_LstAccDate);
-		pr_info("  %d-%02d-%02d %02d:%02d:%02d\n",
-				atime.tm_year + 1980, atime.tm_mon, atime.tm_mday,
-				atime.tm_hour, atime.tm_min, atime.tm_sec);
-		pr_msg("DIR_FstClusHI                   : %04x\n", d.dentry.dir.DIR_FstClusHI);
-		fat_convert_unixtime(&mtime, d.dentry.dir.DIR_WrtDate, d.dentry.dir.DIR_WrtTime, 0);
-		pr_msg("DIR_WrtTime                     : %04x\n", d.dentry.dir.DIR_WrtTime);
-		pr_msg("DIR_WrtDate                     : %04x\n", d.dentry.dir.DIR_WrtDate);
-		pr_info("  %d-%02d-%02d %02d:%02d:%02d\n",
-				mtime.tm_year + 1980, mtime.tm_mon, mtime.tm_mday,
-				mtime.tm_hour, mtime.tm_min, mtime.tm_sec);
-		pr_msg("DIR_FstClusLO                   : %04x\n", d.dentry.dir.DIR_FstClusLO);
-		pr_msg("DIR_FileSize                    : %08x\n", d.dentry.dir.DIR_FileSize);
-	}
-
-out:
-	free(data);
-	return 0;
 }
 
 /**

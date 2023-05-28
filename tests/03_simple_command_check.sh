@@ -38,8 +38,6 @@ function test_shell () {
 	expect \"/00> \"
 	send \"fill 5\n\"
 	expect \"/00> \"
-	send \"entry 1\n\"
-	expect \"/00> \"
 	send \"cd /\n\"
 	expect \"/> \"
 	send \"help\n\"

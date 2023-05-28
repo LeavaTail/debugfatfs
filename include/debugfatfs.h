@@ -152,8 +152,7 @@ struct device_info {
 #define OPTION_UPPER        (1 << 5)
 #define OPTION_READONLY     (1 << 6)
 #define OPTION_DIRECTORY    (1 << 7)
-#define OPTION_ENTRY        (1 << 8)
-#define OPTION_FATENT       (1 << 9)
+#define OPTION_FATENT       (1 << 8)
 
 #define CREATE_DIRECTORY    (1 << 0)
 
@@ -410,7 +409,6 @@ struct operations {
 	int (*setfat)(uint32_t, uint32_t);
 	int (*getfat)(uint32_t, uint32_t *);
 	int (*validfat)(uint32_t);
-	int (*dentry)(uint32_t, size_t);
 	int (*alloc)(uint32_t);
 	int (*release)(uint32_t);
 	int (*create)(const char *, uint32_t, int);

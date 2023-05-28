@@ -18,7 +18,6 @@ debugfatfs can ontain these inforamtion.
 
 - Print Main Boot Sector Field
 - Print Cluster/Sector raw data
-- Print Directory entry
 - Print File contents
 - Update FAT entry
 - Create/Remove file
@@ -101,25 +100,6 @@ Cluster #4:
 00000260:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
 *
 00007FF0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-```
-
-#### Case 3: Print Directory entry
-
-- User can print Directory entry by `-e` option.
-- User can print Directory entry by `entry` command in Interactive Mode.
-
-```
-$ sudo debugfatfs -q -e 4 /dev/sdc1
-EntryType                       : c0
-GeneralSecondaryFlags           : 03
-Reserved1                       : 00
-NameLength                      : 19
-NameHash                        : ffb8
-Reserved2                       : 0000
-ValidDataLength                 : 0000000000008000
-Reserved3                       : 00000000
-FirstCluster                    : 00000005
-DataLength                      : 0000000000008000
 ```
 
 ### Advanced usage
@@ -273,7 +253,6 @@ debugfatfs support support these optoin. (Please look at man-page)
 - **-b**, **--byte**=*offset* --- dump the any byte after dump filesystem information
 - **-c**, **--cluster**=*index* --- dump the cluster after dump filesystem information
 - **-d**, **--direcotry**=*path* --- read directory entry from path
-- **-e**, **--entry=index** --- read raw directory entry in current directory
 - **-f**, **--fat=index** --- read FAT entry value for index
 - **-i**, **--interactive** --- prompt the user operate filesystem
 - **-o**, **--output**=*file* --- send output to file rather than stdout
@@ -287,7 +266,6 @@ And, debugfatfs with interactive mode support these command.
 - **ls** --- list current directory contents
 - **cd** *path* --- change directory
 - **cluster** *cluster* --- print cluster raw-data
-- **entry** *index* --- print directory entry
 - **alloc** *cluster* --- allocate cluster
 - **release** *cluster* --- release cluster
 - **fat** *index* *[entry]* --- change File Allocation Table entry
