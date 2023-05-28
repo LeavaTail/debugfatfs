@@ -1745,10 +1745,8 @@ int exfat_validate_fat_entry(uint32_t clu)
 {
 	int is_valid = 0;
 
-	if (!exfat_load_bitmap(clu)) {
-		pr_warn("cluster %u isn't allocated cluster.\n", clu);
+	if (!exfat_load_bitmap(clu))
 		is_valid = 0;
-	}
 
 	if (EXFAT_FIRST_CLUSTER <= clu && clu <= info.cluster_count + 1)
 		is_valid = 1;
