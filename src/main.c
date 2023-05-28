@@ -555,10 +555,12 @@ int main(int argc, char *argv[])
 		goto device_close;
 	}
 
-	if (!(attr & OPTION_QUIET))
+	/* Filesystem statistic: default or -a option */
+	if (!attr || (attr & OPTION_ALL)) {
 		ret = info.ops->statfs();
-	if (ret < 0)
-		goto device_close;
+		if (ret < 0)
+			goto device_close;
+	}
 
 	offset = info.root_offset;
 
