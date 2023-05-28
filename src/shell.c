@@ -11,6 +11,8 @@
 
 static uint32_t cluster = 0;
 
+static int format_path(char *, size_t, char *, char **);
+
 static int set_env(char **, char *, char *);
 static int get_env(char **, char *, char *);
 
@@ -23,9 +25,9 @@ static int cmd_release(int, char **, char **);
 static int cmd_fat(int, char **, char **);
 static int cmd_create(int, char **, char **);
 static int cmd_remove(int, char **, char **);
-static int cmd_update(int, char **, char **);
 static int cmd_trim(int, char **, char **);
 static int cmd_fill(int, char **, char **);
+static int cmd_tail(int, char **, char **);
 static int cmd_help(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
@@ -42,9 +44,9 @@ struct command cmd[] = {
 	{"fat", cmd_fat},
 	{"create", cmd_create},
 	{"remove", cmd_remove},
-	{"update", cmd_update},
 	{"trim", cmd_trim},
 	{"fill", cmd_fill},
+	{"tail", cmd_tail},
 	{"help", cmd_help},
 	{"exit", cmd_exit},
 };
@@ -113,28 +115,23 @@ static int cmd_cd(int argc, char **argv, char **envp)
 {
 	int dir = 0;
 	char *path = "/";
-	char pwd[CMD_MAXLEN + 1] = {};
+	char buf[ARG_MAXLEN] = {};
+	char pwd[ARG_MAXLEN] = {};
 
 	switch (argc) {
 		case 1:
 			dir = info.root_offset;
-			snprintf(pwd, CMD_MAXLEN + 1, "/");
+			snprintf(pwd, ARG_MAXLEN, "/");
 			break;
 		case 2:
-			get_env(envp, "PWD", pwd);
-			dir = info.ops->lookup(cluster, argv[1]);
-			if (argv[1][0] == '/')
-				snprintf(pwd, CMD_MAXLEN + 1, "%s", argv[1]);
-			else
-				snprintf(pwd, CMD_MAXLEN + 1, "%s%s", pwd, argv[1]);
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			dir = info.ops->lookup(cluster, buf);
+			snprintf(pwd, ARG_MAXLEN, "%s", buf);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
 			break;
 	}
-
-	if (strcmp(path, "/"))
-		snprintf(pwd, CMD_MAXLEN + 1, "/");
 
 	if (dir >= 0 && *pwd) {
 		cluster = dir;
@@ -298,6 +295,7 @@ static int cmd_fat(int argc, char **argv, char **envp)
 static int cmd_create(int argc, char **argv, char **envp)
 {
 	int opt, create_option = 0;
+	char *filename;
 
 	/* To restart scanning a new argument vector */
 	optind = 1;
@@ -320,7 +318,12 @@ static int cmd_create(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 1:
-			info.ops->create(argv[optind], cluster, create_option);
+			filename = strtok_dir(argv[optind]);
+			if (filename != argv[optind]) {
+				pr_warn("Create doesn't support Absolute path.\n");
+				break;
+			}
+			info.ops->create(filename, cluster, create_option);
 			info.ops->reload(cluster);
 			break;
 		default:
@@ -340,40 +343,19 @@ static int cmd_create(int argc, char **argv, char **envp)
  */
 static int cmd_remove(int argc, char **argv, char **envp)
 {
-	switch (argc) {
-		case 1:
-			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
-			break;
-		case 2:
-			info.ops->remove(argv[1], cluster, 0);
-			info.ops->reload(cluster);
-			break;
-		default:
-			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
-			break;
-	}
-	return 0;
-}
-
-/**
- * cmd_update - Update directory entry
- * @argc:       argument count
- * @argv:       argument vetor
- * @envp:       environment pointer
- *
- * @return      0 (success)
- */
-static int cmd_update(int argc, char **argv, char **envp)
-{
-	int index;
+	char *filename;
 
 	switch (argc) {
 		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
-			index = strtoul(argv[1], NULL, 10);
-			info.ops->update(cluster, index);
+			filename = strtok_dir(argv[1]);
+			if (filename != argv[1]) {
+				pr_warn("Create doesn't support Absolute path.\n");
+				break;
+			}
+			info.ops->remove(filename, cluster, 0);
 			info.ops->reload(cluster);
 			break;
 		default:
@@ -434,6 +416,30 @@ static int cmd_fill(int argc, char **argv, char **envp)
 }
 
 /**
+ * cmd_tail - Display file contents.
+ * @argc:       argument count
+ * @argv:       argument vetor
+ * @envp:       environment pointer
+ *
+ * @return      0 (success)
+ */
+static int cmd_tail(int argc, char **argv, char **envp)
+{
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			info.ops->contents(argv[1], cluster, 0);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
  * cmd_help - display help
  * @argc:     argument count
  * @argv:     argument vector
@@ -452,9 +458,9 @@ static int cmd_help(int argc, char **argv, char **envp)
 	fprintf(stderr, "fat        change File Allocation Table entry\n");
 	fprintf(stderr, "create     create directory entry.\n");
 	fprintf(stderr, "remove     remove directory entry.\n");
-	fprintf(stderr, "update     update directory entry.\n");
 	fprintf(stderr, "trim       trim deleted dentry.\n");
 	fprintf(stderr, "fill       fill in directory.\n");
+	fprintf(stderr, "tail       output the last part of files.\n");
 	fprintf(stderr, "help       display this help.\n");
 	fprintf(stderr, "\n");
 	return 0;
@@ -472,6 +478,49 @@ static int cmd_exit(int argc, char **argv, char **envp)
 {
 	fprintf(stdout, "Goodbye!\n");
 	return 1;
+}
+
+/**
+ * format_path - format pathname
+ * @dist:        formatted file path (Output)
+ * @len:         filepath length
+ * @str          filepath
+ *
+ * @return       0
+ */
+static int format_path(char *dist, size_t len, char *str, char **envp)
+{
+	char *saveptr = NULL;
+	char *token;
+	char *buf;
+
+	if ((token = strtok_r(str, "/", &saveptr)) == NULL) {
+		snprintf(dist, strlen("/") + 1, "/");
+		return 0;
+	}
+
+	buf = calloc(ARG_MAXLEN, sizeof(char));
+	/* Create full path */
+	get_env(envp, "PWD", buf);
+
+	/* If str is "/A/B/C" or "/", then "/" else concatenate PWD */
+	if ((str[0] == '/') || (!strncmp(buf, "/", strlen("/") + 1)))
+		snprintf(dist, strlen("/") + 1, "/");
+	else 
+		snprintf(dist, len, "%s/", buf);
+
+	/* Remove redundant "/" */
+	snprintf(buf, len, "%s%s", dist, token);
+	strncpy(dist, buf, len);
+
+	while ((token = strtok_r(NULL, "/", &saveptr)) != NULL) {
+		snprintf(buf, len, "%s/%s", dist, token);
+		strncpy(dist, buf, len);
+	}
+
+	free(buf);
+
+	return 0;
 }
 
 /**
@@ -512,15 +561,10 @@ static int decode_cmd(char *str, char **argv, char **envp)
 	int argc = 0;
 	char *saveptr = NULL;
 	char *token;
-	char *copy;
-	size_t len;
 
 	token = strtok_r(str, CMD_DELIM, &saveptr);
-	while (token != NULL) {
-		len = strlen(token);
-		copy = malloc(sizeof(char) * (len + 1));
-		snprintf(copy, len + 1, "%s", token);
-		argv[argc++] = copy;
+	while ((token != NULL) && (argc < ARG_MAXNUM)) {
+		snprintf(argv[argc++], ARG_MAXLEN, "%s", token);
 		token = strtok_r(NULL, CMD_DELIM, &saveptr);
 	}
 	return argc;
@@ -552,17 +596,17 @@ static int read_cmd(char *buf)
 static int set_env(char **envp, char *env, char *value)
 {
 	int i;
-	char *str = malloc(sizeof(char) * (CMD_MAXLEN + 1));
+	char str[ARG_MAXLEN] = {0};
 	char *saveptr = NULL;
+	char *token;
 
-	for (i = 0; envp[i]; i++) {
-		if (!strcmp(strtok_r(envp[i], "=", &saveptr), env)) {
-			free(envp[i]);
+	for (i = 0; i < ENV_MAXNUM - 1; i++) {
+		strncpy(str, envp[i], ARG_MAXLEN);
+		token = strtok_r(str, "=", &saveptr);
+		if (token && !strcmp(token, env))
 			break;
-		}
 	}
-	snprintf(str, CMD_MAXLEN, "%s=%s", env, value);
-	envp[i] = str;
+	snprintf(envp[i], CMD_MAXLEN, "%s=%s", env, value);
 
 	return 0;
 }
@@ -580,15 +624,15 @@ static int get_env(char **envp, char *env, char *value)
 {
 	int i;
 	char *tp;
-	char str[CMD_MAXLEN + 1] = {};
+	char str[ARG_MAXLEN] = {0};
 	char *saveptr = NULL;
 
 	for (i = 0; envp[i]; i++) {
-		strncpy(str, envp[i], CMD_MAXLEN);
+		strncpy(str, envp[i], ARG_MAXLEN);
 		tp = strtok_r(str, "=", &saveptr);
-		if (!strcmp(tp, env)) {
+		if (tp && !strcmp(tp, env)) {
 			tp = strtok_r(NULL, "=", &saveptr);
-			strncpy(value, tp, CMD_MAXLEN);
+			strncpy(value, tp, ARG_MAXLEN);
 			return 0;
 		}
 	}
@@ -615,10 +659,15 @@ static int init_env(char **envp)
  */
 int shell(void)
 {
-	int argc = 0;
-	char buf[CMD_MAXLEN + 1] = {};
-	char **argv = calloc((CMD_MAXLEN + 1), sizeof(char *));
-	char **envp = calloc(16, sizeof(char *));
+	int i, argc = 0;
+	char buf[CMD_MAXLEN] = {};
+	char **argv = calloc(ARG_MAXNUM, sizeof(char *));
+	char **envp = calloc(ENV_MAXNUM, sizeof(char *));
+
+	for (i = 0; i < ARG_MAXNUM; i++)
+		argv[i] = calloc(ARG_MAXLEN, sizeof(char));
+	for (i = 0; i < ENV_MAXNUM; i++)
+		envp[i] = calloc(ARG_MAXLEN, sizeof(char));
 
 	fprintf(stdout, "Welcome to %s %s (Interactive Mode)\n\n", PROGRAM_NAME, PROGRAM_VERSION);
 	init_env(envp);
@@ -634,6 +683,11 @@ int shell(void)
 		if (execute_cmd(argc, argv, envp))
 			break;
 	}
+
+	for (i = 0; i < ENV_MAXNUM; i++)
+		free(envp[i]);
+	for (i = 0; i < ARG_MAXNUM; i++)
+		free(argv[i]);
 
 	free(argv);
 	free(envp);

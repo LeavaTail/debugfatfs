@@ -37,13 +37,11 @@ static struct option const longopts[] =
 	{"cluster", required_argument, NULL, 'c'},
 	{"directory", required_argument, NULL, 'd'},
 	{"entry", required_argument, NULL, 'e'},
-	{"force", required_argument, NULL, 'f'},
+	{"fat", required_argument, NULL, 'f'},
 	{"interactive", no_argument, NULL, 'i'},
-	{"load", required_argument, NULL, 'l'},
 	{"output", required_argument, NULL, 'o'},
 	{"quiet", no_argument, NULL, 'q'},
 	{"ro", no_argument, NULL, 'r'},
-	{"save", required_argument, NULL, 's'},
 	{"upper", required_argument, NULL, 'u'},
 	{"verbose", no_argument, NULL, 'v'},
 	{"help", no_argument, NULL, GETOPT_HELP_CHAR},
@@ -67,11 +65,9 @@ static void usage(void)
 	fprintf(stderr, "  -e, --entry=index\tread raw directory entry in current directory.\n");
 	fprintf(stderr, "  -f, --fource\twrite foucibly even if filesystem image has already mounted.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
-	fprintf(stderr, "  -l, --load=file\tLoad Main boot region and FAT region from file.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
 	fprintf(stderr, "  -q, --quiet\tSuppress message about Main boot Sector.\n");
 	fprintf(stderr, "  -r, --ro\tread only mode. \n");
-	fprintf(stderr, "  -s, --save=file\tSave Main boot region and FAT region in file.\n");
 	fprintf(stderr, "  -u, --upper\tconvert into uppercase latter by up-case Table.\n");
 	fprintf(stderr, "  -v, --verbose\tVersion mode.\n");
 	fprintf(stderr, "  --help\tdisplay this help and exit.\n");
@@ -338,7 +334,6 @@ static int get_device_info(uint32_t attr)
 	struct stat s;
 
 	if (check_mounted_filesystem() &&
-			!(attr & OPTION_FORCE) &&
 			!(attr & OPTION_READONLY)) {
 		pr_err("Error has occurred becasue %s has already mounted.\n", info.name);
 		return -1;
@@ -456,19 +451,18 @@ int main(int argc, char *argv[])
 	uint32_t attr = 0;
 	uint32_t cluster = 0;
 	uint32_t index = 0;
+	uint32_t fatent = 0;
+	uint32_t value = 0;
 	uint32_t sector = 0;
 	char *outfile = NULL;
-	char *backup = NULL;
 	char *dir = NULL;
 	char *input = NULL;
 	char out[MAX_NAME_LENGTH + 1] = {};
-	char *s;
-	FILE *bfile = NULL;
 	struct pseudo_bootsec bootsec;
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ab:c:d:e:fil:o:qrs:u:v",
+					"ab:c:d:e:f:il:o:qrs:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
@@ -491,14 +485,11 @@ int main(int argc, char *argv[])
 				index = strtoul(optarg, NULL, 0);
 				break;
 			case 'f':
-				attr |= OPTION_FORCE;
+				attr |= OPTION_FATENT;
+				fatent = strtoul(optarg, NULL, 0);
 				break;
 			case 'i':
 				attr |= OPTION_INTERACTIVE;
-				break;
-			case 'l':
-				attr |= OPTION_LOAD;
-				backup = optarg;
 				break;
 			case 'o':
 				attr |= OPTION_OUTPUT;
@@ -509,10 +500,6 @@ int main(int argc, char *argv[])
 				break;
 			case 'q':
 				attr |= OPTION_QUIET;
-				break;
-			case 's':
-				attr |= OPTION_SAVE;
-				backup = optarg;
 				break;
 			case 'u':
 				attr |= OPTION_UPPER;
@@ -568,34 +555,6 @@ int main(int argc, char *argv[])
 		goto device_close;
 	}
 
-	/* Command line: -s, -l option */
-	if ((attr & OPTION_SAVE) || (attr & OPTION_LOAD)) {
-		if ((bfile = fopen(backup, "ab+")) == NULL) {
-			pr_err("open: %s\n", strerror(errno));
-			goto device_close;
-		}
-		s = malloc(sizeof(char) * info.sector_size);
-		if (attr & OPTION_SAVE) {
-			/* Save Phase */
-			for (i = 0; i < info.heap_offset; i++) {
-				get_sector(s, i * info.sector_size, 1);
-				fwrite(s, info.sector_size, 1, bfile);
-			}
-		} else {
-			/* load Phase */
-			for (i = 0; i < info.heap_offset; i++) {
-				if (!fread(s, info.sector_size, 1, bfile)) {
-					pr_err("fread: %s\n", strerror(errno));
-					break;
-				}
-				set_sector(s, i * info.sector_size, 1);
-			}
-		}
-		free(s);
-		fclose(bfile);
-		goto device_close;
-	}
-
 	if (!(attr & OPTION_QUIET))
 		ret = info.ops->statfs();
 	if (ret < 0)
@@ -640,6 +599,14 @@ int main(int argc, char *argv[])
 	/* Command line: -a option */
 	if (attr & OPTION_ALL) {
 		ret = info.ops->info();
+		if (ret < 0)
+			goto device_close;
+	}
+
+	/* Command line: -f option */
+	if (attr & OPTION_FATENT) {
+		ret = info.ops->getfat(fatent, &value);
+		pr_msg("Get: Cluster %u is FAT entry %08x\n", fatent, value);
 		if (ret < 0)
 			goto device_close;
 	}

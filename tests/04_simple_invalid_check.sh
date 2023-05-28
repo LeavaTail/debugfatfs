@@ -2,6 +2,9 @@
 
 set -u
 
+source tests/common.sh
+
+IMAGES=("exfat.img")
 OUTPUT=data.dat
 
 function test_options () {
@@ -29,7 +32,7 @@ function test_shell () {
 	expect \"/> \"
 	send \"remove\n\"
 	expect \"/> \"
-	send \"update\n\"
+	send \"tail\n\"
 	expect \"/> \"
 	send \"exit\n\"
 	expect eof
@@ -56,13 +59,11 @@ function test_shell () {
 	expect \"/> \"
 	send \"remove A B\n\"
 	expect \"/> \"
-	send \"update A B\n\"
-	expect \"/> \"
-	send \"update A B\n\"
-	expect \"/> \"
 	send \"trim A\n\"
 	expect \"/> \"
 	send \"fill A B\n\"
+	expect \"/> \"
+	send \"tail A B\n\"
 	expect \"/> \"
 	send \"nothing\n\"
 	expect \"/> \"
@@ -73,6 +74,14 @@ function test_shell () {
 	echo ""
 }
 
+function main() {
+	init_image
+
+	for fs in ${IMAGES[@]}; do
+		test_options ${fs}
+		test_shell ${fs}
+	done
+}
+
 ### main function ###
-test_options exfat.img
-test_shell exfat.img
+main "$@"

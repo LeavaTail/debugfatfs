@@ -13,6 +13,9 @@ static uint32_t fat_set_cluster(struct fat_fileinfo *, uint32_t, void *);
 
 /* Boot sector function prototype */
 static int fat_load_bootsec(struct fat_bootsec *);
+static int fat_print_label(void);
+static void fat_print_fat(void);
+static void fat_print_bitmap(void);
 static int fat_validate_bootsec(struct fat_bootsec *);
 static int fat16_print_bootsec(struct fat_bootsec *);
 static int fat32_print_bootsec(struct fat_bootsec *);
@@ -43,8 +46,6 @@ int fat_clean_dchain(uint32_t);
 static void fat_create_fileinfo(node2_t *, uint32_t, struct fat_dentry *, uint16_t *, size_t);
 static int fat_init_dentry(struct fat_dentry *, unsigned char *, size_t);
 static int fat_init_lfn(struct fat_dentry *, uint16_t *, size_t, unsigned char *, uint8_t);
-static int fat_update_file(struct fat_dentry *, struct fat_dentry *);
-static int fat_update_lfn(struct fat_dentry *, struct fat_dentry *);
 static void fat_convert_uniname(uint16_t *, uint64_t, unsigned char *);
 static int fat_create_shortname(uint16_t *, char *);
 static int fat_convert_shortname(const char *, char *);
@@ -56,7 +57,7 @@ static int fat_validate_character(const char);
 
 /* Operations function prototype */
 int fat_print_bootsec(void);
-int fat_print_vollabel(void);
+int fat_print_fsinfo(void);
 int fat_lookup(uint32_t, char *);
 int fat_readdir(struct directory *, size_t, uint32_t);
 int fat_reload_directory(uint32_t);
@@ -69,13 +70,13 @@ int fat_set_bogus_entry(uint32_t);
 int fat_release_cluster(uint32_t);
 int fat_create(const char *, uint32_t, int);
 int fat_remove(const char *, uint32_t, int);
-int fat_update_dentry(uint32_t, int);
 int fat_trim(uint32_t);
 int fat_fill(uint32_t, uint32_t);
+int fat_contents(const char *, uint32_t, int);
 
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
-	.info = fat_print_vollabel,
+	.info = fat_print_fsinfo,
 	.lookup =  fat_lookup,
 	.readdir = fat_readdir,
 	.reload = fat_reload_directory,
@@ -88,9 +89,9 @@ static const struct operations fat_ops = {
 	.release = fat_release_cluster,
 	.create = fat_create,
 	.remove = fat_remove,
-	.update = fat_update_dentry,
 	.trim = fat_trim,
 	.fill = fat_fill,
+	.contents = fat_contents,
 };
 
 /*************************************************************************************************/
@@ -209,14 +210,13 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 	info.cluster_count = CountofClusters;
 	info.fat_offset = b->BPB_RevdSecCnt;
 	info.fat_length = b->BPB_NumFATs * FATSz;
+	info.heap_offset = (b->BPB_RevdSecCnt + info.fat_length) + RootDirSectors;
 	if (info.fstype == FAT32_FILESYSTEM) {
 		info.root_offset = b->reserved_info.fat32_reserved_info.BPB_RootClus;
 		info.root_length = info.cluster_size;
-		info.heap_offset = info.fat_offset + info.fat_length;
 	} else {
 		info.root_offset = 0;
 		info.root_length = (32 * b->BPB_RootEntCnt + b->BPB_BytesPerSec - 1) / b->BPB_BytesPerSec;
-		info.heap_offset = info.fat_offset + info.fat_length + info.root_length;
 	}
 
 	f = malloc(sizeof(struct fat_fileinfo));
@@ -242,6 +242,102 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 static int fat_load_bootsec(struct fat_bootsec *b)
 {
 	return get_sector(b, 0, 1);
+}
+
+/**
+ * fat_print_label - print volume label
+ *
+ * @return           0 (success)
+ */
+static int fat_print_label(void)
+{
+	pr_msg("volume Label: ");
+	pr_msg("%s\n", (char *)info.vol_label);
+	return 0;
+}
+
+/**
+ * fat_print_fat - print FAT
+ */
+static void fat_print_fat(void)
+{
+	uint32_t i, j;
+	uint32_t *fat, offset;
+	size_t sector_num = (info.fat_length + (info.sector_size - 1)) / info.sector_size;
+	bitmap_t b;
+
+	init_bitmap(&b, info.cluster_count);
+
+
+	for (i = FAT_FSTCLUSTER; i < info.cluster_count; i++) {
+		if (get_bitmap(&b, i))
+			continue;
+
+		fat_get_fat_entry(i, &offset);
+		if (!offset) {
+			set_bitmap(&b, i);
+			continue;
+		}
+
+		if (offset >= FAT_FSTCLUSTER && offset < info.cluster_count) {
+			set_bitmap(&b, offset);
+			unset_bitmap(&b, i);
+		} else {
+			set_bitmap(&b, i);
+		}
+	}
+
+	pr_msg("FAT:\n");
+	for (i = FAT_FSTCLUSTER; i < info.cluster_count; i++) {
+		if (get_bitmap(&b, i))
+			continue;
+
+		pr_msg("%u", i);
+		offset = i;
+		
+		while (1) {
+			fat_get_fat_entry(offset, &offset);
+			if (fat_check_last_cluster(offset))
+				break;
+			pr_msg(" -> %u", offset);
+		}
+
+		pr_msg("\n");
+	}
+
+	free_bitmap(&b);
+}
+
+/**
+ * fat_print_bitmap - print FAT alloc/release bitmap
+ */
+static void fat_print_bitmap(void)
+{
+	uint32_t clu, entry;
+
+	pr_msg("Allocation Bitmap:\n");
+	pr_msg("Offset    0 1 2 3 4 5 6 7 8 9 a b c d e f\n");
+	/* Allocation bitmap consider first cluster is 2 */
+	pr_msg("%08x  - - ", 0);
+
+	for (clu = EXFAT_FIRST_CLUSTER; clu < info.cluster_size; clu++) {
+		fat_get_fat_entry(clu, &entry);
+
+		switch (clu % 0x10) {
+			case 0x0:
+				pr_msg("%08x  ", clu);
+				pr_msg("%c ", entry ? 'o' : '-');
+				break;
+			case 0xf:
+				pr_msg("%c ", entry ? 'o' : '-');
+				pr_msg("\n");
+				break;
+			default:
+				pr_msg("%c ", entry ? 'o' : '-');
+				break;
+		}
+	}
+	pr_msg("\n");
 }
 
 /**
@@ -292,17 +388,17 @@ static int fat16_print_bootsec(struct fat_bootsec *b)
 	int i;
 	char type[FILSYSTYPESIZE + 1] = {0};
 
-	strncpy(type, b->reserved_info.fat16_reserved_info.BS_FilSysType, FILSYSTYPESIZE);
+	strncpy(type, (const char *)b->reserved_info.fat16_reserved_info.BS_FilSysType, FILSYSTYPESIZE);
 	if (strncmp(type, "FAT", 3))
 		pr_warn("BS_FilSysType is expected \"FAT     \", But this is %s\n", type);
 	else
 		pr_msg("Filesystem type:\t%s\n", type);
 
-	pr_msg("Total sector:   \t%" PRIu64 "\n", b->BPB_TotSec16 + (uint64_t)b->BPB_TotSec32 << 16);
+	pr_msg("Total sector:   \t%" PRIu64 "\n", b->BPB_TotSec16 + ((uint64_t)b->BPB_TotSec32 << 16));
 
 	pr_msg("Volume ID:      \t");
 	for (i = 0; i < VOLIDSIZE; i++)
-		pr_msg("%02x", b->reserved_info.fat16_reserved_info.BS_VolID[i]);
+		pr_msg("%02x", ((const char *)b->reserved_info.fat16_reserved_info.BS_VolID)[i]);
 	pr_msg("\n");
 
 	pr_msg("Volume name:    \t");
@@ -321,7 +417,7 @@ static int fat32_print_bootsec(struct fat_bootsec *b)
 	int i;
 	char type[FILSYSTYPESIZE + 1] = {0};
 
-	strncpy(type, b->reserved_info.fat32_reserved_info.BS_FilSysType, FILSYSTYPESIZE);
+	strncpy(type, (const char *)b->reserved_info.fat32_reserved_info.BS_FilSysType, FILSYSTYPESIZE);
 	if (strncmp(type, "FAT32", 5))
 		pr_warn("BS_FilSysType is expected \"FAT32   \", But this is %s\n", type);
 	else
@@ -376,16 +472,16 @@ static int fat12_set_fat_entry(uint32_t clu, uint32_t entry)
 {
 	uint32_t FATOffset = clu + (clu / 2);
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
-	uint16_t *fat;
+	uint8_t *fat;
 
-	fat = malloc(info.sector_size);
+	fat = malloc(info.sector_size * info.fat_length);
 	get_sector(fat, info.fat_offset * info.sector_size, 1);
 	if (clu % 2) {
 		*(fat + ThisFATEntOffset) = (fat[ThisFATEntOffset] & 0x0F) | entry << 4;
 		*(fat + ThisFATEntOffset + 1) = entry >> 4;
 	} else {
-		*(fat + ThisFATEntOffset) = entry;
-		*(fat + ThisFATEntOffset + 1) = (fat[ThisFATEntOffset + 1] & 0xF0) | ((entry >> 8) & 0x0F);
+		*(fat + ThisFATEntOffset) = entry & 0xff;
+		*(fat + ThisFATEntOffset + 1) = (fat[ThisFATEntOffset + 1] & 0xF0) | (entry >> 8);
 	}
 	set_sector(fat, info.fat_offset * info.sector_size, 1);
 	free(fat);
@@ -401,14 +497,16 @@ static int fat12_set_fat_entry(uint32_t clu, uint32_t entry)
  */
 static int fat16_set_fat_entry(uint32_t clu, uint32_t entry)
 {
-	uint32_t FATOffset = clu * sizeof(uint16_t);
-	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
+	uint32_t ret = 0;
+	size_t entry_per_sector = info.sector_size / sizeof(uint16_t);
+	uint32_t fat_index = (info.fat_offset +  clu / entry_per_sector) * info.sector_size;
 	uint16_t *fat;
+	uint32_t offset = (clu) % entry_per_sector;
 
 	fat = malloc(info.sector_size);
-	get_sector(fat, info.fat_offset * info.sector_size, 1);
-	*(fat + ThisFATEntOffset) = (uint16_t)entry;
-	set_sector(fat, info.fat_offset * info.sector_size, 1);
+	get_sector(fat, fat_index, 1);
+	fat[offset] = (uint16_t)entry;
+	set_sector(fat, fat_index, 1);
 	free(fat);
 	return 0;
 }
@@ -422,13 +520,16 @@ static int fat16_set_fat_entry(uint32_t clu, uint32_t entry)
  */
 static int fat32_set_fat_entry(uint32_t clu, uint32_t entry)
 {
-	uint32_t ThisFATEntOffset = clu % info.sector_size;
+	uint32_t ret = 0;
+	size_t entry_per_sector = info.sector_size / sizeof(uint32_t);
+	uint32_t fat_index = (info.fat_offset +  clu / entry_per_sector) * info.sector_size;
 	uint32_t *fat;
+	uint32_t offset = (clu) % entry_per_sector;
 
 	fat = malloc(info.sector_size);
-	get_sector(fat, info.fat_offset * info.sector_size, 1);
-	fat[ThisFATEntOffset] = entry & 0x0FFFFFFF;
-	set_sector(fat, info.fat_offset * info.sector_size, 1);
+	get_sector(fat, fat_index, 1);
+	fat[offset] = entry & 0x0FFFFFFF;
+	set_sector(fat, fat_index, 1);
 	free(fat);
 	return 0;
 }
@@ -446,16 +547,16 @@ static uint32_t fat12_get_fat_entry(uint32_t clu)
 	uint32_t FATOffset = clu + (clu / 2);
 	uint32_t ThisFATSecNum = info.fat_offset + (FATOffset / info.sector_size); 
 	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
-	uint16_t *fat;
+	uint8_t *fat;
 
-	fat = malloc(info.sector_size);
-	get_sector(fat, ThisFATSecNum * info.sector_size, 1);
+	fat = malloc(info.sector_size * info.fat_length);
+	get_sector(fat, ThisFATSecNum * info.sector_size, info.fat_length);
 	if (clu % 2) {
 		ret = (fat[ThisFATEntOffset] >> 4)
 			| (fat[ThisFATEntOffset + 1] << 4);
 	} else {
 		ret = fat[ThisFATEntOffset]
-			| ((fat[ThisFATEntOffset + 1] & 0x0F) << 8);
+			| (fat[ThisFATEntOffset + 1] << 8);
 	}
 	free(fat);
 	return ret;
@@ -471,12 +572,14 @@ static uint32_t fat12_get_fat_entry(uint32_t clu)
 static uint32_t fat16_get_fat_entry(uint32_t clu)
 {
 	uint32_t ret = 0;
-	uint32_t ThisFATEntOffset = clu % info.sector_size;
+	size_t entry_per_sector = info.sector_size / sizeof(uint16_t);
+	uint32_t fat_index = (info.fat_offset +  clu / entry_per_sector) * info.sector_size;
 	uint16_t *fat;
+	uint32_t offset = (clu) % entry_per_sector;
 
 	fat = malloc(info.sector_size);
-	get_sector(fat, info.fat_offset * info.sector_size, 1);
-	ret = fat[ThisFATEntOffset];
+	get_sector(fat, fat_index, 1);
+	ret = fat[offset];
 	free(fat);
 
 	return ret;
@@ -492,12 +595,14 @@ static uint32_t fat16_get_fat_entry(uint32_t clu)
 static uint32_t fat32_get_fat_entry(uint32_t clu)
 {
 	uint32_t ret = 0;
-	uint32_t ThisFATEntOffset = clu % info.sector_size;
+	size_t entry_per_sector = info.sector_size / sizeof(uint32_t);
+	uint32_t fat_index = (info.fat_offset +  clu / entry_per_sector) * info.sector_size;
 	uint32_t *fat;
+	uint32_t offset = (clu) % entry_per_sector;
 
 	fat = malloc(info.sector_size);
-	get_sector(fat, info.fat_offset * info.sector_size, 1);
-	ret = fat[ThisFATEntOffset] & 0x0FFFFFFF;
+	get_sector(fat, fat_index, 1);
+	ret = fat[offset] & 0x0FFFFFFF;
 	free(fat);
 
 	return ret;
@@ -541,11 +646,13 @@ static int fat_check_last_cluster(uint32_t clu)
  */
 static int fat_get_last_cluster(struct fat_fileinfo *f, uint32_t clu)
 {
-	uint32_t ret = FAT_FSTCLUSTER;
-	size_t allocated = 1;
+	uint32_t next_clu = clu;
 
-	for (allocated = 0; fat_check_last_cluster(ret) == 0; allocated++, clu = ret)
-		fat_get_fat_entry(clu, &ret);
+	for (fat_get_fat_entry(clu, &next_clu);
+			fat_check_last_cluster(next_clu) == 0;
+			clu = next_clu) {
+		fat_get_fat_entry(clu, &next_clu);
+	}
 
 	return clu;
 }
@@ -562,12 +669,17 @@ static int fat_alloc_clusters(struct fat_fileinfo *f, uint32_t clu, size_t num_a
 {
 	uint32_t next_clu;
 	uint32_t last_clu;
+	uint32_t entry = 0;
 	int total_alloc = num_alloc;
 
 	clu = next_clu = last_clu = fat_get_last_cluster(f, clu);
 	for (next_clu = last_clu + 1; next_clu != last_clu; next_clu++) {
 		if (next_clu > info.cluster_count - 1)
 			next_clu = FAT_FSTCLUSTER;
+
+		fat_get_fat_entry(next_clu, &entry);
+		if (entry)
+			continue;
 
 		fat_set_fat_entry(next_clu, EXFAT_LASTCLUSTER);
 		fat_set_fat_entry(clu, next_clu);
@@ -650,7 +762,7 @@ static int fat_new_clusters(size_t num_alloc)
 /* DIRECTORY CHAIN FUNCTION                                                                      */
 /*                                                                                               */
 /*************************************************************************************************/
-#if 0
+#ifdef DEBUGFATFS_DEBUG
 /**
  * fat_print_dchain - print directory chain
  */
@@ -948,131 +1060,6 @@ static int fat_init_lfn(struct fat_dentry *d,
 }
 
 /**
- * fat_update_file - Update directory entry
- * @old:             directory entry before update
- * @new:             directory entry after update (Output)
- *
- * @return           0 (Success)
- */
-static int fat_update_file(struct fat_dentry *old, struct fat_dentry *new)
-{
-	int i;
-	uint32_t tmp = 0;
-	struct tm tm;
-	char buf[64] = {0};
-	const char attrchar[][16] = {
-		"ReadOnly",
-		"Hidden",
-		"System",
-		"Volume ID",
-		"Directory",
-		"Archive",
-		"Long Filename",
-	};
-	const char timechar[][16] = {
-		"Create",
-		"LastModified",
-		"LastAccess",
-	};
-	uint16_t dates[3] = {0};
-	uint16_t times[3] = {0};
-	uint8_t subsecs[3] = {0};
-
-	input("Please input a FileName", buf);
-	memcpy(new->dentry.dir.DIR_Name, buf, 11);
-
-	pr_msg("Please select a File Attribute.\n");
-	for (i = 0; i < 7; i++) {
-		pr_msg("   %s [N/y] ", attrchar[i]);
-		fflush(stdout);
-		if (fgets(buf, 8, stdin) == NULL)
-			return 1;
-		if (toupper(buf[0]) == 'Y' && buf[1] == '\n')
-			new->dentry.dir.DIR_Attr |= (1 << i);
-	}
-
-	for (i = 0; i < 3; i++) {
-		pr_msg("Please input a %s Timestamp.\n", timechar[i]);
-		do {
-			input_time("Year", &tmp);
-		} while (tmp < 1980 || tmp > 2107);
-		tm.tm_year = tmp - 1900;
-		do {
-			input_time("Month", &tmp);
-		} while (tmp < 1 || tmp > 12);
-		tm.tm_mon = tmp - 1;
-		do {
-			input_time("Day", &tmp);
-		} while (tmp < 1 || tmp > 31);
-		tm.tm_mday = tmp;
-
-		if (i == 2)
-			break;
-
-		do {
-			input_time("Hour", &tmp);
-		} while (tmp < 0 || tmp > 23);
-		tm.tm_hour = tmp;
-		do {
-			input_time("Min", &tmp);
-		} while (tmp < 0 || tmp > 59);
-		tm.tm_min = tmp;
-		do {
-			input_time("Sec", &tmp);
-		} while (tmp < 0 || tmp > 59);
-		tm.tm_sec = tmp;
-		fat_convert_fattime(&tm, dates + i, times + i, subsecs + i);
-	}
-
-	new->dentry.dir.DIR_CrtTimeTenth = subsecs[0];
-	new->dentry.dir.DIR_CrtTime = times[0];
-	new->dentry.dir.DIR_CrtDate = dates[0];
-	new->dentry.dir.DIR_LstAccDate = dates[1];
-	new->dentry.dir.DIR_WrtTime= times[2];
-	new->dentry.dir.DIR_WrtDate = times[2];
-
-	input("Please input a First Cluster", buf);
-	sscanf(buf, "%04x", (uint32_t *)&tmp);
-	new->dentry.dir.DIR_FstClusHI = tmp >> 16;
-	new->dentry.dir.DIR_FstClusLO = tmp & 0x0000ffff;
-	input("Please input a Data Length", buf);
-	sscanf(buf, "%04x", (uint32_t *)&tmp);
-	new->dentry.dir.DIR_FileSize = tmp;
-
-	return 0;
-}
-
-/**
- * fat_update_lfn - Update Long filename entry
- * @old:            directory entry before update
- * @new:            directory entry after update (Output)
- *
- * @return          0 (Success)
- */
-static int fat_update_lfn(struct fat_dentry *old, struct fat_dentry *new)
-{
-	char shortname[11] = {0};
-	uint16_t longname[MAX_NAME_LENGTH] = {0};
-	uint32_t tmp = 0;
-	char buf[64] = {0};
-
-	input("Please input a FileName", buf);
-	fat_create_nameentry(buf, shortname, longname);
-	memcpy(new->dentry.lfn.LDIR_Name1, longname, sizeof(uint16_t) * 5);
-	memcpy(new->dentry.lfn.LDIR_Name2, longname + 5, sizeof(uint16_t) * 6);
-	memcpy(new->dentry.lfn.LDIR_Name3, longname + 11, sizeof(uint16_t) * 2);
-
-	input("Please input a the order of this entry", buf);
-	sscanf(buf, "%02hhx", (uint8_t *)&tmp);
-	new->dentry.lfn.LDIR_Ord = tmp;
-	input("Please input a Checksum", buf);
-	sscanf(buf, "%02hhx", (uint8_t *)&tmp);
-	new->dentry.lfn.LDIR_Chksum = tmp;
-
-	return 0;
-}
-
-/**
  * fat_convert_uniname - function to get filename
  * @uniname:             filename dentry in UTF-16
  * @name_len:            filename length
@@ -1326,12 +1313,13 @@ int fat_print_bootsec(void)
 /**
  * fat_print_fsinfo - print filesystem information in FAT
  *
- * @return            0 (success)
+ * @return              0 (success)
  */
-int fat_print_vollabel(void)
+int fat_print_fsinfo(void)
 {
-	pr_msg("volume Label: ");
-	pr_msg("%s\n", (char *)info.vol_label);
+	fat_print_label();
+	fat_print_fat();
+	fat_print_bitmap();
 	return 0;
 }
 
@@ -1808,11 +1796,12 @@ int fat_create(const char *name, uint32_t clu, int opt)
 	}
 
 	if (clu) {
-		new_cluster_num = (i + count + 1) * sizeof(struct fat_dentry) / info.cluster_size;
+		new_cluster_num = ROUNDUP((i + count + 1) * sizeof(struct fat_dentry), info.cluster_size);
 		if (new_cluster_num > cluster_num) {
 			fat_alloc_clusters(f, clu, new_cluster_num - cluster_num);
 			cluster_num = fat_concat_cluster(f, clu, &data);
 			entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
+			d = ((struct fat_dentry *)data) + i;
 		}
 	} else {
 		if (((i + count + 1) * info.sector_size) > size) {
@@ -1920,71 +1909,6 @@ out:
 		fat_set_cluster(f, clu, data);
 	else
 		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
-	free(data);
-	return 0;
-}
-
-/**
- * fat_update_dentry - function interface to update directory entry
- * @clu:               Current Directory cluster
- * @i:                 Directory entry index
- *
- * @return             0 (Success)
- */
-int fat_update_dentry(uint32_t clu, int i)
-{
-	int type = 0;
-	char buf[64] = {0};
-	struct fat_dentry new = {0};
-	void *data;
-	size_t size = info.cluster_size;
-	struct fat_dentry *old;
-
-	/* Lookup last entry */
-	data = malloc(size);
-	get_cluster(data, clu);
-
-	old = ((struct fat_dentry *)data) + i;
-
-	pr_msg("Please select a Entry type.\n");
-	pr_msg("1) Directory Structure\n");
-	pr_msg("2) Long File Name\n");
-	pr_msg("3) Other\n");
-
-	while (1) {
-		pr_msg("#? ");
-		fflush(stdout);
-		if (fgets(buf, 32, stdin) == NULL)
-			continue;
-		sscanf(buf, "%d", &type);
-		if (0 < type && type < 4)
-			break;
-	}
-	pr_msg("\n");
-
-	switch (type) {
-		case 1:
-			fat_init_dentry(&new, (unsigned char *)"", 0);
-			fat_update_file(old, &new);
-			break;
-		case 2:
-			fat_init_lfn(&new, (uint16_t *)"", 0, (unsigned char*)"", 0);
-			fat_update_lfn(old, &new);
-			break;
-		default:
-			memset(buf, 0x00, 64);
-			input("Please input any strings", buf);
-			for (i = 0; i < sizeof(struct fat_dentry); i++)
-				sscanf(buf + (i * 2), "%02hhx", ((uint8_t *)&new) + i);
-			break;
-	}
-	for (i = 0; i < sizeof(struct fat_dentry); i++) {
-		pr_msg("%x ", *(((uint8_t *)&new) + i));
-	}
-	pr_msg("\n");
-	memcpy(old, &new, sizeof(struct fat_dentry));
-
-	set_cluster(data, clu);
 	free(data);
 	return 0;
 }
@@ -2113,3 +2037,62 @@ out:
 	free(data);
 	return 0;
 }
+
+/**
+ * fat_contents - function interface to display file contents
+ * @name:         Filename in UTF-8
+ * @index:        Current Directory Index
+ * @opt:          create option
+ *
+ * @return       0 (Success)
+ *              -1 (Not found)
+ */
+int fat_contents(const char *name, uint32_t clu, int opt)
+{
+	int i, ret = 0;
+	void *data;
+	uint32_t fclu = 0;
+	size_t index = 0;
+	size_t lines = 0;
+	size_t cluster_num = 1;
+	char *ptr;
+	struct fat_fileinfo *f;
+
+	fclu = fat_lookup(clu, (char *)name);
+	if (fclu < 0) {
+		pr_err("File is not found.\n");
+		return -1;
+	}
+
+	index = fat_get_index(clu);
+	f = search_node2(info.root[index], fclu)->data;
+
+	data = malloc(info.cluster_size);
+	get_cluster(data, fclu);
+	cluster_num = fat_concat_cluster(f, fclu, &data);
+	if (!cluster_num) {
+		pr_err("Someting wrong in FAT chain.\n");
+		ret = -1;
+		goto out;
+	}
+
+	ptr = data + f->datalen - 1;
+	for (i = 0; i < f->datalen - 1; i++) {
+		if (*ptr == '\n')
+			lines++;
+
+		if (lines > TAIL_COUNT) {
+			ptr++;
+			break;
+		}
+
+		ptr--;
+	}
+
+	pr_msg("%s\n", ptr);
+
+out:
+	free(data);
+	return ret;
+}
+

@@ -13,6 +13,7 @@
 #include <inttypes.h>
 
 #include "list.h"
+#include "bitmap.h"
 #include "nls.h"
 #include "shell.h"
 /**
@@ -144,12 +145,10 @@ struct device_info {
 #define OPTION_OUTPUT       (1 << 4)
 #define OPTION_SECTOR       (1 << 5)
 #define OPTION_UPPER        (1 << 6)
-#define OPTION_SAVE         (1 << 7)
-#define OPTION_LOAD         (1 << 8)
-#define OPTION_READONLY     (1 << 9)
-#define OPTION_DIRECTORY    (1 << 10)
-#define OPTION_FORCE        (1 << 11)
-#define OPTION_ENTRY        (1 << 12)
+#define OPTION_READONLY     (1 << 7)
+#define OPTION_DIRECTORY    (1 << 8)
+#define OPTION_ENTRY        (1 << 9)
+#define OPTION_FATENT       (1 << 10)
 
 #define CREATE_DIRECTORY    (1 << 0)
 
@@ -406,10 +405,12 @@ struct operations {
 	int (*release)(uint32_t);
 	int (*create)(const char *, uint32_t, int);
 	int (*remove)(const char *, uint32_t, int);
-	int (*update)(uint32_t, int);
 	int (*trim)(uint32_t);
 	int (*fill)(uint32_t, uint32_t);
+	int (*contents)(const char *, uint32_t, int);
 };
+
+#define TAIL_COUNT           10
 
 /* FAT/exFAT File Attributes */
 #define ATTR_READ_ONLY       0x01
@@ -457,29 +458,28 @@ struct operations {
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-
-#define input(msg, output) \
-	do { \
-		pr_msg("%s.\n", msg); \
-		pr_msg("#? "); \
-		fflush(stdout); \
-		if (fgets(output, 64, stdin) == NULL) \
-			return 1; \
-	} while (0) \
-
-#define input_time(msg, output) \
-	do { \
-		char tmp_buffer[32] = {0}; \
-		pr_msg("   %s: ", msg); \
-		fflush(stdout); \
-		if (fgets(tmp_buffer, 32, stdin) == NULL) \
-			return 1; \
-		sscanf(tmp_buffer, "%d", (int *)output); \
-	} while (0) \
+#define ROUNDUP(a, b)  ((a + b - 1) / b)
 
 static inline bool is_power2(unsigned int n)
 {
 	return (n != 0 && ((n & (n - 1)) == 0));
+}
+
+/**
+ * Divide pathname into directory and file
+ *
+ * @param[in] path pathname
+ * @return filename
+ * @attention pathname will be overwritten
+ */
+static inline char* strtok_dir(char *path)
+{
+	int i;
+
+	for(i = strlen(path) - 1; i >= 0; i--)
+		if (path[i] == '/')
+			return path + i + 1;
+	return path;
 }
 
 extern struct device_info info;

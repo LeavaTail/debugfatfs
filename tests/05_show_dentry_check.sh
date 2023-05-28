@@ -12,42 +12,39 @@ function test_shell () {
 	set timeout 5
 	spawn ./debugfatfs -iq $1
 	expect \"/> \"
-	send \"\n\"
+	send \"entry 0\n\"
 	expect \"/> \"
-	send \"cd\n\"
+	send \"entry 1\n\"
 	expect \"/> \"
-	send \"cd 00\n\"
-	expect \"/00> \"
-	send \"ls\n\"
-	expect \"/00> \"
-	send \"cd /01\n\"
-	expect \"/01> \"
-	send \"ls\n\"
-	expect \"/01> \"
-	send \"cd /02\n\"
-	expect \"/02> \"
-	send \"ls\n\"
-	expect \"/02> \"
-	send \"cd /00/DIR\n\"
-	expect \"/00/DIR> \"
-	send \"ls\n\"
-	expect \"/00/DIR> \"
-	send \"cd /\n\"
+	send \"entry 2\n\"
 	expect \"/> \"
-	send \"ls\n\"
+	send \"entry 3\n\"
+	expect \"/> \"
+	send \"entry 4\n\"
+	expect \"/> \"
+	send \"entry 5\n\"
 	expect \"/> \"
 	send \"exit\n\"
 	expect eof
 	exit
 	"
 	echo ""
-	sync
+}
+
+function test_options () {
+	./debugfatfs -e 0 $1
+	./debugfatfs -e 1 $1
+	./debugfatfs -e 2 $1
+	./debugfatfs -e 3 $1
+	./debugfatfs -e 4 $1
+	./debugfatfs -e 5 $1
 }
 
 function main() {
 	init_image
 
 	for fs in ${IMAGES[@]}; do
+		test_options ${fs}
 		test_shell ${fs}
 	done
 }

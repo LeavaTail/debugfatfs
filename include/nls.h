@@ -6,9 +6,10 @@
 #define _NLS_H
 #include <stdint.h>
 
-#define SURROGATE_PAIR_MASK     0xF800	//1111 11?? ???? ????
+#define SURROGATE_PAIR_MASK     0xFC00	//1111 11?? ???? ????
 #define SURROGATE_PAIR_UPPER    0xD800	//1101 10?? ???? ????
 #define SURROGATE_PAIR_LOWER    0xDC00	//1101 11?? ???? ????
+#define SURROGATE_BITS          0x03FF	//0000 0011 1111 1111
 
 #define UNICODE_MAX             0x10FFFF
 

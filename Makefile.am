@@ -5,12 +5,17 @@ debugfatfs_SOURCES = src/main.c \
                      src/fat.c \
                      src/exfat.c
 
-man_MANS = debugfatfs.8
-TESTS = tests/00_init.sh \
+TESTS = \
         tests/01_simple_option_check.sh \
         tests/02_simple_inetractive_check.sh \
-        tests/03_simple_check_other.sh \
-        tests/04_simple_invalid_check.sh
+        tests/03_simple_command_check.sh \
+        tests/04_simple_invalid_check.sh \
+        tests/05_show_dentry_check.sh \
+        tests/06_invalid_usage_check.sh \
+        tests/07_invalid_image_check.sh \
+        tests/11_alloc_free_check.sh \
+        tests/21_fat12_root_check.sh \
+        tests/22_fat_lfn_check.sh
 
 EXTRA_DIST = include
 
@@ -26,5 +31,9 @@ AM_CPPFLAGS += -O0 --no-inline -fprofile-arcs -ftest-coverage
 LDFLAGS +=  -fprofile-generate
 endif
 
+if HELP2MAN
+man_MANS = debugfatfs.8
+
 debugfatfs.8: debugfatfs$(EXEEXT)
 	help2man --no-discard-stderr --section=8 -N -o debugfatfs.8 ./debugfatfs
+endif
