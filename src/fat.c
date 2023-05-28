@@ -52,6 +52,7 @@ static int fat_create_shortname(uint16_t *, char *);
 static int fat_convert_shortname(const char *, char *);
 static int fat_create_nameentry(const char *, char *, uint16_t *);
 static uint8_t fat_calculate_checksum(unsigned char *);
+static uint16_t fat_calculate_namehash(uint16_t *, uint8_t);
 static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
 static void fat_convert_fattime(struct tm *, uint16_t *, uint16_t *, uint8_t *);
 static int fat_validate_character(const char);
@@ -965,15 +966,19 @@ int fat_clean_dchain(uint32_t index)
  * @return               fileinfo
  *                       NULL (Not found)
  */
-static struct fat_fileinfo *fat_search_fileinfo(node2_t *node, const char *shortname)
+static struct fat_fileinfo *fat_search_fileinfo(node2_t *node, const char *name)
 {
-	uint8_t chksum;
+	uint16_t hash;
+	uint16_t longname[MAX_NAME_LENGTH] = {0};
+	size_t name_len;
 	node2_t *f_node;
 
 	fat_traverse_directory(node->index);
-	chksum = fat_calculate_checksum((unsigned char *)shortname);
 
-	if ((f_node = search_node2(node, (uint32_t)chksum)) != NULL)
+	name_len = utf8s_to_utf16s((unsigned char *)name, strlen(name), longname);
+	hash = fat_calculate_namehash(longname, name_len);
+
+	if ((f_node = search_node2(node, (uint32_t)hash)) != NULL)
 		return f_node->data;
 	return NULL;
 }
@@ -995,18 +1000,27 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 		struct fat_dentry *file, uint16_t *uniname, size_t namelen)
 {
 	int index, next_clu = 0;
-	uint8_t chksum = 0;
+	uint16_t longname[MAX_NAME_LENGTH] = {0};
+	uint16_t hash = 0;
 	struct fat_fileinfo *f;
 
 	next_clu |= (file->dentry.dir.DIR_FstClusHI << 16) | file->dentry.dir.DIR_FstClusLO;
 	f = malloc(sizeof(struct fat_fileinfo));
 	memset(f->name, '\0', 13);
 	f->namelen = fat_convert_shortname((char *)file->dentry.dir.DIR_Name, (char *)f->name);
-	chksum = fat_calculate_checksum((unsigned char *)f->name);
 
 	f->uniname = malloc(namelen * UTF8_MAX_CHARSIZE + 1);
 	memset(f->uniname, '\0', namelen * UTF8_MAX_CHARSIZE + 1);
 	fat_convert_uniname(uniname, namelen, f->uniname);
+	if (f->uniname[0] != '\0') {
+		hash = fat_calculate_namehash(uniname, strwlen(uniname));
+	} else {
+		uint16_t n[MAX_NAME_LENGTH] = {0};
+		size_t name_len;
+
+		name_len = utf8s_to_utf16s((unsigned char *)f->name, strlen(f->name), n);
+		hash = fat_calculate_namehash(n, name_len);
+	}
 
 	f->namelen = strlen((char *)f->uniname);
 	f->datalen = file->dentry.dir.DIR_FileSize;
@@ -1023,7 +1037,7 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 	fat_convert_unixtime(&f->atime, file->dentry.dir.DIR_LstAccDate,
 			0,
 			0);
-	append_node2(head, chksum, f);
+	append_node2(head, hash, f);
 	 ((struct fat_fileinfo *)(head->data))->cached = 1;
 
 	/* If this entry is Directory, prepare to create next chain */
@@ -1240,6 +1254,26 @@ static uint8_t fat_calculate_checksum(unsigned char *DIR_Name)
 		chksum = ((chksum & 1) & 0x80) + (chksum >> 1) + *DIR_Name++;
 	}
 	return chksum;
+}
+
+/**
+ * fat_calculate_namehash - Calculate name hash
+ * @name:                   points to an in-memory copy of the up-cased file name
+ * @len:                    Name length
+ *
+ * @return                  NameHash
+ */
+static uint16_t fat_calculate_namehash(uint16_t *name, uint8_t len)
+{
+	unsigned char* buffer = (unsigned char *)name;
+	uint16_t bytes = (uint16_t)len * 2;
+	uint16_t hash = 0;
+	uint16_t index;
+
+	for (index = 0; index < bytes; index++)
+		hash = ((hash & 1) ? 0x8000 : 0) + (hash >> 1) + (uint16_t)buffer[index];
+
+	return hash;
 }
 
 /**
@@ -2169,9 +2203,8 @@ int fat_stat(const char *name, uint32_t clu)
 	uint16_t longname[MAX_NAME_LENGTH] = {0};
 	struct fat_fileinfo *f;
 
-	fat_create_nameentry(name, shortname, longname);
 	index = fat_get_index(clu);
-	if ((f = fat_search_fileinfo(info.root[index], shortname)) == NULL) {
+	if ((f = fat_search_fileinfo(info.root[index], name)) == NULL) {
 		pr_err("File is not found.\n");
 		return -1;
 	}

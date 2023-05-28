@@ -496,6 +496,21 @@ static inline char* strtok_dir(char *path)
 	return path;
 }
 
+/**
+ * Return the length of the null-terminated word string
+ *
+ * @param[in] str word string
+ * @return length
+ */
+static inline size_t strwlen(const uint16_t *str)
+{
+	size_t len = 0;
+
+	while (str[len] != '\0')
+		len++;
+	return len;
+}
+
 extern struct device_info info;
 
 /* General function */
