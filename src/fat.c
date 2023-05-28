@@ -968,6 +968,7 @@ static struct fat_fileinfo *fat_search_fileinfo(node2_t *node, const char *short
 	uint8_t chksum;
 	node2_t *f_node;
 
+	fat_traverse_directory(node->index);
 	chksum = fat_calculate_checksum((unsigned char *)shortname);
 
 	if ((f_node = search_node2(node, (uint32_t)chksum)) != NULL)
@@ -2110,25 +2111,21 @@ int fat_contents(const char *name, uint32_t clu, int opt)
 {
 	int i, ret = 0;
 	void *data;
-	uint32_t fclu = 0;
 	size_t index = 0;
 	size_t lines = 0;
 	size_t cluster_num = 1;
 	char *ptr;
 	struct fat_fileinfo *f;
 
-	fclu = fat_lookup(clu, (char *)name);
-	if (fclu < 0) {
+	index = fat_get_index(clu);
+	if ((f = fat_search_fileinfo(info.root[index], name)) == NULL) {
 		pr_err("File is not found.\n");
 		return -1;
 	}
 
-	index = fat_get_index(clu);
-	f = search_node2(info.root[index], fclu)->data;
-
 	data = malloc(info.cluster_size);
-	get_cluster(data, fclu);
-	cluster_num = fat_concat_cluster(f, fclu, &data);
+	get_cluster(data, f->clu);
+	cluster_num = fat_concat_cluster(f, f->clu, &data);
 	if (!cluster_num) {
 		pr_err("Someting wrong in FAT chain.\n");
 		ret = -1;

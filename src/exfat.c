@@ -977,6 +977,7 @@ static struct exfat_fileinfo *exfat_search_fileinfo(node2_t *node, const char *n
 	uint16_t namehash = 0;
 	node2_t *f_node;
 
+	exfat_traverse_directory(node->index);
 	/* convert UTF-8 to UTF16 */
 	len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
 	exfat_convert_upper_character(uniname, len, uppername);
@@ -2285,25 +2286,21 @@ int exfat_contents(const char *name, uint32_t clu, int opt)
 {
 	int i, ret = 0;
 	void *data;
-	uint32_t fclu = 0;
 	size_t index = 0;
 	size_t lines = 0;
 	size_t cluster_num = 1;
 	char *ptr;
 	struct exfat_fileinfo *f;
 
-	fclu = exfat_lookup(clu, (char *)name);
-	if (fclu < 0) {
+	index = exfat_get_index(clu);
+	if ((f = exfat_search_fileinfo(info.root[index], name)) == NULL) {
 		pr_err("File is not found.\n");
 		return -1;
 	}
 
-	index = exfat_get_index(clu);
-	f = search_node2(info.root[index], fclu)->data;
-
 	data = malloc(info.cluster_size);
-	get_cluster(data, fclu);
-	cluster_num = exfat_concat_cluster(f, fclu, &data);
+	get_cluster(data, f->clu);
+	cluster_num = exfat_concat_cluster(f, f->clu, &data);
 	if (!cluster_num) {
 		pr_err("Someting wrong in FAT chain.\n");
 		ret = -1;
