@@ -252,7 +252,6 @@ debugfatfs support support these optoin. (Please look at man-page)
 - **-a**, **--all** --- Trverse all directories
 - **-b**, **--byte**=*offset* --- dump the any byte after dump filesystem information
 - **-c**, **--cluster**=*index* --- dump the cluster after dump filesystem information
-- **-d**, **--direcotry**=*path* --- read directory entry from path
 - **-f**, **--fat=index** --- read FAT entry value for index
 - **-i**, **--interactive** --- prompt the user operate filesystem
 - **-o**, **--output**=*file* --- send output to file rather than stdout
