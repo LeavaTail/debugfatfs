@@ -1063,6 +1063,8 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 	f->attr = file->dentry.file.FileAttributes;
 	f->flags = stream->dentry.stream.GeneralSecondaryFlags;
 	f->hash = stream->dentry.stream.NameHash;
+	f->clu = next_index;
+	f->dir = head->data;
 
 	exfat_convert_unixtime(&f->ctime, file->dentry.file.CreateTimestamp,
 			file->dentry.file.Create10msIncrement,
@@ -1073,7 +1075,7 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 	exfat_convert_unixtime(&f->atime, file->dentry.file.LastAccessedTimestamp,
 			0,
 			file->dentry.file.LastAccessdUtcOffset);
-	append_node2(head, next_index, f);
+	append_node2(head, f->hash, f);
 	((struct exfat_fileinfo *)(head->data))->cached = 1;
 
 	/* If this entry is Directory, prepare to create next chain */
@@ -1086,6 +1088,8 @@ static void exfat_create_fileinfo(node2_t *head, uint32_t clu,
 		d->attr = file->dentry.file.FileAttributes;
 		d->flags = stream->dentry.stream.GeneralSecondaryFlags;
 		d->hash = stream->dentry.stream.NameHash;
+		d->clu = next_index;
+		d->dir = head->data;
 
 		index = exfat_get_index(next_index);
 		info.root[index] = init_node2(next_index, d);
@@ -1574,7 +1578,7 @@ int exfat_lookup(uint32_t clu, char *name)
 			tmp = tmp->next;
 			f = (struct exfat_fileinfo *)tmp->data;
 			if (!strcmp(path[i], (char *)f->name)) {
-				clu = tmp->index;
+				clu = f->clu;
 				found = true;
 				break;
 			}

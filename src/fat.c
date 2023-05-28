@@ -960,12 +960,14 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 		struct fat_dentry *file, uint16_t *uniname, size_t namelen)
 {
 	int index, next_clu = 0;
+	uint8_t chksum = 0;
 	struct fat_fileinfo *f;
 
 	next_clu |= (file->dentry.dir.DIR_FstClusHI << 16) | file->dentry.dir.DIR_FstClusLO;
 	f = malloc(sizeof(struct fat_fileinfo));
 	memset(f->name, '\0', 13);
 	f->namelen = fat_convert_shortname((char *)file->dentry.dir.DIR_Name, (char *)f->name);
+	chksum = fat_calculate_checksum((unsigned char *)f->name);
 
 	f->uniname = malloc(namelen * UTF8_MAX_CHARSIZE + 1);
 	memset(f->uniname, '\0', namelen * UTF8_MAX_CHARSIZE + 1);
@@ -974,6 +976,8 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 	f->namelen = strlen((char *)f->uniname);
 	f->datalen = file->dentry.dir.DIR_FileSize;
 	f->attr = file->dentry.dir.DIR_Attr;
+	f->clu = next_clu;
+	f->dir = head->data;
 
 	fat_convert_unixtime(&f->ctime, file->dentry.dir.DIR_CrtDate,
 			file->dentry.dir.DIR_CrtTime,
@@ -984,7 +988,7 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 	fat_convert_unixtime(&f->atime, file->dentry.dir.DIR_LstAccDate,
 			0,
 			0);
-	append_node2(head, next_clu, f);
+	append_node2(head, chksum, f);
 	 ((struct fat_fileinfo *)(head->data))->cached = 1;
 
 	/* If this entry is Directory, prepare to create next chain */
@@ -996,6 +1000,8 @@ static void fat_create_fileinfo(node2_t *head, uint32_t clu,
 		d->namelen = namelen;
 		d->datalen = file->dentry.dir.DIR_FileSize;
 		d->attr = file->dentry.dir.DIR_Attr;
+		d->clu = next_clu;
+		d->dir = head->data;
 
 		index = fat_get_index(next_clu);
 		info.root[index] = init_node2(next_clu, d);
@@ -1385,13 +1391,13 @@ int fat_lookup(uint32_t clu, char *name)
 			f = (struct fat_fileinfo *)tmp->data;
 			if (f->namelen) {
 				if (!strncmp(path[i], (char *)f->uniname, strlen(path[i]))) {
-					clu = tmp->index;
+					clu = f->clu;
 					found = true;
 					break;
 				}
 			} else {
 				if (!strncmp(path[i], (char *)f->name, strlen(path[i]))) {
-					clu = tmp->index;
+					clu = f->clu;
 					found = true;
 					break;
 				}

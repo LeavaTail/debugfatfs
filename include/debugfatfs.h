@@ -175,6 +175,8 @@ struct fat_fileinfo {
 	struct tm ctime;
 	struct tm atime;
 	struct tm mtime;
+	uint32_t clu;
+	struct fat_fileinfo *dir;
 };
 
 struct exfat_fileinfo {
@@ -188,6 +190,8 @@ struct exfat_fileinfo {
 	struct tm atime;
 	struct tm mtime;
 	uint16_t hash;
+	uint32_t clu;
+	struct exfat_fileinfo *dir;
 };
 
 struct pseudo_bootsec {
