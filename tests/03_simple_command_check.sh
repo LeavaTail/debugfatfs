@@ -30,6 +30,8 @@ function test_shell () {
 	expect \"/00> \"
 	send \"tail FILE2.TXT\n\"
 	expect \"/00> \"
+	send \"stat FILE1.TXT\n\"
+	expect \"/00> \"
 	send \"create SAMPLE00.TXT\n\"
 	expect \"/00> \"
 	send \"create -d DIR00001.TXT\n\"
