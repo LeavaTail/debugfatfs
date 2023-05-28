@@ -499,7 +499,7 @@ int main(int argc, char *argv[])
 				attr |= OPTION_READONLY;
 				break;
 			case 'q':
-				attr |= OPTION_QUIET;
+				print_level = PRINT_ERR;
 				break;
 			case 'u':
 				attr |= OPTION_UPPER;

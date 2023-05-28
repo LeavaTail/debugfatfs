@@ -145,16 +145,15 @@ struct device_info {
 };
 
 #define OPTION_ALL          (1 << 0)
-#define OPTION_QUIET        (1 << 1)
-#define OPTION_CLUSTER      (1 << 2)
-#define OPTION_INTERACTIVE  (1 << 3)
-#define OPTION_OUTPUT       (1 << 4)
-#define OPTION_SECTOR       (1 << 5)
-#define OPTION_UPPER        (1 << 6)
-#define OPTION_READONLY     (1 << 7)
-#define OPTION_DIRECTORY    (1 << 8)
-#define OPTION_ENTRY        (1 << 9)
-#define OPTION_FATENT       (1 << 10)
+#define OPTION_CLUSTER      (1 << 1)
+#define OPTION_INTERACTIVE  (1 << 2)
+#define OPTION_OUTPUT       (1 << 3)
+#define OPTION_SECTOR       (1 << 4)
+#define OPTION_UPPER        (1 << 5)
+#define OPTION_READONLY     (1 << 6)
+#define OPTION_DIRECTORY    (1 << 7)
+#define OPTION_ENTRY        (1 << 8)
+#define OPTION_FATENT       (1 << 9)
 
 #define CREATE_DIRECTORY    (1 << 0)
 
