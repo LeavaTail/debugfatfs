@@ -65,6 +65,7 @@ int fat_convert_character(const char *, size_t, char *);
 int fat_clean(uint32_t);
 int fat_set_fat_entry(uint32_t, uint32_t);
 int fat_get_fat_entry(uint32_t, uint32_t *);
+int fat_validate_fat_entry(uint32_t);
 int fat_print_dentry(uint32_t, size_t);
 int fat_set_bogus_entry(uint32_t);
 int fat_release_cluster(uint32_t);
@@ -84,6 +85,7 @@ static const struct operations fat_ops = {
 	.clean = fat_clean,
 	.setfat = fat_set_fat_entry,
 	.getfat = fat_get_fat_entry,
+	.validfat = fat_validate_fat_entry,
 	.dentry = fat_print_dentry,
 	.alloc = fat_set_bogus_entry,
 	.release = fat_release_cluster,
@@ -93,6 +95,9 @@ static const struct operations fat_ops = {
 	.fill = fat_fill,
 	.contents = fat_contents,
 };
+
+static uint32_t BAD_CLUSTER = 0;
+static uint32_t LAST_CLUSTER = 0;
 
 /*************************************************************************************************/
 /*                                                                                               */
@@ -199,10 +204,16 @@ int fat_check_filesystem(struct pseudo_bootsec *boot)
 
 	if (CountofClusters < FAT16_CLUSTERS - 1) {
 		info.fstype = FAT12_FILESYSTEM;
+		BAD_CLUSTER = FAT12_BADCLUSTER;
+		LAST_CLUSTER = FAT12_LASTCLUSTER;
 	} else if (CountofClusters < FAT32_CLUSTERS - 1) {
 		info.fstype = FAT16_FILESYSTEM;
+		BAD_CLUSTER = FAT16_BADCLUSTER;
+		LAST_CLUSTER = FAT16_LASTCLUSTER;
 	} else {
 		info.fstype = FAT32_FILESYSTEM;
+		BAD_CLUSTER = FAT32_BADCLUSTER;
+		LAST_CLUSTER = FAT32_LASTCLUSTER;
 	}
 
 	info.sector_size = b->BPB_BytesPerSec;
@@ -1575,6 +1586,27 @@ int fat_get_fat_entry(uint32_t clu, uint32_t *entry)
 			ret = -1;
 	}
 	return ret;
+}
+
+/**
+ * fat_validate_fat_entry - Validate FAT entry
+ * @clu:                    index of the cluster
+ *
+ * @retrun:                 1 (@clu is valid)
+ *                          0 (@clu in invalid)
+ */
+int fat_validate_fat_entry(uint32_t clu)
+{
+	int is_valid = 0;
+
+	if (FAT_FSTCLUSTER <= clu && clu <= info.cluster_count)
+		is_valid = 1;
+	if (clu == BAD_CLUSTER)
+		is_valid = 0;
+	if (clu == LAST_CLUSTER)
+		is_valid = 1;
+
+	return is_valid;
 }
 
 /**

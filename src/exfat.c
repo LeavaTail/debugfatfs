@@ -76,6 +76,7 @@ int exfat_convert_character(const char *, size_t, char *);
 int exfat_clean(uint32_t);
 int exfat_set_fat_entry(uint32_t, uint32_t);
 int exfat_get_fat_entry(uint32_t, uint32_t *);
+int exfat_validate_fat_entry(uint32_t);
 int exfat_print_dentry(uint32_t, size_t);
 int exfat_set_bitmap(uint32_t);
 int exfat_clear_bitmap(uint32_t);
@@ -95,6 +96,7 @@ static const struct operations exfat_ops = {
 	.clean = exfat_clean,
 	.setfat = exfat_set_fat_entry,
 	.getfat = exfat_get_fat_entry,
+	.validfat = exfat_validate_fat_entry,
 	.dentry = exfat_print_dentry,
 	.alloc = exfat_set_bitmap,
 	.release = exfat_clear_bitmap,
@@ -1744,6 +1746,32 @@ int exfat_get_fat_entry(uint32_t clu, uint32_t *entry)
 {
 	*entry = exfat_check_fat_entry(clu);
 	return 0;
+}
+
+/**
+ * exfat_validate_fat_entry - Validate FAT entry
+ * @clu:                      index of the cluster
+ *
+ * @retrun:                   1 (@clu is valid)
+ *                            0 (@clu in invalid)
+ */
+int exfat_validate_fat_entry(uint32_t clu)
+{
+	int is_valid = 0;
+
+	if (!exfat_load_bitmap(clu)) {
+		pr_warn("cluster %u isn't allocated cluster.\n", clu);
+		is_valid = 0;
+	}
+
+	if (EXFAT_FIRST_CLUSTER <= clu && clu <= info.cluster_count + 1)
+		is_valid = 1;
+	else if (clu == EXFAT_BADCLUSTER)
+		is_valid = 0;
+	else if (clu == EXFAT_LASTCLUSTER)
+		is_valid = 1;
+
+	return is_valid;
 }
 
 /**

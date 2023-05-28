@@ -81,6 +81,12 @@ extern FILE *output;
 #define FAT12_RESERVED  0xFF8
 #define FAT16_RESERVED  0xFFF8
 #define FAT32_RESERVED  0x0FFFFFF8
+#define FAT12_BADCLUSTER   0xFF7
+#define FAT16_BADCLUSTER   0xFFF7
+#define FAT32_BADCLUSTER   0x0FFFFFF7
+#define FAT12_LASTCLUSTER  0xFFF
+#define FAT16_LASTCLUSTER  0xFFFF
+#define FAT32_LASTCLUSTER  0x0FFFFFFF
 /*
  * exFAT definition
  */
@@ -404,6 +410,7 @@ struct operations {
 	int (*clean)(uint32_t);
 	int (*setfat)(uint32_t, uint32_t);
 	int (*getfat)(uint32_t, uint32_t *);
+	int (*validfat)(uint32_t);
 	int (*dentry)(uint32_t, size_t);
 	int (*alloc)(uint32_t);
 	int (*release)(uint32_t);
