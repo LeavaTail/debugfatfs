@@ -41,6 +41,7 @@ static int fat_check_dchain(uint32_t);
 static int fat_get_index(uint32_t);
 static int fat_traverse_directory(uint32_t);
 int fat_clean_dchain(uint32_t);
+static struct fat_fileinfo *fat_search_fileinfo(node2_t *, const char *);
 
 /* File function prototype */
 static void fat_create_fileinfo(node2_t *, uint32_t, struct fat_dentry *, uint16_t *, size_t);
@@ -952,6 +953,26 @@ int fat_clean_dchain(uint32_t index)
 	}
 	free_list2(info.root[index]);
 	return 0;
+}
+
+/**
+ * fat_search_fileinfo - function to clean opeartions
+ * @node:                directory chain index
+ * @name:                filename
+ *
+ * @return               fileinfo
+ *                       NULL (Not found)
+ */
+static struct fat_fileinfo *fat_search_fileinfo(node2_t *node, const char *shortname)
+{
+	uint8_t chksum;
+	node2_t *f_node;
+
+	chksum = fat_calculate_checksum((unsigned char *)shortname);
+
+	if ((f_node = search_node2(node, (uint32_t)chksum)) != NULL)
+		return f_node->data;
+	return NULL;
 }
 
 /*************************************************************************************************/

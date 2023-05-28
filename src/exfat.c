@@ -42,7 +42,7 @@ static int exfat_get_index(uint32_t);
 static int exfat_load_extra_entry(void);
 static int exfat_traverse_directory(uint32_t);
 static int exfat_clean_dchain(uint32_t);
-static struct exfat_fileinfo *exfat_search_file(node2_t *, uint16_t);
+static struct exfat_fileinfo *exfat_search_fileinfo(node2_t *, const char *);
 
 /* File function prototype */
 static void exfat_create_fileinfo(node2_t *,
@@ -961,16 +961,29 @@ static int exfat_clean_dchain(uint32_t index)
 	return 0;
 }
 
-static struct exfat_fileinfo *exfat_search_file(node2_t *node, uint16_t hash)
+/**
+ * exfat_search_fileinfo - srach fileinfo from directory chain
+ * @node:                  directory chain index
+ * @name:                  filename
+ *
+ * @return                 fileinfo
+ *                         NULL (Not found)
+ */
+static struct exfat_fileinfo *exfat_search_fileinfo(node2_t *node, const char *name)
 {
-	struct exfat_fileinfo *f;
+	uint16_t uniname[MAX_NAME_LENGTH] = {0};
+	uint16_t uppername[MAX_NAME_LENGTH] = {0};
+	uint8_t len;
+	uint16_t namehash = 0;
+	node2_t *f_node;
 
-	while (node->next != NULL) {
-		node = node->next;
-		f = (struct exfat_fileinfo *)(node->data);
-		if (f->hash == hash)
-			return f;
-	}
+	/* convert UTF-8 to UTF16 */
+	len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
+	exfat_convert_upper_character(uniname, len, uppername);
+	namehash = exfat_calculate_namehash(uppername, len);
+
+	if ((f_node = search_node2(node, (uint32_t)namehash)) != NULL)
+		return f_node->data;
 	return NULL;
 }
 
@@ -1963,7 +1976,6 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	void *data;
 	uint16_t uniname[MAX_NAME_LENGTH] = {0};
 	uint16_t uppername[MAX_NAME_LENGTH] = {0};
-	uint16_t namehash = 0;
 	uint8_t len;
 	uint8_t count;
 	size_t index = exfat_get_index(clu);
@@ -1980,8 +1992,7 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	count = ROUNDUP(len, ENTRY_NAME_MAX) + 1;
 
 	/* Prohibit duplicate filename */
-	namehash = exfat_calculate_namehash(uppername, len);
-	if (exfat_search_file(info.root[index], namehash)) {
+	if (exfat_search_fileinfo(info.root[index], name)) {
 		pr_err("cannot create %s: File exists\n", name);
 		return -1;
 	}
