@@ -114,7 +114,6 @@ static int cmd_ls(int argc, char **argv, char **envp)
 static int cmd_cd(int argc, char **argv, char **envp)
 {
 	int dir = 0;
-	char *path = "/";
 	char buf[ARG_MAXLEN] = {};
 	char pwd[ARG_MAXLEN] = {};
 

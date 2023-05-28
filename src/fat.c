@@ -273,9 +273,8 @@ static int fat_print_label(void)
  */
 static void fat_print_fat(void)
 {
-	uint32_t i, j;
-	uint32_t *fat, offset;
-	size_t sector_num = (info.fat_length + (info.sector_size - 1)) / info.sector_size;
+	uint32_t i;
+	uint32_t offset;
 	bitmap_t b;
 
 	init_bitmap(&b, info.cluster_count);
@@ -509,7 +508,6 @@ static int fat12_set_fat_entry(uint32_t clu, uint32_t entry)
  */
 static int fat16_set_fat_entry(uint32_t clu, uint32_t entry)
 {
-	uint32_t ret = 0;
 	size_t entry_per_sector = info.sector_size / sizeof(uint16_t);
 	uint32_t fat_index = (info.fat_offset +  clu / entry_per_sector) * info.sector_size;
 	uint16_t *fat;
@@ -532,7 +530,6 @@ static int fat16_set_fat_entry(uint32_t clu, uint32_t entry)
  */
 static int fat32_set_fat_entry(uint32_t clu, uint32_t entry)
 {
-	uint32_t ret = 0;
 	size_t entry_per_sector = info.sector_size / sizeof(uint32_t);
 	uint32_t fat_index = (info.fat_offset +  clu / entry_per_sector) * info.sector_size;
 	uint32_t *fat;

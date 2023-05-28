@@ -1644,6 +1644,7 @@ int exfat_convert_character(const char *src, size_t len, char *dist)
 
 	/* convert UTF-16 to convert UTF-8 */
 	utf8_len = utf16s_to_utf8s(utf16_upper, utf16_len, (unsigned char *)dist);
+	pr_debug("Convert \'%s\'(%zu) to \'%s\'(%d)\n", src, len, dist, utf8_len);
 
 	free(utf16_upper);
 	free(utf16_src);
