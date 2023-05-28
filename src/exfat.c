@@ -726,12 +726,12 @@ static int exfat_new_clusters(size_t num_alloc)
 /* DIRECTORY CHAIN FUNCTION                                                                      */
 /*                                                                                               */
 /*************************************************************************************************/
-#ifdef DEBUGFATFS_DEBUG
 /**
  * exfat_print_dchain - print directory chain
  */
 static void exfat_print_dchain(void)
 {
+#ifdef DEBUGFATFS_DEBUG
 	int i;
 	node2_t *tmp;
 	struct exfat_fileinfo *f;
@@ -748,8 +748,8 @@ static void exfat_print_dchain(void)
 		pr_msg("\n");
 	}
 	pr_msg("\n");
-}
 #endif
+}
 /**
  * exfat_check_dchain - check whether @index has already loaded
  * @clu:                index of the cluster
@@ -931,6 +931,9 @@ static int exfat_traverse_directory(uint32_t clu)
 		}
 	}
 	free(data);
+
+	exfat_print_dchain();
+
 	return 0;
 }
 

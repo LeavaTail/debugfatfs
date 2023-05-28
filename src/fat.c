@@ -773,12 +773,12 @@ static int fat_new_clusters(size_t num_alloc)
 /* DIRECTORY CHAIN FUNCTION                                                                      */
 /*                                                                                               */
 /*************************************************************************************************/
-#ifdef DEBUGFATFS_DEBUG
 /**
  * fat_print_dchain - print directory chain
  */
 static void fat_print_dchain(void)
 {
+#ifdef DEBUGFATFS_DEBUG
 	int i;
 	node2_t *tmp;
 	struct fat_fileinfo *f;
@@ -795,8 +795,8 @@ static void fat_print_dchain(void)
 		pr_msg("\n");
 	}
 	pr_msg("\n");
-}
 #endif
+}
 /**
  * fat_check_dchain - check whether @index has already loaded
  * @clu:              index of the cluster
@@ -922,6 +922,9 @@ static int fat_traverse_directory(uint32_t clu)
 		fat_create_fileinfo(info.root[index], clu, &d, uniname, namelen);
 	}
 	free(data);
+
+	fat_print_dchain();
+
 	return 0;
 }
 
