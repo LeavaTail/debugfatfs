@@ -1884,10 +1884,22 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 	uint16_t namehash = 0;
 	uint8_t remaining;
 	size_t index = exfat_get_index(clu);
-	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
+	struct exfat_fileinfo *dir = (struct exfat_fileinfo *)info.root[index]->data;
+	struct exfat_fileinfo *file;
 	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
 	size_t cluster_num = 1;
 	struct exfat_dentry *d, *s, *n;
+
+	if ((file = exfat_search_fileinfo(info.root[exfat_get_index(clu)], name)) == NULL) {
+		pr_err("File is not found.\n");
+		return -1;
+	}
+
+	/* Prohibit remove directory */
+	if (file->attr & ATTR_DIRECTORY) {
+		pr_err("Cannot remove directory.\n");
+		return -1;
+	}
 
 	/* convert UTF-8 to UTF16 */
 	name_len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
@@ -1898,7 +1910,7 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 	data = malloc(info.cluster_size);
 	get_cluster(data, clu);
 
-	cluster_num = exfat_concat_cluster(f, clu, &data);
+	cluster_num = exfat_concat_cluster(dir, clu, &data);
 	entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
 
 	for (i = 0; i < entries; i++) {
@@ -1957,7 +1969,7 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 		}
 	}
 out:
-	exfat_set_cluster(f, clu, data);
+	exfat_set_cluster(dir, clu, data);
 	free(data);
 	return ret;
 }

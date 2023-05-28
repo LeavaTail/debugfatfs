@@ -1823,12 +1823,24 @@ int fat_remove(const char *name, uint32_t clu, int opt)
 	char shortname[11] = {0};
 	uint16_t longname[MAX_NAME_LENGTH] = {0};
 	size_t index = fat_get_index(clu);
-	struct fat_fileinfo *f = (struct fat_fileinfo *)info.root[index]->data;
+	struct fat_fileinfo *dir = (struct fat_fileinfo *)info.root[index]->data;
+	struct fat_fileinfo *file;
 	size_t size;
 	size_t entries;
 	size_t cluster_num = 1;
 	uint8_t chksum = 0;
 	struct fat_dentry *d;
+
+	if ((file = fat_search_fileinfo(info.root[fat_get_index(clu)], name)) == NULL) {
+		pr_err("File is not found.\n");
+		return -1;
+	}
+
+	/* Prohibit remove directory */
+	if (file->attr & ATTR_DIRECTORY) {
+		pr_err("Cannot remove directory.\n");
+		return -1;
+	}
 
 	/* convert UTF-8 to UTF16 */
 	fat_create_nameentry(name, shortname, longname);
@@ -1838,7 +1850,7 @@ int fat_remove(const char *name, uint32_t clu, int opt)
 	if (clu) {
 		data = malloc(info.cluster_size);
 		get_cluster(data, clu);
-		cluster_num = fat_concat_cluster(f, clu, &data);
+		cluster_num = fat_concat_cluster(dir, clu, &data);
 		size = info.cluster_size * cluster_num;
 		entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
 	} else {
@@ -1874,7 +1886,7 @@ int fat_remove(const char *name, uint32_t clu, int opt)
 out:
 
 	if (clu)
-		fat_set_cluster(f, clu, data);
+		fat_set_cluster(dir, clu, data);
 	else
 		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
 	free(data);
