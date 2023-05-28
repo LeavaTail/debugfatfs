@@ -454,6 +454,7 @@ int main(int argc, char *argv[])
 	uint32_t fatent = 0;
 	uint32_t value = 0;
 	uint32_t sector = 0;
+	char *filepath = NULL;
 	char *outfile = NULL;
 	char *dir = NULL;
 	char *input = NULL;
@@ -524,9 +525,16 @@ int main(int argc, char *argv[])
 	print_level = PRINT_DEBUG;
 #endif
 
-	if (optind != argc - 1) {
-		usage();
-		exit(EXIT_FAILURE);
+	switch (argc - optind) {
+		case 1:
+			break;
+		case 2:
+			filepath = argv[optind + 1];
+			break;
+		default:
+			usage();
+			exit(EXIT_FAILURE);
+			break;
 	}
 
 	init_device_info();
@@ -637,6 +645,25 @@ int main(int argc, char *argv[])
 
 		if (ret < 0)
 			goto out;
+	}
+
+	/* file argument */
+	if (filepath) {
+		uint32_t p_clu;
+		char *tmp;
+
+		tmp = calloc(strlen(filepath), sizeof(char));
+
+		strncpy(tmp, filepath, strlen(filepath));
+		filepath = strtok_dir(tmp);
+		/* FIXME: workaround to search non-AbsolutePath */
+		if (filepath == tmp)
+			snprintf(tmp, sizeof("/") + 1, "/");
+
+		p_clu = info.ops->lookup(info.root_offset, tmp);
+		ret = info.ops->stat(filepath, p_clu);
+
+		free(tmp);
 	}
 
 out:

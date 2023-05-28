@@ -83,6 +83,7 @@ int exfat_remove(const char *, uint32_t, int);
 int exfat_trim(uint32_t);
 int exfat_fill(uint32_t, uint32_t);
 int exfat_contents(const char *, uint32_t, int);
+int exfat_stat(const char *, uint32_t);
 
 static const struct operations exfat_ops = {
 	.statfs = exfat_print_bootsec,
@@ -103,6 +104,7 @@ static const struct operations exfat_ops = {
 	.trim = exfat_trim,
 	.fill = exfat_fill,
 	.contents = exfat_contents,
+	.stat = exfat_stat,
 };
 
 /*************************************************************************************************/
@@ -2324,5 +2326,52 @@ int exfat_contents(const char *name, uint32_t clu, int opt)
 out:
 	free(data);
 	return ret;
+}
+
+/**
+ * exfat_stat - function interface to display file status
+ * @name:     Filename in UTF-8
+ * @clu:      Directory cluster Index
+ *
+ * @return      0 (Success)
+ *             -1 (Not found)
+ */
+int exfat_stat(const char *name, uint32_t clu)
+{
+	size_t index = 0;
+	struct exfat_fileinfo *f;
+
+	index = exfat_get_index(clu);
+	if ((f = exfat_search_fileinfo(info.root[index], name)) == NULL) {
+		pr_err("File is not found.\n");
+		return -1;
+	}
+
+	pr_msg("File Name:   %s\n", f->name);
+	pr_msg("File Size:   %zu\n", f->datalen);
+	pr_msg("Clusters:    %zu\n", ROUNDUP(f->datalen, info.cluster_size));
+	pr_msg("First Clu:   %u\n", f->clu);
+
+	pr_msg("File Attr:   %c%c%c%c%c\n", f->attr & ATTR_READ_ONLY ? 'R' : '-',
+			f->attr & ATTR_HIDDEN ? 'H' : '-',
+			f->attr & ATTR_SYSTEM ? 'S' : '-',
+			f->attr & ATTR_DIRECTORY ? 'D' : '-',
+			f->attr & ATTR_ARCHIVE ? 'A' : '-');
+	pr_msg("File Flags:  %s/ %s\n",
+			f->flags & ALLOC_NOFATCHAIN ? "NoFatChain" : "FatChain",
+			f->flags & ALLOC_POSIBLE ? "AllocationPossible" : "AllocationImpossible");
+
+	pr_msg("Access Time: %02d-%02d-%02d %02d:%02d:%02d\n",
+			1980 + f->atime.tm_year, f->atime.tm_mon, f->atime.tm_mday,
+			f->atime.tm_hour, f->atime.tm_min, f->atime.tm_sec);
+	pr_msg("Modify Time: %02d-%02d-%02d %02d:%02d:%02d\n",
+			1980 + f->mtime.tm_year, f->mtime.tm_mon, f->mtime.tm_mday,
+			f->mtime.tm_hour, f->mtime.tm_min, f->mtime.tm_sec);
+	pr_msg("Create Time: %02d-%02d-%02d %02d:%02d:%02d\n",
+			1980 + f->ctime.tm_year, f->ctime.tm_mon, f->ctime.tm_mday,
+			f->ctime.tm_hour, f->ctime.tm_min, f->ctime.tm_sec);
+	pr_msg("\n");
+
+	return 0;
 }
 

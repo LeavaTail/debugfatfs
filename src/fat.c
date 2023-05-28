@@ -75,6 +75,7 @@ int fat_remove(const char *, uint32_t, int);
 int fat_trim(uint32_t);
 int fat_fill(uint32_t, uint32_t);
 int fat_contents(const char *, uint32_t, int);
+int fat_stat(const char *, uint32_t);
 
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
@@ -95,6 +96,7 @@ static const struct operations fat_ops = {
 	.trim = fat_trim,
 	.fill = fat_fill,
 	.contents = fat_contents,
+	.stat = fat_stat,
 };
 
 static uint32_t BAD_CLUSTER = 0;
@@ -2147,5 +2149,53 @@ int fat_contents(const char *name, uint32_t clu, int opt)
 out:
 	free(data);
 	return ret;
+}
+
+/**
+ * fat_stat - function interface to display file status
+ * @name:     Filename in UTF-8
+ * @clu:      Directory cluster Index
+ *
+ * @return    0 (Success)
+ *           -1 (Not found)
+ */
+int fat_stat(const char *name, uint32_t clu)
+{
+	size_t index = 0;
+	char shortname[11] = {0};
+	uint16_t longname[MAX_NAME_LENGTH] = {0};
+	struct fat_fileinfo *f;
+
+	fat_create_nameentry(name, shortname, longname);
+	index = fat_get_index(clu);
+	if ((f = fat_search_fileinfo(info.root[index], shortname)) == NULL) {
+		pr_err("File is not found.\n");
+		return -1;
+	}
+
+	pr_msg("Short Name:  %s\n", f->name);
+	pr_msg("Long Name:   %s\n", f->uniname);
+	pr_msg("File Size:   %zu\n", f->datalen);
+	pr_msg("Clusters:    %zu\n", ROUNDUP(f->datalen, info.cluster_size));
+	pr_msg("First Clu:   %u\n", f->clu);
+
+	pr_msg("File Attr:   %c%c%c%c%c\n", f->attr & ATTR_READ_ONLY ? 'R' : '-',
+			f->attr & ATTR_HIDDEN ? 'H' : '-',
+			f->attr & ATTR_SYSTEM ? 'S' : '-',
+			f->attr & ATTR_DIRECTORY ? 'D' : '-',
+			f->attr & ATTR_ARCHIVE ? 'A' : '-');
+
+	pr_msg("Access Time: %02d-%02d-%02d %02d:%02d:%02d\n",
+			1980 + f->atime.tm_year, f->atime.tm_mon, f->atime.tm_mday,
+			f->atime.tm_hour, f->atime.tm_min, f->atime.tm_sec);
+	pr_msg("Modify Time: %02d-%02d-%02d %02d:%02d:%02d\n",
+			1980 + f->mtime.tm_year, f->mtime.tm_mon, f->mtime.tm_mday,
+			f->mtime.tm_hour, f->mtime.tm_min, f->mtime.tm_sec);
+	pr_msg("Create Time: %02d-%02d-%02d %02d:%02d:%02d\n",
+			1980 + f->ctime.tm_year, f->ctime.tm_mon, f->ctime.tm_mday,
+			f->ctime.tm_hour, f->ctime.tm_min, f->ctime.tm_sec);
+	pr_msg("\n");
+
+	return 0;
 }
 

@@ -418,6 +418,7 @@ struct operations {
 	int (*trim)(uint32_t);
 	int (*fill)(uint32_t, uint32_t);
 	int (*contents)(const char *, uint32_t, int);
+	int (*stat)(const char *, uint32_t);
 };
 
 #define TAIL_COUNT           10
