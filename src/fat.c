@@ -1596,8 +1596,6 @@ int fat_clean(uint32_t index)
  */
 int fat_set_fat_entry(uint32_t clu, uint32_t entry)
 {
-	int ret = 0;
-
 	switch (info.fstype) {
 		case FAT12_FILESYSTEM:
 			fat12_set_fat_entry(clu, entry);
@@ -1609,10 +1607,9 @@ int fat_set_fat_entry(uint32_t clu, uint32_t entry)
 			fat32_set_fat_entry(clu, entry);
 			break;
 		default:
-			pr_err("Expected FAT filesystem, But this is not FAT filesystem.\n");
-			ret = -1;
+			break;
 	}
-	return ret;
+	return 0;
 }
 
 /**
@@ -1620,13 +1617,11 @@ int fat_set_fat_entry(uint32_t clu, uint32_t entry)
  * @clu:               index of the cluster want to check
  * @entry:             any cluster index (Output)
  *
- * @return              0
- *                     -1 (invalid image)
+ * @return              1 (@clu is invalid)
+ *                      0 (@clu is valid)
  */
 int fat_get_fat_entry(uint32_t clu, uint32_t *entry)
 {
-	int ret = 0;
-
 	switch (info.fstype) {
 		case FAT12_FILESYSTEM:
 			*entry = fat12_get_fat_entry(clu);
@@ -1638,10 +1633,9 @@ int fat_get_fat_entry(uint32_t clu, uint32_t *entry)
 			*entry = fat32_get_fat_entry(clu);
 			break;
 		default:
-			pr_err("Expected FAT filesystem, But this is not FAT filesystem.\n");
-			ret = -1;
+			break;
 	}
-	return ret;
+	return !fat_validate_fat_entry(*entry);
 }
 
 /**
