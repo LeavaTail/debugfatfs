@@ -240,6 +240,8 @@ int exfat_check_filesystem(struct pseudo_bootsec *boot)
 		f->datalen = info.cluster_count * info.cluster_size;
 		f->attr = ATTR_DIRECTORY;
 		f->hash = 0;
+		f->clu = info.root_offset;
+		f->dir = NULL;
 		info.root[0] = init_node2(info.root_offset, f);
 		exfat_load_extra_entry();
 
