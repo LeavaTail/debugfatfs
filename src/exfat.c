@@ -162,7 +162,7 @@ static uint32_t exfat_concat_cluster(struct exfat_fileinfo *f, uint32_t clu, voi
 	*data = tmp;
 
 	clu = fst_clu;
-	for (i = 1; i < allocated; i++) {
+	for (i = 0; i < allocated; i++) {
 		exfat_get_fat_entry(clu, &next_clu);
 		get_cluster(*data + info.cluster_size * i, clu);
 		clu = next_clu;
