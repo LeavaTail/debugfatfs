@@ -133,7 +133,7 @@ static uint32_t fat_concat_cluster(struct fat_fileinfo *f, uint32_t clu, void **
 
 	for (i = 0; i < allocated; i++) {
 		fat_get_fat_entry(clu, &ret);
-		get_cluster(*data + info.cluster_size * i, ret);
+		get_cluster(*data + info.cluster_size * i, clu);
 		clu = ret;
 	}
 
