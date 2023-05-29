@@ -684,7 +684,11 @@ static int exfat_free_clusters(struct exfat_fileinfo *f, uint32_t clu, size_t nu
 		clu = next_clu;
 	}
 
-	f->datalen -= num_alloc * info.cluster_size;
+	if (f->datalen > num_alloc * info.cluster_size)
+		f->datalen -= num_alloc * info.cluster_size;
+	else
+		f->datalen = 0;
+
 	exfat_update_filesize(f, fst_clu);
 	return 0;
 }
@@ -1969,6 +1973,8 @@ int exfat_remove(const char *name, uint32_t clu, int opt)
 		}
 	}
 out:
+	exfat_free_clusters(file, file->clu, ROUNDUP(file->datalen, info.cluster_size));
+	exfat_clean_dchain(clu);
 	exfat_set_cluster(dir, clu, data);
 	free(data);
 	return ret;
