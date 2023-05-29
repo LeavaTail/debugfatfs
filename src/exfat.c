@@ -1218,18 +1218,13 @@ static int exfat_update_filesize(struct exfat_fileinfo *f, uint32_t clu)
 	if (clu == info.root_offset)
 		return 0;
 
-	for (i = 0; i < info.root_size && info.root[i]; i++) {
-		if (search_node2(info.root[i], clu)) {
-			parent_clu = info.root[i]->index;
-			dir = info.root[i]->data;
-			break;
-		}
-	}
-
-	if (!parent_clu) {
+	if (!f->dir) {
 		pr_err("Can't find cluster %u parent directory.\n", clu);
 		return -1;
 	}
+
+	dir = f->dir;
+	parent_clu = dir->clu;
 
 	cluster_num = ROUNDUP(dir->datalen, info.cluster_size);
 	data = malloc(info.cluster_size);
