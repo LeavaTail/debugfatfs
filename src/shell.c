@@ -343,7 +343,7 @@ static int cmd_remove(int argc, char **argv, char **envp)
 				pr_warn("Create doesn't support Absolute path.\n");
 				break;
 			}
-			info.ops->remove(filename, cluster, 0);
+			info.ops->remove(filename, cluster);
 			info.ops->reload(cluster);
 			break;
 		default:
@@ -418,7 +418,7 @@ static int cmd_tail(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
-			info.ops->contents(argv[1], cluster, 0);
+			info.ops->contents(argv[1], cluster);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);

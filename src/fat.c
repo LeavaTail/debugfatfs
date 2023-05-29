@@ -73,10 +73,10 @@ int fat_set_bogus_entry(uint32_t);
 int fat_release_cluster(uint32_t);
 int fat_create(const char *, uint32_t);
 int fat_mkdir(const char *, uint32_t);
-int fat_remove(const char *, uint32_t, int);
+int fat_remove(const char *, uint32_t);
 int fat_trim(uint32_t);
 int fat_fill(uint32_t, uint32_t);
-int fat_contents(const char *, uint32_t, int);
+int fat_contents(const char *, uint32_t);
 int fat_stat(const char *, uint32_t);
 
 static const struct operations fat_ops = {
@@ -1898,12 +1898,11 @@ create_short:
  * fat_remove - function interface to remove entry
  * @name:       Filename in UTF-8
  * @index:      Current Directory Index
- * @opt:        create option
  *
  * @return       0 (Success)
  *              -1 (Not found)
  */
-int fat_remove(const char *name, uint32_t clu, int opt)
+int fat_remove(const char *name, uint32_t clu)
 {
 	int i, j, ord;
 	void *data;
@@ -2109,12 +2108,11 @@ out:
  * fat_contents - function interface to display file contents
  * @name:         Filename in UTF-8
  * @index:        Current Directory Index
- * @opt:          create option
  *
  * @return       0 (Success)
  *              -1 (Not found)
  */
-int fat_contents(const char *name, uint32_t clu, int opt)
+int fat_contents(const char *name, uint32_t clu)
 {
 	int i, ret = 0;
 	void *data;

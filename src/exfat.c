@@ -79,10 +79,10 @@ int exfat_set_bitmap(uint32_t);
 int exfat_clear_bitmap(uint32_t);
 int exfat_create(const char *, uint32_t);
 int exfat_mkdir(const char *, uint32_t);
-int exfat_remove(const char *, uint32_t, int);
+int exfat_remove(const char *, uint32_t);
 int exfat_trim(uint32_t);
 int exfat_fill(uint32_t, uint32_t);
-int exfat_contents(const char *, uint32_t, int);
+int exfat_contents(const char *, uint32_t);
 int exfat_stat(const char *, uint32_t);
 
 static const struct operations exfat_ops = {
@@ -1948,12 +1948,11 @@ int exfat_mkdir(const char *name, uint32_t clu)
  * exfat_remove - function interface to remove entry
  * @name:         Filename in UTF-8
  * @clu:          Current Directory Index
- * @opt:          create option
  *
  * @return         0 (Success)
  *                -1 (Not found)
  */
-int exfat_remove(const char *name, uint32_t clu, int opt)
+int exfat_remove(const char *name, uint32_t clu)
 {
 	int i, j, name_len, name_len2, ret = 0;
 	void *data;
@@ -2191,12 +2190,11 @@ out:
  * exfat_contents - function interface to display file contents
  * @name:           Filename in UTF-8
  * @clu:            Current Directory Index
- * @opt:            create option
  *
  * @return         0 (Success)
  *                -1 (Not found)
  */
-int exfat_contents(const char *name, uint32_t clu, int opt)
+int exfat_contents(const char *name, uint32_t clu)
 {
 	int i, ret = 0;
 	void *data;
