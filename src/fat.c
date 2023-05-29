@@ -1926,7 +1926,7 @@ int fat_trim(uint32_t clu)
 			memcpy(dist, src, sizeof(struct fat_dentry));
 	}
 
-	allocate_cluster = ((sizeof(struct fat_dentry) * j) / info.cluster_size) + 1;
+	allocate_cluster = ROUNDUP((sizeof(struct fat_dentry) * j), info.cluster_size);
 	while (j < entries) {
 		dist = ((struct fat_dentry *)data) + j++;
 		memset(dist, 0, sizeof(struct fat_dentry));

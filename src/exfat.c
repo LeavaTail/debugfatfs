@@ -2007,7 +2007,7 @@ int exfat_trim(uint32_t clu)
 			memcpy(dist, src, sizeof(struct exfat_dentry));
 	}
 
-	allocate_cluster = ((sizeof(struct exfat_dentry) * j) / info.cluster_size) + 1;
+	allocate_cluster = ROUNDUP((sizeof(struct exfat_dentry) * j), info.cluster_size);
 	while (j < entries) {
 		dist = ((struct exfat_dentry *)data) + j++;
 		memset(dist, 0, sizeof(struct exfat_dentry));
