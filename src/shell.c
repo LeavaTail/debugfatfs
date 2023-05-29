@@ -23,6 +23,7 @@ static int cmd_alloc(int, char **, char **);
 static int cmd_release(int, char **, char **);
 static int cmd_fat(int, char **, char **);
 static int cmd_create(int, char **, char **);
+static int cmd_mkdir(int, char **, char **);
 static int cmd_remove(int, char **, char **);
 static int cmd_trim(int, char **, char **);
 static int cmd_fill(int, char **, char **);
@@ -42,6 +43,7 @@ struct command cmd[] = {
 	{"release", cmd_release},
 	{"fat", cmd_fat},
 	{"create", cmd_create},
+	{"mkdir", cmd_mkdir},
 	{"remove", cmd_remove},
 	{"trim", cmd_trim},
 	{"fill", cmd_fill},
@@ -256,7 +258,7 @@ static int cmd_fat(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_create - Create file or Directory.
+ * cmd_create - Create file.
  * @argc:       argument count
  * @argv:       argument vetor
  * @envp:       environment pointer
@@ -265,36 +267,51 @@ static int cmd_fat(int argc, char **argv, char **envp)
  */
 static int cmd_create(int argc, char **argv, char **envp)
 {
-	int opt, create_option = 0;
 	char *filename;
 
-	/* To restart scanning a new argument vector */
-	optind = 1;
-
-	while ((opt = getopt(argc, argv, "d")) != -1) {
-		switch (opt) {
-			case 'd':
-				create_option = CREATE_DIRECTORY;
-				break;
-			default:
-				fprintf(stderr,"Usage: %s [-d] FILE\n", argv[0]);
-				fprintf(stderr, "\n");
-				fprintf(stderr, "  -d\tCreate directory\n");
-				return 0;
-		}
-	}
-
-	switch (argc - optind) {
-		case 0:
+	switch (argc) {
+		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
-		case 1:
-			filename = strtok_dir(argv[optind]);
-			if (filename != argv[optind]) {
+		case 2:
+			filename = strtok_dir(argv[1]);
+			if (filename != argv[1]) {
 				pr_warn("Create doesn't support Absolute path.\n");
 				break;
 			}
-			info.ops->create(filename, cluster, create_option);
+			info.ops->create(filename, cluster);
+			info.ops->reload(cluster);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
+ * cmd_mkdir - create Directory.
+ * @argc:      argument count
+ * @argv:      argument vetor
+ * @envp:      environment pointer
+ *
+ * @return     0 (success)
+ */
+static int cmd_mkdir(int argc, char **argv, char **envp)
+{
+	char *filename;
+
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			filename = strtok_dir(argv[1]);
+			if (filename != argv[1]) {
+				pr_warn("Create doesn't support Absolute path.\n");
+				break;
+			}
+			info.ops->mkdir(filename, cluster);
 			info.ops->reload(cluster);
 			break;
 		default:
@@ -450,7 +467,8 @@ static int cmd_help(int argc, char **argv, char **envp)
 	fprintf(stderr, "alloc      allocate cluster.\n");
 	fprintf(stderr, "release    release cluster.\n");
 	fprintf(stderr, "fat        change File Allocation Table entry\n");
-	fprintf(stderr, "create     create directory entry.\n");
+	fprintf(stderr, "create     create directory entry for file.\n");
+	fprintf(stderr, "mkdir      create directory entry for directory.\n");
 	fprintf(stderr, "remove     remove directory entry.\n");
 	fprintf(stderr, "trim       trim deleted dentry.\n");
 	fprintf(stderr, "fill       fill in directory.\n");

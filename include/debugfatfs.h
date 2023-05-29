@@ -153,8 +153,6 @@ struct device_info {
 #define OPTION_READONLY     (1 << 6)
 #define OPTION_FATENT       (1 << 7)
 
-#define CREATE_DIRECTORY    (1 << 0)
-
 struct directory {
 	unsigned char *name;
 	size_t namelen;
@@ -410,7 +408,8 @@ struct operations {
 	int (*validfat)(uint32_t);
 	int (*alloc)(uint32_t);
 	int (*release)(uint32_t);
-	int (*create)(const char *, uint32_t, int);
+	int (*create)(const char *, uint32_t);
+	int (*mkdir)(const char *, uint32_t);
 	int (*remove)(const char *, uint32_t, int);
 	int (*trim)(uint32_t);
 	int (*fill)(uint32_t, uint32_t);

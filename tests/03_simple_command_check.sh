@@ -34,7 +34,7 @@ function test_shell () {
 	expect \"/00> \"
 	send \"create SAMPLE00.TXT\n\"
 	expect \"/00> \"
-	send \"create -d DIR00001.TXT\n\"
+	send \"mkdir DIR00001.TXT\n\"
 	expect \"/00> \"
 	send \"remove FILE1.TXT\n\"
 	expect \"/00> \"

@@ -268,7 +268,8 @@ And, debugfatfs with interactive mode support these command.
 - **alloc** *cluster* --- allocate cluster
 - **release** *cluster* --- release cluster
 - **fat** *index* *[entry]* --- change File Allocation Table entry
-- **create** *file* --- create directory entry
+- **create** *file* --- create directory entry for file
+- **mkdir** *directory* --- create directory entry for directory
 - **remove** *file* --- remove directory entry
 - **trim** --- trim deleted dentry
 - **fill** *[entry]* --- fill in directory

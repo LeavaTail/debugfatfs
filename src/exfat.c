@@ -77,7 +77,8 @@ int exfat_get_fat_entry(uint32_t, uint32_t *);
 int exfat_validate_fat_entry(uint32_t);
 int exfat_set_bitmap(uint32_t);
 int exfat_clear_bitmap(uint32_t);
-int exfat_create(const char *, uint32_t, int);
+int exfat_create(const char *, uint32_t);
+int exfat_mkdir(const char *, uint32_t);
 int exfat_remove(const char *, uint32_t, int);
 int exfat_trim(uint32_t);
 int exfat_fill(uint32_t, uint32_t);
@@ -98,6 +99,7 @@ static const struct operations exfat_ops = {
 	.alloc = exfat_set_bitmap,
 	.release = exfat_clear_bitmap,
 	.create = exfat_create,
+	.mkdir = exfat_mkdir,
 	.remove = exfat_remove,
 	.trim = exfat_trim,
 	.fill = exfat_fill,
@@ -1792,11 +1794,10 @@ int exfat_clear_bitmap(uint32_t clu)
  * exfat_create - function interface to create entry
  * @name:         Filename in UTF-8
  * @clu:          Current Directory Index
- * @opt:          create option
  *
  * @return        0 (Success)
  */
-int exfat_create(const char *name, uint32_t clu, int opt)
+int exfat_create(const char *name, uint32_t clu)
 {
 	int i, namei;
 	void *data;
@@ -1845,12 +1846,86 @@ int exfat_create(const char *name, uint32_t clu, int opt)
 	}
 
 	exfat_init_file(d, uniname, len);
-	if (opt & CREATE_DIRECTORY)
-		d->dentry.file.FileAttributes = ATTR_DIRECTORY;
 	d = ((struct exfat_dentry *)data) + i + 1;
 	exfat_init_stream(d, uppername, len);
-	if (opt & CREATE_DIRECTORY)
-		d->dentry.stream.FirstCluster = exfat_new_clusters(1);
+	d = ((struct exfat_dentry *)data) + i + 2;
+	for (namei = 0; namei < count - 1; namei++) {
+		name_len = MIN(ENTRY_NAME_MAX, len - namei * ENTRY_NAME_MAX);
+		exfat_init_filename(d, uniname, name_len);
+		d = ((struct exfat_dentry *)data) + i + 2 + namei;
+		d->EntryType = DENTRY_NAME;
+	}
+
+	/* Calculate File entry checksumc */
+	d = ((struct exfat_dentry *)data) + i;
+	d->dentry.file.SetChecksum =
+		exfat_calculate_checksum(data + i * sizeof(struct exfat_dentry), count);
+
+	exfat_set_cluster(f, clu, data);
+	free(data);
+	return 0;
+}
+
+/**
+ * exfat_mkdir - function interface to create entry for directory
+ * @name:        Filename in UTF-8
+ * @clu:         Current Directory Index
+ *
+ * @return       0 (Success)
+ */
+int exfat_mkdir(const char *name, uint32_t clu)
+{
+	int i, namei;
+	void *data;
+	uint16_t uniname[MAX_NAME_LENGTH] = {0};
+	uint16_t uppername[MAX_NAME_LENGTH] = {0};
+	uint8_t len;
+	uint8_t count;
+	size_t index = exfat_get_index(clu);
+	struct exfat_fileinfo *f = (struct exfat_fileinfo *)info.root[index]->data;
+	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
+	size_t cluster_num = 1;
+	size_t new_cluster_num = 1;
+	size_t name_len;
+	struct exfat_dentry *d;
+
+	/* convert UTF-8 to UTF16 */
+	len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
+	exfat_convert_upper_character(uniname, len, uppername);
+	count = ROUNDUP(len, ENTRY_NAME_MAX) + 1;
+
+	/* Prohibit duplicate filename */
+	if (exfat_search_fileinfo(info.root[index], name)) {
+		pr_err("cannot create %s: File exists\n", name);
+		return -1;
+	}
+
+	/* Lookup last entry */
+	data = malloc(info.cluster_size);
+	get_cluster(data, clu);
+
+	cluster_num = exfat_concat_cluster(f, clu, &data);
+	entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
+
+	for (i = 0; i < entries; i++) {
+		d = ((struct exfat_dentry *)data) + i;
+		if (d->EntryType == DENTRY_UNUSED)
+			break;
+	}
+
+	new_cluster_num = ROUNDUP(((i + count + 2) * sizeof(struct exfat_dentry)), info.cluster_size);
+	if (new_cluster_num > cluster_num) {
+		exfat_alloc_clusters(f, clu, new_cluster_num - cluster_num);
+		cluster_num = exfat_concat_cluster(f, clu, &data);
+		entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
+		d = ((struct exfat_dentry *)data) + i;
+	}
+
+	exfat_init_file(d, uniname, len);
+	d->dentry.file.FileAttributes = ATTR_DIRECTORY;
+	d = ((struct exfat_dentry *)data) + i + 1;
+	exfat_init_stream(d, uppername, len);
+	d->dentry.stream.FirstCluster = exfat_new_clusters(1);
 	d = ((struct exfat_dentry *)data) + i + 2;
 	for (namei = 0; namei < count - 1; namei++) {
 		name_len = MIN(ENTRY_NAME_MAX, len - namei * ENTRY_NAME_MAX);

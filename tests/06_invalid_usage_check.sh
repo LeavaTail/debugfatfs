@@ -17,11 +17,13 @@ function test_shell () {
 	set timeout 5
 	spawn ./debugfatfs -iq $1
 	expect \"/> \"
-	send \"create -a INVALID.TXT\n\"
-	expect \"/> \"
 	send \"create /00/DIR/FILE\n\"
 	expect \"/> \"
 	send \"create 00\n\"
+	expect \"/> \"
+	send \"mkdir /00/DIR/FILE\n\"
+	expect \"/> \"
+	send \"mkdir 00\n\"
 	expect \"/> \"
 	send \"remove /00/FILE1.TXT\n\"
 	expect \"/> \"
