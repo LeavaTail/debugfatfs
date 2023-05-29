@@ -2,10 +2,10 @@
 
 # md5sum
 declare -A images=(
-	["fat12"]="fcef9fc31b1b5b9c33236053a408e145"
-	["fat16"]="dca95fc0446cdb62ba99ab1518196fa6"
-	["fat32"]="342fe173ee5ad2797a69d3da412ec8bb"
-	["exfat"]="81740a8e624141c1459a439db2311eb9"
+	["fat12"]="4fae2d03cd312b9f69296a6ed53345ad"
+	["fat16"]="1d63e0009104645628b91e90f46cb250"
+	["fat32"]="27f1ad30b2a35c63883eefb42de63f46"
+	["exfat"]="927ca233c0a75166ea3a11e4c2d2dc48"
 )
 
 function init_image() {
