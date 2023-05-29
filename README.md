@@ -7,10 +7,17 @@ debugfatfs is a utilities to check/update FAT/exFAT Volume image without mountin
 
 ## Introduction
 
-FAT/exFAT has filesystem information in first sector.
-(e.g. cluster size, root directory cluster index, ...)  
-Some users want to obtain these information to confirm filesystem status.  
-In addition, Some developer want to create any FAT/exFAT filesystem image.
+FAT/exFAT is one of the filesystem developed by Microsoft, that have been used in removavle media such as USB flash drive.
+
+A specification for these filesystem are published ([[1]], [[2]]), and anyone can know the data structure.  
+Users and developers will need these data for performance improvement, feature development, and bug analysis.
+(e.g. cluster size, root directory cluster index)
+
+debugfatfs analyzes the FAT/exFAT volume image without mounting filesystem, output in a format that is readable to them.
+It also allows for simple file/directory modification to prepare bug analysis.
+
+[1]: https://download.microsoft.com/download/1/6/1/161ba512-40e2-4cc9-843a-923143f3456c/fatgen103.doc
+[2]: https://learn.microsoft.com/en-us/windows/win32/fileio/exfat-specification
 
 ## Features
 
@@ -19,6 +26,8 @@ debugfatfs can ontain these inforamtion.
 - Print Main Boot Sector Field
 - Print Cluster/Sector raw data
 - Print File contents
+- Print File metadata
+- Print Directory contents
 - Update FAT entry
 - Create/Remove file
 - Cluster compaction
@@ -32,7 +41,7 @@ If you don't want, Please add `-r`(read only) option.
 
 #### Case 1: Print Main Boot Sector Field
 
-- User can print Main Boot Sector by default. (`-q` option restrict messages)
+- User can print Main Boot Sector by default. (`-a` option outputs more information)
 
 ```
 $ sudo debugfatfs /dev/sdc1
@@ -57,49 +66,84 @@ Usage rate:             0
 - User can print cluster by `cluster` command in Interactive Mode.
 
 ```
-$ sudo debugfatfs -q -c 4 /dev/sdc1
+$ sudo debugfatfs -c 4 /dev/sdc1
 Cluster #4:
-00000000:  83 05 DC 30 EA 30 E5 30 FC 30 E0 30 00 00 00 00  ...0.0.0.0.0....
-00000010:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+00000000:  83 0B 44 00 44 00 44 00 44 00 44 00 44 00 44 00  ..D.D.D.D.D.D.D.
+00000010:  44 00 44 00 44 00 44 00 00 00 00 00 00 00 00 00  D.D.D.D.........
 00000020:  81 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
 00000030:  00 00 00 00 02 00 00 00 F8 3F 00 00 00 00 00 00  .........?......
 00000040:  82 00 00 00 0D D3 19 E6 00 00 00 00 00 00 00 00  ................
 00000050:  00 00 00 00 03 00 00 00 CC 16 00 00 00 00 00 00  ................
-00000060:  85 03 5E EE 16 00 00 00 B3 7B 2D 51 B3 7B 2D 51  ..^......{-Q.{-Q
-00000070:  B3 7B 2D 51 BF BF A4 A4 A4 00 00 00 00 00 00 00  .{-Q............
+00000060:  85 03 8B 3A 16 00 00 00 09 AD BD 56 09 AD BD 56  ...:.......V...V
+00000070:  09 AD BD 56 1E 1E A4 A4 A4 00 00 00 00 00 00 00  ...V............
 00000080:  C0 03 00 19 B8 FF 00 00 00 80 00 00 00 00 00 00  ................
 00000090:  00 00 00 00 05 00 00 00 00 80 00 00 00 00 00 00  ................
 000000A0:  C1 00 53 00 79 00 73 00 74 00 65 00 6D 00 20 00  ..S.y.s.t.e.m. .
 000000B0:  56 00 6F 00 6C 00 75 00 6D 00 65 00 20 00 49 00  V.o.l.u.m.e. .I.
 000000C0:  C1 00 6E 00 66 00 6F 00 72 00 6D 00 61 00 74 00  ..n.f.o.r.m.a.t.
 000000D0:  69 00 6F 00 6E 00 00 00 00 00 00 00 00 00 00 00  i.o.n...........
-000000E0:  85 02 DE 55 30 00 00 00 C2 7B 2D 51 2A 7A 2D 51  ...U0....{-Q*z-Q
-000000F0:  C2 7B 2D 51 24 00 A4 A4 A4 00 00 00 00 00 00 00  .{-Q$...........
-00000100:  C0 03 00 0B B6 14 00 00 00 80 00 00 00 00 00 00  ................
+000000E0:  85 02 28 60 10 00 00 00 10 AD BD 56 10 AD BD 56  ..(`.......V...V
+000000F0:  10 AD BD 56 59 59 A4 A4 A4 00 00 00 00 00 00 00  ...VYY..........
+00000100:  C0 03 00 02 1E 00 00 00 00 80 00 00 00 00 00 00  ................
 00000110:  00 00 00 00 08 00 00 00 00 80 00 00 00 00 00 00  ................
-00000120:  C1 00 30 00 31 00 5F 00 4C 00 4F 00 4E 00 47 00  ..0.1._.L.O.N.G.
-00000130:  4E 00 41 00 4D 00 45 00 00 00 00 00 00 00 00 00  N.A.M.E.........
-00000140:  85 02 05 AC 30 00 00 00 C2 7B 2D 51 2A 7A 2D 51  ....0....-Q*z-Q
-00000150:  C2 7B 2D 51 2A 00 A4 A4 A4 00 00 00 00 00 00 00  .{{-Q*...........
-00000160:  C0 03 00 0A F3 2F 00 00 00 80 00 00 00 00 00 00  ...../..........
-00000170:  00 00 00 00 0B 00 00 00 00 80 00 00 00 00 00 00  ................
-00000180:  C1 00 30 00 32 00 5F 00 55 00 4E 00 49 00 43 00  ..0.2._.U.N.I.C.
-00000190:  4F 00 44 00 45 00 00 00 00 00 00 00 00 00 00 00  O.D.E...........
-000001A0:  85 02 28 C0 30 00 00 00 C2 7B 2D 51 2A 7A 2D 51  ..(.0....{-Q*z-Q
-000001B0:  C2 7B 2D 51 2E 00 A4 A4 A4 00 00 00 00 00 00 00  .{-Q............
-000001C0:  C0 03 00 09 A5 EE 00 00 00 80 00 00 00 00 00 00  ................
-000001D0:  00 00 00 00 0C 00 00 00 00 80 00 00 00 00 00 00  ................
-000001E0:  C1 00 30 00 33 00 5F 00 44 00 45 00 4C 00 45 00  ..0.3._.D.E.L.E.
-000001F0:  54 00 45 00 00 00 00 00 00 00 00 00 00 00 00 00  T.E.............
-00000200:  85 02 3E 71 30 00 00 00 C2 7B 2D 51 2A 7A 2D 51  ..>q0....{-Q*z-Q
-00000210:  C2 7B 2D 51 33 00 A4 A4 A4 00 00 00 00 00 00 00  .{-Q3...........
-00000220:  C0 03 00 09 7F 4C 00 00 00 80 00 00 00 00 00 00  .....L..........
-00000230:  00 00 00 00 0D 00 00 00 00 80 00 00 00 00 00 00  ................
-00000240:  C1 00 30 00 30 00 5F 00 53 00 49 00 4D 00 50 00  ..0.0._.S.I.M.P.
-00000250:  4C 00 45 00 00 00 00 00 00 00 00 00 00 00 00 00  L.E.............
-00000260:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+00000120:  C1 00 30 00 30 00 00 00 00 00 00 00 00 00 00 00  ..0.0...........
+00000130:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+00000140:  85 02 48 82 10 00 00 00 10 AD BD 56 10 AD BD 56  ..H........V...V
+00000150:  10 AD BD 56 5E 5E A4 A4 A4 00 00 00 00 00 00 00  ...V^^..........
+00000160:  C0 03 00 02 1E 80 00 00 00 80 00 00 00 00 00 00  ................
+00000170:  00 00 00 00 09 00 00 00 00 80 00 00 00 00 00 00  ................
+00000180:  C1 00 30 00 31 00 00 00 00 00 00 00 00 00 00 00  ..0.1...........
+00000190:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+000001A0:  85 02 28 64 10 00 00 00 10 AD BD 56 10 AD BD 56  ..(d.......V...V
+000001B0:  10 AD BD 56 62 62 A4 A4 A4 00 00 00 00 00 00 00  ...Vbb..........
+000001C0:  C0 03 00 02 1F 00 00 00 00 80 00 00 00 00 00 00  ................
+000001D0:  00 00 00 00 0A 00 00 00 00 80 00 00 00 00 00 00  ................
+000001E0:  C1 00 30 00 32 00 00 00 00 00 00 00 00 00 00 00  ..0.2...........
+000001F0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
 *
 00007FF0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+```
+
+#### Case 3: Print File metadata w/o mounting filesystem
+
+- User can print cluster 2rd argument.
+- User can print cluster by `stat` command in Interactive Mode.
+
+```
+$ sudo debugfatfs /dev/sdc1 /00/FILE1.TXT
+Sector size:            512
+Cluster size:           32768
+FAT offset:             2048
+FAT size:               557056
+FAT count:              1
+Partition offset:       1150287872
+Volume size:            4294967296
+Cluster offset:         2097152
+Cluster count:          65472
+First cluster:          4
+Volume serial:          0x50b96952
+Filesystem revision:    1.00
+Usage rate:             0
+
+File Name:   FILE1.TXT
+File Size:   32772
+Clusters:    2
+First Clu:   11
+File Attr:   ----A
+File Flags:  FatChain/ AllocationPossible
+Access Time: 2023-05-29 21:40:34
+Modify Time: 2023-05-29 21:40:34
+Create Time: 2023-05-29 21:40:33
+```
+
+#### Case 4: Print FAT entry
+
+- User can print cluster by `-f` option.
+- User can print cluster by `fat` command in Interactive Mode.
+
+```
+$ sudo debugfatfs -f 11 /dev/sdc1
+Get: Cluster 11 is FAT entry 0000000e
 ```
 
 ### Advanced usage
@@ -112,7 +156,7 @@ Please be careful while using that!
 - Developer can print and update FAT entry by `fat` command in Interactive Mode.
 
 ```
-$ sudo debugfatfs -i /dev/sdc1
+$ sudo debugfatfs -i /dev/sdc2
 Welcome to debugfatfs 0.4.0 (Interactive Mode)
 
 /> fat 100
@@ -129,7 +173,7 @@ Get: Cluster 100 is FAT entry 00000008
 - Developer can remove file by `remove` command in Interactive Mode.
 
 ```
-$ sudo debugfatfs -i /dev/sdc1
+$ sudo debugfatfs -i /dev/sdc2
 Welcome to debugfatfs 0.4.0 (Interactive Mode)
 
 /> cd 03_DELETE
@@ -154,7 +198,7 @@ Welcome to debugfatfs 0.4.0 (Interactive Mode)
 - Developer can compact deleted entry by `trim` command in Interactive Mode.
 
 ```
-$ sudo debugfatfs -i /dev/sdc1
+$ sudo debugfatfs -i /dev/sdc2
 Welcome to debugfatfs 0.4.0 (Interactive Mode)
 
 /> cd 03_DELETE
@@ -228,23 +272,6 @@ Cluster #12:
 00007FF0:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
 ```
 
-#### Case 4: Fill with temproray directory entry
-
-- Developer can fill directory by `fill` command in Interactive Mode.
-
-```
-$ sudo debugfatfs -i /dev/sdc1
-Welcome to debugfatfs 0.4.0 (Interactive Mode)
-
-/> entry 1023
-EntryType                       : 00
-/> fill
-/> entry 1023
-EntryType                       : c1
-GeneralSecondaryFlags           : 00
-FileName                        : 480050004e0058005600420044004c00540044005500350035004a003200
-```
-
 ## Usage
 
 debugfatfs support support these optoin. (Please look at man-page)
@@ -280,6 +307,12 @@ And, debugfatfs with interactive mode support these command.
 
 ## Requirements
 
+- UTF-8 locale
+
+## Install
+
+These packages are needed to build debugfatfs.
+
 - [autoconf](http://www.gnu.org/software/autoconf/)
 - [automake](https://www.gnu.org/software/automake/)
 - [libtool](https://www.gnu.org/software/libtool/)
@@ -287,11 +320,11 @@ And, debugfatfs with interactive mode support these command.
 
 ## Install
 
-```
+```bash
 $ ./script/bootstrap.sh
 $ ./configure
 $ make
-# make install
+$ sudo make install
 ```
 
 ## Authors
