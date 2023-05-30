@@ -447,12 +447,19 @@ static int cmd_fill(int argc, char **argv, char **envp)
  */
 static int cmd_tail(int argc, char **argv, char **envp)
 {
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
+	char *filename;
+
 	switch (argc) {
 		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
-			info.ops->contents(argv[1], cluster);
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->contents(filename, dir);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
@@ -471,12 +478,19 @@ static int cmd_tail(int argc, char **argv, char **envp)
  */
 static int cmd_stat(int argc, char **argv, char **envp)
 {
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
+	char *filename;
+
 	switch (argc) {
 		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
-			info.ops->stat(argv[1], cluster);
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->stat(filename, dir);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
