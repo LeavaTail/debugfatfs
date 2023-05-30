@@ -269,6 +269,8 @@ static int cmd_fat(int argc, char **argv, char **envp)
  */
 static int cmd_create(int argc, char **argv, char **envp)
 {
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
 	char *filename;
 
 	switch (argc) {
@@ -276,13 +278,11 @@ static int cmd_create(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
-			filename = strtok_dir(argv[1]);
-			if (filename != argv[1]) {
-				pr_warn("Create doesn't support Absolute path.\n");
-				break;
-			}
-			info.ops->create(filename, cluster);
-			info.ops->reload(cluster);
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->create(filename, dir);
+			info.ops->reload(dir);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
@@ -301,6 +301,8 @@ static int cmd_create(int argc, char **argv, char **envp)
  */
 static int cmd_mkdir(int argc, char **argv, char **envp)
 {
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
 	char *filename;
 
 	switch (argc) {
@@ -308,13 +310,11 @@ static int cmd_mkdir(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
-			filename = strtok_dir(argv[1]);
-			if (filename != argv[1]) {
-				pr_warn("Create doesn't support Absolute path.\n");
-				break;
-			}
-			info.ops->mkdir(filename, cluster);
-			info.ops->reload(cluster);
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->mkdir(filename, dir);
+			info.ops->reload(dir);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
@@ -333,6 +333,8 @@ static int cmd_mkdir(int argc, char **argv, char **envp)
  */
 static int cmd_remove(int argc, char **argv, char **envp)
 {
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
 	char *filename;
 
 	switch (argc) {
@@ -340,13 +342,11 @@ static int cmd_remove(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
-			filename = strtok_dir(argv[1]);
-			if (filename != argv[1]) {
-				pr_warn("Create doesn't support Absolute path.\n");
-				break;
-			}
-			info.ops->remove(filename, cluster);
-			info.ops->reload(cluster);
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->remove(filename, dir);
+			info.ops->reload(dir);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
@@ -365,6 +365,8 @@ static int cmd_remove(int argc, char **argv, char **envp)
  */
 static int cmd_rmdir(int argc, char **argv, char **envp)
 {
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
 	char *filename;
 
 	switch (argc) {
@@ -372,13 +374,11 @@ static int cmd_rmdir(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
-			filename = strtok_dir(argv[1]);
-			if (filename != argv[1]) {
-				pr_warn("Create doesn't support Absolute path.\n");
-				break;
-			}
-			info.ops->rmdir(filename, cluster);
-			info.ops->reload(cluster);
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->rmdir(filename, dir);
+			info.ops->reload(dir);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
