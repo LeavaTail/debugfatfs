@@ -49,6 +49,7 @@ static int fat_init_lfn(struct fat_dentry *, uint16_t *, size_t, unsigned char *
 static int fat_create_nameentry(const char *, char *, uint16_t *);
 static uint8_t fat_calculate_checksum(unsigned char *);
 static uint16_t fat_calculate_namehash(uint16_t *, uint8_t);
+static int fat_add_entry(const char *, uint32_t, uint8_t);
 
 /* Timestamp function prototype */
 static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
@@ -1217,6 +1218,101 @@ static uint16_t fat_calculate_namehash(uint16_t *name, uint8_t len)
 	return hash;
 }
 
+/**
+ * fat_add_entry - Add dentry into directory
+ * @name:          Filename in UTF-8
+ * @index:         Current Directory Index
+ * @type:          Dentry type
+ *
+ * @return         0 (Success)
+ */
+int fat_add_entry(const char *name, uint32_t clu, uint8_t type)
+{
+	int i, j, namei;
+	int long_len = 0;
+	int count = 0;
+	char shortname[11] = {0};
+	uint16_t longname[MAX_NAME_LENGTH] = {0};
+	void *data;
+	uint8_t ord = LAST_LONG_ENTRY;
+	uint32_t fst_clu = 0;
+	size_t index = fat_get_index(clu);
+	struct fat_fileinfo *f = (struct fat_fileinfo *)info.root[index]->data;
+	size_t size;
+	size_t entries;
+	size_t cluster_num = 1;
+	size_t new_cluster_num = 1;
+	size_t name_len;
+	struct fat_dentry *d;
+
+	long_len = fat_create_nameentry(name, shortname, longname);
+	if (long_len)
+		count = (long_len / 13) + 1;
+
+	/* Lookup last entry */
+	if (clu) {
+		data = malloc(info.cluster_size);
+		get_cluster(data, clu);
+		cluster_num = fat_concat_cluster(f, clu, &data);
+		size = info.cluster_size * cluster_num;
+		entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
+	} else {
+		size = info.root_length * info.sector_size;
+		entries = size / sizeof(struct fat_dentry);
+		data = malloc(size);
+		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	}
+
+	for (i = 0; i < entries; i++) {
+		d = ((struct fat_dentry *)data) + i;
+		if (d->dentry.dir.DIR_Name[0] == DENTRY_UNUSED)
+			break;
+	}
+
+	if (clu) {
+		new_cluster_num = ROUNDUP((i + count + 1) * sizeof(struct fat_dentry), info.cluster_size);
+		if (new_cluster_num > cluster_num) {
+			fat_alloc_clusters(f, clu, new_cluster_num - cluster_num);
+			cluster_num = fat_concat_cluster(f, clu, &data);
+			entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
+			d = ((struct fat_dentry *)data) + i;
+		}
+	} else {
+		if (((i + count + 1) * info.sector_size) > size) {
+			pr_err("Can't create file entry in root directory.\n");
+			return -1;
+		}
+	}
+
+	if (!long_len)
+		goto create_short;
+
+	for (j = count; j != 0; j--) {
+		namei = count - j;
+		name_len = MIN(13, long_len - namei * 13);
+		fat_init_lfn(d, longname, name_len, (unsigned char *)shortname, j | ord);
+		ord = 0;
+		d = ((struct fat_dentry *)data) + i + namei + 1;
+	}
+
+create_short:
+	fat_init_dentry(d, (unsigned char *)shortname, 11);
+	if (type & ATTR_DIRECTORY) {
+		d->dentry.dir.DIR_Attr = ATTR_DIRECTORY;
+		fst_clu = fat_new_clusters(1);
+		d->dentry.dir.DIR_FstClusHI = fst_clu >> 16;
+		d->dentry.dir.DIR_FstClusLO = fst_clu & 0x0000ffff;
+	}
+
+	if (clu)
+		fat_set_cluster(f, clu, data);
+	else
+		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+
+	free(data);
+	return 0;
+}
+
 /*************************************************************************************************/
 /*                                                                                               */
 /* TIMESTAMP FUNCTION                                                                            */
@@ -1753,83 +1849,7 @@ int fat_release_cluster(uint32_t clu)
  */
 int fat_create(const char *name, uint32_t clu)
 {
-	int i, j, namei;
-	int long_len = 0;
-	int count = 0;
-	char shortname[11] = {0};
-	uint16_t longname[MAX_NAME_LENGTH] = {0};
-	void *data;
-	uint8_t ord = LAST_LONG_ENTRY;
-	uint32_t fst_clu = 0;
-	size_t index = fat_get_index(clu);
-	struct fat_fileinfo *f = (struct fat_fileinfo *)info.root[index]->data;
-	size_t size;
-	size_t entries;
-	size_t cluster_num = 1;
-	size_t new_cluster_num = 1;
-	size_t name_len;
-	struct fat_dentry *d;
-
-	long_len = fat_create_nameentry(name, shortname, longname);
-	if (long_len)
-		count = (long_len / 13) + 1;
-
-	/* Lookup last entry */
-	if (clu) {
-		data = malloc(info.cluster_size);
-		get_cluster(data, clu);
-		cluster_num = fat_concat_cluster(f, clu, &data);
-		size = info.cluster_size * cluster_num;
-		entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
-	} else {
-		size = info.root_length * info.sector_size;
-		entries = size / sizeof(struct fat_dentry);
-		data = malloc(size);
-		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
-	}
-
-	for (i = 0; i < entries; i++) {
-		d = ((struct fat_dentry *)data) + i;
-		if (d->dentry.dir.DIR_Name[0] == DENTRY_UNUSED)
-			break;
-	}
-
-	if (clu) {
-		new_cluster_num = ROUNDUP((i + count + 1) * sizeof(struct fat_dentry), info.cluster_size);
-		if (new_cluster_num > cluster_num) {
-			fat_alloc_clusters(f, clu, new_cluster_num - cluster_num);
-			cluster_num = fat_concat_cluster(f, clu, &data);
-			entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
-			d = ((struct fat_dentry *)data) + i;
-		}
-	} else {
-		if (((i + count + 1) * info.sector_size) > size) {
-			pr_err("Can't create file entry in root directory.\n");
-			return -1;
-		}
-	}
-
-	if (!long_len)
-		goto create_short;
-
-	for (j = count; j != 0; j--) {
-		namei = count - j;
-		name_len = MIN(13, long_len - namei * 13);
-		fat_init_lfn(d, longname, name_len, (unsigned char *)shortname, j | ord);
-		ord = 0;
-		d = ((struct fat_dentry *)data) + i + namei + 1;
-	}
-
-create_short:
-	fat_init_dentry(d, (unsigned char *)shortname, 11);
-
-	if (clu)
-		fat_set_cluster(f, clu, data);
-	else
-		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
-
-	free(data);
-	return 0;
+	return fat_add_entry(name, clu, ATTR_ARCHIVE);
 }
 
 /**
@@ -1841,87 +1861,7 @@ create_short:
  */
 int fat_mkdir(const char *name, uint32_t clu)
 {
-	int i, j, namei;
-	int long_len = 0;
-	int count = 0;
-	char shortname[11] = {0};
-	uint16_t longname[MAX_NAME_LENGTH] = {0};
-	void *data;
-	uint8_t ord = LAST_LONG_ENTRY;
-	uint32_t fst_clu = 0;
-	size_t index = fat_get_index(clu);
-	struct fat_fileinfo *f = (struct fat_fileinfo *)info.root[index]->data;
-	size_t size;
-	size_t entries;
-	size_t cluster_num = 1;
-	size_t new_cluster_num = 1;
-	size_t name_len;
-	struct fat_dentry *d;
-
-	long_len = fat_create_nameentry(name, shortname, longname);
-	if (long_len)
-		count = (long_len / 13) + 1;
-
-	/* Lookup last entry */
-	if (clu) {
-		data = malloc(info.cluster_size);
-		get_cluster(data, clu);
-		cluster_num = fat_concat_cluster(f, clu, &data);
-		size = info.cluster_size * cluster_num;
-		entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
-	} else {
-		size = info.root_length * info.sector_size;
-		entries = size / sizeof(struct fat_dentry);
-		data = malloc(size);
-		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
-	}
-
-	for (i = 0; i < entries; i++) {
-		d = ((struct fat_dentry *)data) + i;
-		if (d->dentry.dir.DIR_Name[0] == DENTRY_UNUSED)
-			break;
-	}
-
-	if (clu) {
-		new_cluster_num = ROUNDUP((i + count + 1) * sizeof(struct fat_dentry), info.cluster_size);
-		if (new_cluster_num > cluster_num) {
-			fat_alloc_clusters(f, clu, new_cluster_num - cluster_num);
-			cluster_num = fat_concat_cluster(f, clu, &data);
-			entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
-			d = ((struct fat_dentry *)data) + i;
-		}
-	} else {
-		if (((i + count + 1) * info.sector_size) > size) {
-			pr_err("Can't create file entry in root directory.\n");
-			return -1;
-		}
-	}
-
-	if (!long_len)
-		goto create_short;
-
-	for (j = count; j != 0; j--) {
-		namei = count - j;
-		name_len = MIN(13, long_len - namei * 13);
-		fat_init_lfn(d, longname, name_len, (unsigned char *)shortname, j | ord);
-		ord = 0;
-		d = ((struct fat_dentry *)data) + i + namei + 1;
-	}
-
-create_short:
-	fat_init_dentry(d, (unsigned char *)shortname, 11);
-	d->dentry.dir.DIR_Attr = ATTR_DIRECTORY;
-	fst_clu = fat_new_clusters(1);
-	d->dentry.dir.DIR_FstClusHI = fst_clu >> 16;
-	d->dentry.dir.DIR_FstClusLO = fst_clu & 0x0000ffff;
-
-	if (clu)
-		fat_set_cluster(f, clu, data);
-	else
-		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
-
-	free(data);
-	return 0;
+	return fat_add_entry(name, clu, ATTR_DIRECTORY);
 }
 
 /**
