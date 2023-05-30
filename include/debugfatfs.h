@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <inttypes.h>
+#include <errno.h>
 
 #include "list.h"
 #include "bitmap.h"

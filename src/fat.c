@@ -49,6 +49,7 @@ static int fat_init_lfn(struct fat_dentry *, uint16_t *, size_t, unsigned char *
 static int fat_create_nameentry(const char *, char *, uint16_t *);
 static uint8_t fat_calculate_checksum(unsigned char *);
 static uint16_t fat_calculate_namehash(uint16_t *, uint8_t);
+static int fat_check_dir_empty(struct fat_fileinfo *, uint32_t);
 static int fat_add_entry(const char *, uint32_t, uint8_t);
 
 /* Timestamp function prototype */
@@ -1216,6 +1217,54 @@ static uint16_t fat_calculate_namehash(uint16_t *name, uint8_t len)
 		hash = ((hash & 1) ? 0x8000 : 0) + (hash >> 1) + (uint16_t)buffer[index];
 
 	return hash;
+}
+
+/**
+ * fat_check_dir_empty - Check whether directory is empty
+ * @f:                   file information pointer
+ * @clu:                 index of the cluster for directory
+ *
+ * @return                0 (empty)
+ *                       <0 (not empty)
+ */
+static int fat_check_dir_empty(struct fat_fileinfo *f, uint32_t clu)
+{
+	int ret = 0;
+	int i;
+	void *data;
+	size_t size;
+	size_t entries;
+	size_t cluster_num = 1;
+	struct fat_dentry *d;
+
+	/* Lookup last entry */
+	if (clu) {
+		data = malloc(info.cluster_size);
+		get_cluster(data, clu);
+		cluster_num = fat_concat_cluster(f, clu, &data);
+		size = info.cluster_size * cluster_num;
+		entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
+	} else {
+		size = info.root_length * info.sector_size;
+		entries = size / sizeof(struct fat_dentry);
+		data = malloc(size);
+		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	}
+
+	for (i = 0; i < entries; i++) {
+		d = ((struct fat_dentry *)data) + i;
+		if (d->dentry.dir.DIR_Name[0] == DENTRY_UNUSED)
+			break;
+
+		if (strncmp((char *)d->dentry.dir.DIR_Name, ".          ", 11) &&
+				strncmp((char *)d->dentry.dir.DIR_Name, "..         ", 11)) {
+			ret = -ENOTEMPTY;
+			break;
+		}
+	}
+	free(data);
+
+	return ret;
 }
 
 /**

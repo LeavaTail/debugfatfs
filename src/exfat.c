@@ -51,6 +51,7 @@ static int exfat_init_filename(struct exfat_dentry *, uint16_t *, size_t);
 static uint16_t exfat_calculate_checksum(unsigned char *, unsigned char);
 static uint32_t exfat_calculate_tablechecksum(unsigned char *, uint64_t);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
+static int exfat_check_dir_empty(struct exfat_fileinfo *, uint32_t);
 static int exfat_add_entry(const char *, uint32_t, uint8_t);
 static int exfat_update_filesize(struct exfat_fileinfo *, uint32_t);
 
@@ -1208,6 +1209,46 @@ static uint16_t exfat_calculate_namehash(uint16_t *name, uint8_t len)
 		hash = ((hash & 1) ? 0x8000 : 0) + (hash >> 1) + (uint16_t)buffer[index];
 
 	return hash;
+}
+
+/**
+ * exfat_check_dir_empty - Check whether directory is empty
+ * @f:                     file information pointer
+ * @clu:                   index of the cluster for directory
+ *
+ * @return                  0 (empty)
+ *                         <0 (not empty)
+ */
+static int exfat_check_dir_empty(struct exfat_fileinfo *f, uint32_t clu)
+{
+	int ret = 0;
+	int i;
+	void *data;
+	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
+	size_t cluster_num = 1;
+	struct exfat_dentry *d;
+
+	data = malloc(info.cluster_size);
+	get_cluster(data, clu);
+
+	cluster_num = exfat_concat_cluster(f, clu, &data);
+	entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
+
+	for (i = 0; i < entries; i++) {
+		d = ((struct exfat_dentry *)data) + i;
+
+		if (d->EntryType == DENTRY_UNUSED)
+			break;
+
+		if (d->EntryType & EXFAT_INUSE) {
+			ret = -ENOTEMPTY;
+			break;
+		}
+	}
+
+	free(data);
+
+	return ret;
 }
 
 /**
