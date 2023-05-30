@@ -51,6 +51,7 @@ static uint8_t fat_calculate_checksum(unsigned char *);
 static uint16_t fat_calculate_namehash(uint16_t *, uint8_t);
 static int fat_check_dir_empty(struct fat_fileinfo *, uint32_t);
 static int fat_add_entry(const char *, uint32_t, uint8_t);
+static int fat_remove_entry(const char *, uint32_t, uint8_t);
 
 /* Timestamp function prototype */
 static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
@@ -79,6 +80,7 @@ int fat_release_cluster(uint32_t);
 int fat_create(const char *, uint32_t);
 int fat_mkdir(const char *, uint32_t);
 int fat_remove(const char *, uint32_t);
+int fat_rmdir(const char *, uint32_t);
 int fat_trim(uint32_t);
 int fat_fill(uint32_t, uint32_t);
 int fat_contents(const char *, uint32_t);
@@ -100,6 +102,7 @@ static const struct operations fat_ops = {
 	.create = fat_create,
 	.mkdir = fat_mkdir,
 	.remove = fat_remove,
+	.rmdir = fat_rmdir,
 	.trim = fat_trim,
 	.fill = fat_fill,
 	.contents = fat_contents,
@@ -1362,6 +1365,96 @@ create_short:
 	return 0;
 }
 
+/**
+ * fat_remove_entry - Mark Delete flag to dentry
+ * @name:             Filename in UTF-8
+ * @index:            Current Directory Index
+ * @type:             Dentry type
+ *
+ * @return         0 (Success)
+ */
+int fat_remove_entry(const char *name, uint32_t clu, uint8_t type)
+{
+	int i, j, ord;
+	void *data;
+	char shortname[11] = {0};
+	uint16_t longname[MAX_NAME_LENGTH] = {0};
+	size_t index = fat_get_index(clu);
+	struct fat_fileinfo *dir = (struct fat_fileinfo *)info.root[index]->data;
+	struct fat_fileinfo *file;
+	size_t size;
+	size_t entries;
+	size_t cluster_num = 1;
+	uint8_t chksum = 0;
+	struct fat_dentry *d;
+
+	if ((file = fat_search_fileinfo(info.root[fat_get_index(clu)], name)) == NULL) {
+		pr_err("File is not found.\n");
+		return -1;
+	}
+
+	/* Prohibit remove directory */
+	if (type == ATTR_ARCHIVE && file->attr & ATTR_DIRECTORY) {
+		pr_err("Cannot remove directory.\n");
+		return -1;
+	}
+
+	if (type == ATTR_DIRECTORY && fat_check_dir_empty(file, file->clu)) {
+		pr_err("Directory not empty.\n");
+		return -1;
+	}
+
+	/* convert UTF-8 to UTF16 */
+	fat_create_nameentry(name, shortname, longname);
+	chksum = fat_calculate_checksum((unsigned char *)shortname);
+
+	/* Lookup last entry */
+	if (clu) {
+		data = malloc(info.cluster_size);
+		get_cluster(data, clu);
+		cluster_num = fat_concat_cluster(dir, clu, &data);
+		size = info.cluster_size * cluster_num;
+		entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
+	} else {
+		size = info.root_length * info.sector_size;
+		entries = size / sizeof(struct fat_dentry);
+		data = malloc(size);
+		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	}
+
+	for (i = 0; i < entries; i++) {
+		d = ((struct fat_dentry *)data) + i;
+		if (d->dentry.lfn.LDIR_Ord == DENTRY_UNUSED)
+			goto out;
+
+		if (d->dentry.lfn.LDIR_Ord == DENTRY_DELETED)
+			continue;
+
+		if (d->dentry.lfn.LDIR_Attr == ATTR_LONG_FILE_NAME) {
+			ord = d->dentry.lfn.LDIR_Ord & (~LAST_LONG_ENTRY);
+			if (d->dentry.lfn.LDIR_Chksum != chksum) {
+				i += ord;
+				continue;
+			}
+			for (j = 0; j < ord; j++) {
+				d = ((struct fat_dentry *)data) + i;
+				d->dentry.lfn.LDIR_Ord = DENTRY_DELETED;
+			}
+		} else {
+			if (!strncmp(shortname, (char *)d->dentry.dir.DIR_Name, 11))
+				d->dentry.lfn.LDIR_Ord = DENTRY_DELETED;
+		}
+	}
+out:
+
+	if (clu)
+		fat_set_cluster(dir, clu, data);
+	else
+		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
+	free(data);
+	return 0;
+}
+
 /*************************************************************************************************/
 /*                                                                                               */
 /* TIMESTAMP FUNCTION                                                                            */
@@ -1923,79 +2016,20 @@ int fat_mkdir(const char *name, uint32_t clu)
  */
 int fat_remove(const char *name, uint32_t clu)
 {
-	int i, j, ord;
-	void *data;
-	char shortname[11] = {0};
-	uint16_t longname[MAX_NAME_LENGTH] = {0};
-	size_t index = fat_get_index(clu);
-	struct fat_fileinfo *dir = (struct fat_fileinfo *)info.root[index]->data;
-	struct fat_fileinfo *file;
-	size_t size;
-	size_t entries;
-	size_t cluster_num = 1;
-	uint8_t chksum = 0;
-	struct fat_dentry *d;
+	return fat_remove_entry(name, clu, ATTR_ARCHIVE);
+}
 
-	if ((file = fat_search_fileinfo(info.root[fat_get_index(clu)], name)) == NULL) {
-		pr_err("File is not found.\n");
-		return -1;
-	}
-
-	/* Prohibit remove directory */
-	if (file->attr & ATTR_DIRECTORY) {
-		pr_err("Cannot remove directory.\n");
-		return -1;
-	}
-
-	/* convert UTF-8 to UTF16 */
-	fat_create_nameentry(name, shortname, longname);
-	chksum = fat_calculate_checksum((unsigned char *)shortname);
-
-	/* Lookup last entry */
-	if (clu) {
-		data = malloc(info.cluster_size);
-		get_cluster(data, clu);
-		cluster_num = fat_concat_cluster(dir, clu, &data);
-		size = info.cluster_size * cluster_num;
-		entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
-	} else {
-		size = info.root_length * info.sector_size;
-		entries = size / sizeof(struct fat_dentry);
-		data = malloc(size);
-		get_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
-	}
-
-	for (i = 0; i < entries; i++) {
-		d = ((struct fat_dentry *)data) + i;
-		if (d->dentry.lfn.LDIR_Ord == DENTRY_UNUSED)
-			goto out;
-
-		if (d->dentry.lfn.LDIR_Ord == DENTRY_DELETED)
-			continue;
-
-		if (d->dentry.lfn.LDIR_Attr == ATTR_LONG_FILE_NAME) {
-			ord = d->dentry.lfn.LDIR_Ord & (~LAST_LONG_ENTRY);
-			if (d->dentry.lfn.LDIR_Chksum != chksum) {
-				i += ord;
-				continue;
-			}
-			for (j = 0; j < ord; j++) {
-				d = ((struct fat_dentry *)data) + i;
-				d->dentry.lfn.LDIR_Ord = DENTRY_DELETED;
-			}
-		} else {
-			if (!strncmp(shortname, (char *)d->dentry.dir.DIR_Name, 11))
-				d->dentry.lfn.LDIR_Ord = DENTRY_DELETED;
-		}
-	}
-out:
-
-	if (clu)
-		fat_set_cluster(dir, clu, data);
-	else
-		set_sector(data, (info.fat_offset + info.fat_length) * info.sector_size, info.root_length);
-	free(data);
-	return 0;
+/**
+ * fat_rmdir - function interface to remove entry for directory
+ * @name:      Filename in UTF-8
+ * @index:     Current Directory Index
+ *
+ * @return      0 (Success)
+ *             -1 (Not found)
+ */
+int fat_rmdir(const char *name, uint32_t clu)
+{
+	return fat_remove_entry(name, clu, ATTR_DIRECTORY);
 }
 
 /**

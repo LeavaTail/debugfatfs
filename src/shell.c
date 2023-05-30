@@ -25,6 +25,7 @@ static int cmd_fat(int, char **, char **);
 static int cmd_create(int, char **, char **);
 static int cmd_mkdir(int, char **, char **);
 static int cmd_remove(int, char **, char **);
+static int cmd_rmdir(int, char **, char **);
 static int cmd_trim(int, char **, char **);
 static int cmd_fill(int, char **, char **);
 static int cmd_tail(int, char **, char **);
@@ -45,6 +46,7 @@ struct command cmd[] = {
 	{"create", cmd_create},
 	{"mkdir", cmd_mkdir},
 	{"remove", cmd_remove},
+	{"rmdir", cmd_rmdir},
 	{"trim", cmd_trim},
 	{"fill", cmd_fill},
 	{"tail", cmd_tail},
@@ -322,7 +324,7 @@ static int cmd_mkdir(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_remove - Remove file or Directory.
+ * cmd_remove - Remove file.
  * @argc:       argument count
  * @argv:       argument vetor
  * @envp:       environment pointer
@@ -344,6 +346,38 @@ static int cmd_remove(int argc, char **argv, char **envp)
 				break;
 			}
 			info.ops->remove(filename, cluster);
+			info.ops->reload(cluster);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
+ * cmd_rmdir - Remove Directory.
+ * @argc:      argument count
+ * @argv:      argument vetor
+ * @envp:      environment pointer
+ *
+ * @return     0 (success)
+ */
+static int cmd_rmdir(int argc, char **argv, char **envp)
+{
+	char *filename;
+
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			filename = strtok_dir(argv[1]);
+			if (filename != argv[1]) {
+				pr_warn("Create doesn't support Absolute path.\n");
+				break;
+			}
+			info.ops->rmdir(filename, cluster);
 			info.ops->reload(cluster);
 			break;
 		default:
@@ -469,7 +503,8 @@ static int cmd_help(int argc, char **argv, char **envp)
 	fprintf(stderr, "fat        change File Allocation Table entry\n");
 	fprintf(stderr, "create     create directory entry for file.\n");
 	fprintf(stderr, "mkdir      create directory entry for directory.\n");
-	fprintf(stderr, "remove     remove directory entry.\n");
+	fprintf(stderr, "remove     remove directory entry for file.\n");
+	fprintf(stderr, "rmdir      remove directory entry for directory.\n");
 	fprintf(stderr, "trim       trim deleted dentry.\n");
 	fprintf(stderr, "fill       fill in directory.\n");
 	fprintf(stderr, "tail       output the last part of files.\n");

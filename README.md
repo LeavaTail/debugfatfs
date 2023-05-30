@@ -270,7 +270,8 @@ And, debugfatfs with interactive mode support these command.
 - **fat** *index* *[entry]* --- change File Allocation Table entry
 - **create** *file* --- create directory entry for file
 - **mkdir** *directory* --- create directory entry for directory
-- **remove** *file* --- remove directory entry
+- **remove** *file* --- remove directory entry for file
+- **rmdir** *directory* --- remove directory entry for directory
 - **trim** --- trim deleted dentry
 - **fill** *[entry]* --- fill in directory
 - **tail** *[file]* --- output the last part of files

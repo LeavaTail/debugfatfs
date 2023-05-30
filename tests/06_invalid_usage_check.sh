@@ -31,6 +31,8 @@ function test_shell () {
 	expect \"/> \"
 	send \"remove /00/DIR/FILE\n\"
 	expect \"/> \"
+	send \"rmdir /00\n\"
+	expect \"/> \"
 	send \"exit\n\"
 	expect eof
 	exit

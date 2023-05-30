@@ -38,6 +38,8 @@ function test_shell () {
 	expect \"/00> \"
 	send \"remove FILE1.TXT\n\"
 	expect \"/00> \"
+	send \"rmdir DIR00001.TXT\n\"
+	expect \"/00> \"
 	send \"fill 5\n\"
 	expect \"/00> \"
 	send \"cd /\n\"

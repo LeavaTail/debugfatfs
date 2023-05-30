@@ -53,6 +53,7 @@ static uint32_t exfat_calculate_tablechecksum(unsigned char *, uint64_t);
 static uint16_t exfat_calculate_namehash(uint16_t *, uint8_t);
 static int exfat_check_dir_empty(struct exfat_fileinfo *, uint32_t);
 static int exfat_add_entry(const char *, uint32_t, uint8_t);
+static int exfat_remove_entry(const char *, uint32_t, uint8_t);
 static int exfat_update_filesize(struct exfat_fileinfo *, uint32_t);
 
 /* Timestamp function prototype */
@@ -83,6 +84,7 @@ int exfat_clear_bitmap(uint32_t);
 int exfat_create(const char *, uint32_t);
 int exfat_mkdir(const char *, uint32_t);
 int exfat_remove(const char *, uint32_t);
+int exfat_rmdir(const char *, uint32_t);
 int exfat_trim(uint32_t);
 int exfat_fill(uint32_t, uint32_t);
 int exfat_contents(const char *, uint32_t);
@@ -104,6 +106,7 @@ static const struct operations exfat_ops = {
 	.create = exfat_create,
 	.mkdir = exfat_mkdir,
 	.remove = exfat_remove,
+	.rmdir = exfat_rmdir,
 	.trim = exfat_trim,
 	.fill = exfat_fill,
 	.contents = exfat_contents,
@@ -1335,6 +1338,121 @@ int exfat_add_entry(const char *name, uint32_t clu, uint8_t type)
 }
 
 /**
+ * exfat_remove_entry - Remove dentry into directory
+ * @name:               Filename in UTF-8
+ * @clu:                Current Directory Index
+ * @type:               Dentry type
+ *
+ * @return              0 (Success)
+ */
+int exfat_remove_entry(const char *name, uint32_t clu, uint8_t type)
+{
+	int i, j, name_len, name_len2, ret = 0;
+	void *data;
+	uint16_t uniname[MAX_NAME_LENGTH] = {0};
+	uint16_t uniname2[MAX_NAME_LENGTH] = {0};
+	uint16_t uppername[MAX_NAME_LENGTH] = {0};
+	uint16_t namehash = 0;
+	uint8_t remaining;
+	size_t index = exfat_get_index(clu);
+	struct exfat_fileinfo *dir = (struct exfat_fileinfo *)info.root[index]->data;
+	struct exfat_fileinfo *file;
+	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
+	size_t cluster_num = 1;
+	struct exfat_dentry *d, *s, *n;
+
+	if ((file = exfat_search_fileinfo(info.root[exfat_get_index(clu)], name)) == NULL) {
+		pr_err("File is not found.\n");
+		return -1;
+	}
+
+	/* Prohibit remove directory */
+	if (type == ATTR_ARCHIVE && file->attr & ATTR_DIRECTORY) {
+		pr_err("Cannot remove directory.\n");
+		return -1;
+	}
+
+	if (type == ATTR_DIRECTORY && exfat_check_dir_empty(file, file->clu)) {
+		pr_err("Directory not empty.\n");
+		return -1;
+	}
+
+	/* convert UTF-8 to UTF16 */
+	name_len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
+	exfat_convert_upper_character(uniname, name_len, uppername);
+	namehash = exfat_calculate_namehash(uppername, name_len);
+
+	/* Lookup last entry */
+	data = malloc(info.cluster_size);
+	get_cluster(data, clu);
+
+	cluster_num = exfat_concat_cluster(dir, clu, &data);
+	entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
+
+	for (i = 0; i < entries; i++) {
+		d = ((struct exfat_dentry *)data) + i;
+
+		switch (d->EntryType) {
+			case DENTRY_UNUSED:
+				ret = -1;
+				goto out;
+			case DENTRY_FILE:
+				remaining = d->dentry.file.SecondaryCount;
+				/* Stream entry */
+				s = ((struct exfat_dentry *)data) + i + 1;
+				while ((!(s->EntryType & EXFAT_INUSE)) && (s->EntryType != DENTRY_UNUSED)) {
+					pr_debug("This entry was deleted (0x%x).\n", s->EntryType);
+					s = ((struct exfat_dentry *)data) + (++i) + 1;
+				}
+				if (s->EntryType != DENTRY_STREAM) {
+					pr_debug("File should have stream entry, but This don't have.\n");
+					continue;
+				}
+
+				if (s->dentry.stream.NameHash != namehash) {
+					i += remaining - 1;
+					continue;
+				}
+
+				/* Filename entry */
+				n = ((struct exfat_dentry *)data) + i + 2;
+				if (n->EntryType != DENTRY_NAME) {
+					pr_debug("File should have name entry, but This don't have.\n");
+					return -1;
+				}
+
+				name_len2 = s->dentry.stream.NameLength;
+				if (name_len != name_len2) {
+					i += remaining - 1;
+					continue;
+				}
+
+				for (j = 0; j < remaining - 1; j++) {
+					name_len2 = MIN(ENTRY_NAME_MAX,
+							s->dentry.stream.NameLength - j * ENTRY_NAME_MAX);
+					memcpy(uniname2 + j * ENTRY_NAME_MAX,
+							(((struct exfat_dentry *)data) + i + 2 + j)->dentry.name.FileName,
+							name_len2 * sizeof(uint16_t));
+				}
+				if (!memcmp(uniname, uniname2, name_len2)) {
+					d->EntryType &= ~EXFAT_INUSE;
+					s->EntryType &= ~EXFAT_INUSE;
+					n->EntryType &= ~EXFAT_INUSE;
+					goto out;
+				}
+				i += remaining;
+				break;
+		}
+	}
+out:
+	exfat_free_clusters(file, file->clu, ROUNDUP(file->datalen, info.cluster_size));
+	exfat_clean_dchain(clu);
+	exfat_set_cluster(dir, clu, data);
+	free(data);
+	return ret;
+}
+
+/**
  * exfat_update_filesize - flush filesize to disk
  * @f:                     file information pointer
  * @clu:                   first cluster
@@ -1963,104 +2081,20 @@ int exfat_mkdir(const char *name, uint32_t clu)
  */
 int exfat_remove(const char *name, uint32_t clu)
 {
-	int i, j, name_len, name_len2, ret = 0;
-	void *data;
-	uint16_t uniname[MAX_NAME_LENGTH] = {0};
-	uint16_t uniname2[MAX_NAME_LENGTH] = {0};
-	uint16_t uppername[MAX_NAME_LENGTH] = {0};
-	uint16_t namehash = 0;
-	uint8_t remaining;
-	size_t index = exfat_get_index(clu);
-	struct exfat_fileinfo *dir = (struct exfat_fileinfo *)info.root[index]->data;
-	struct exfat_fileinfo *file;
-	size_t entries = info.cluster_size / sizeof(struct exfat_dentry);
-	size_t cluster_num = 1;
-	struct exfat_dentry *d, *s, *n;
+	return exfat_remove_entry(name, clu, ATTR_ARCHIVE);
+}
 
-	if ((file = exfat_search_fileinfo(info.root[exfat_get_index(clu)], name)) == NULL) {
-		pr_err("File is not found.\n");
-		return -1;
-	}
-
-	/* Prohibit remove directory */
-	if (file->attr & ATTR_DIRECTORY) {
-		pr_err("Cannot remove directory.\n");
-		return -1;
-	}
-
-	/* convert UTF-8 to UTF16 */
-	name_len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
-	exfat_convert_upper_character(uniname, name_len, uppername);
-	namehash = exfat_calculate_namehash(uppername, name_len);
-
-	/* Lookup last entry */
-	data = malloc(info.cluster_size);
-	get_cluster(data, clu);
-
-	cluster_num = exfat_concat_cluster(dir, clu, &data);
-	entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
-
-	for (i = 0; i < entries; i++) {
-		d = ((struct exfat_dentry *)data) + i;
-
-		switch (d->EntryType) {
-			case DENTRY_UNUSED:
-				ret = -1;
-				goto out;
-			case DENTRY_FILE:
-				remaining = d->dentry.file.SecondaryCount;
-				/* Stream entry */
-				s = ((struct exfat_dentry *)data) + i + 1;
-				while ((!(s->EntryType & EXFAT_INUSE)) && (s->EntryType != DENTRY_UNUSED)) {
-					pr_debug("This entry was deleted (0x%x).\n", s->EntryType);
-					s = ((struct exfat_dentry *)data) + (++i) + 1;
-				}
-				if (s->EntryType != DENTRY_STREAM) {
-					pr_debug("File should have stream entry, but This don't have.\n");
-					continue;
-				}
-
-				if (s->dentry.stream.NameHash != namehash) {
-					i += remaining - 1;
-					continue;
-				}
-
-				/* Filename entry */
-				n = ((struct exfat_dentry *)data) + i + 2;
-				if (n->EntryType != DENTRY_NAME) {
-					pr_debug("File should have name entry, but This don't have.\n");
-					return -1;
-				}
-
-				name_len2 = s->dentry.stream.NameLength;
-				if (name_len != name_len2) {
-					i += remaining - 1;
-					continue;
-				}
-
-				for (j = 0; j < remaining - 1; j++) {
-					name_len2 = MIN(ENTRY_NAME_MAX,
-							s->dentry.stream.NameLength - j * ENTRY_NAME_MAX);
-					memcpy(uniname2 + j * ENTRY_NAME_MAX,
-							(((struct exfat_dentry *)data) + i + 2 + j)->dentry.name.FileName,
-							name_len2 * sizeof(uint16_t));
-				}
-				if (!memcmp(uniname, uniname2, name_len2)) {
-					d->EntryType &= ~EXFAT_INUSE;
-					s->EntryType &= ~EXFAT_INUSE;
-					n->EntryType &= ~EXFAT_INUSE;
-					goto out;
-				}
-				i += remaining;
-				break;
-		}
-	}
-out:
-	exfat_free_clusters(file, file->clu, ROUNDUP(file->datalen, info.cluster_size));
-	exfat_clean_dchain(clu);
-	exfat_set_cluster(dir, clu, data);
-	free(data);
-	return ret;
+/**
+ * exfat_rmdir - function interface to remove entry for directory
+ * @name:        Filename in UTF-8
+ * @clu:         Current Directory Index
+ *
+ * @return        0 (Success)
+ *               -1 (Not found)
+ */
+int exfat_rmdir(const char *name, uint32_t clu)
+{
+	return exfat_remove_entry(name, clu, ATTR_DIRECTORY);
 }
 
 /**

@@ -412,6 +412,7 @@ struct operations {
 	int (*create)(const char *, uint32_t);
 	int (*mkdir)(const char *, uint32_t);
 	int (*remove)(const char *, uint32_t);
+	int (*rmdir)(const char *, uint32_t);
 	int (*trim)(uint32_t);
 	int (*fill)(uint32_t, uint32_t);
 	int (*contents)(const char *, uint32_t);
