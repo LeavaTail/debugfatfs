@@ -432,6 +432,43 @@ int print_cluster(uint32_t index)
 }
 
 /**
+ * format_path - format pathname
+ * @dist:        formatted file path (Output)
+ * @len:         filepath length
+ * @str          filepath
+ *
+ * @return       0
+ */
+static int format_path(char *dist, size_t len, char *str)
+{
+	char *saveptr = NULL;
+	char *token;
+	char *buf;
+
+	if ((token = strtok_r(str, "/", &saveptr)) == NULL) {
+		snprintf(dist, strlen("/") + 1, "/");
+		return 0;
+	}
+
+	buf = calloc(strlen(str), sizeof(char));
+
+	snprintf(dist, strlen("/") + 1, "/");
+
+	/* Remove redundant "/" */
+	snprintf(buf, len, "%s%s", dist, token);
+	strncpy(dist, buf, len);
+
+	while ((token = strtok_r(NULL, "/", &saveptr)) != NULL) {
+		snprintf(buf, len, "%s/%s", dist, token);
+		strncpy(dist, buf, len);
+	}
+
+	free(buf);
+
+	return 0;
+}
+
+/**
  * main   - main function
  * @argc:   argument count
  * @argv:   argument vector
@@ -591,14 +628,9 @@ int main(int argc, char *argv[])
 		uint32_t p_clu;
 		char *tmp;
 
-		tmp = calloc(strlen(filepath), sizeof(char));
-
-		strncpy(tmp, filepath, strlen(filepath));
+		tmp = calloc(strlen(filepath) + 1, sizeof(char));
+		format_path(tmp, strlen(filepath) + 1, filepath);
 		filepath = strtok_dir(tmp);
-		/* FIXME: workaround to search non-AbsolutePath */
-		if (filepath == tmp)
-			snprintf(tmp, sizeof("/") + 1, "/");
-
 		p_clu = info.ops->lookup(info.root_offset, tmp);
 		ret = info.ops->stat(filepath, p_clu);
 
