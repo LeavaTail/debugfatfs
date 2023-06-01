@@ -6,21 +6,10 @@ trap 'echo "ERROR: l.$LINENO, exit status = $?" >&2; exit 1' ERR
 source tests/common.sh
 
 IMAGES=("fat12.img" "fat16.img" "fat32.img" "exfat.img")
-OUTPUT=data.dat
 
 function test_options () {
-	./debugfatfs $1
-	./debugfatfs -a $1
-	./debugfatfs -b 512 $1
-	./debugfatfs -c 4 $1
-	./debugfatfs -f 11 $1
-	./debugfatfs -o $OUTPUT $1
-	./debugfatfs -q $1
-	./debugfatfs -r $1
-	./debugfatfs -u a $1
-	./debugfatfs -v $1
-	./debugfatfs --help
-	./debugfatfs --version
+	./debugfatfs $1 /00
+	./debugfatfs $1 /00/FILE1.TXT
 }
 
 function main() {

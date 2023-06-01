@@ -19,15 +19,17 @@ static int get_env(char **, char *, char *);
 static int cmd_ls(int, char **, char **);
 static int cmd_cd(int, char **, char **);
 static int cmd_cluster(int, char **, char **);
-static int cmd_entry(int, char **, char **);
 static int cmd_alloc(int, char **, char **);
 static int cmd_release(int, char **, char **);
 static int cmd_fat(int, char **, char **);
 static int cmd_create(int, char **, char **);
+static int cmd_mkdir(int, char **, char **);
 static int cmd_remove(int, char **, char **);
+static int cmd_rmdir(int, char **, char **);
 static int cmd_trim(int, char **, char **);
 static int cmd_fill(int, char **, char **);
 static int cmd_tail(int, char **, char **);
+static int cmd_stat(int, char **, char **);
 static int cmd_help(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
@@ -38,15 +40,17 @@ struct command cmd[] = {
 	{"ls", cmd_ls},
 	{"cd", cmd_cd},
 	{"cluster", cmd_cluster},
-	{"entry", cmd_entry},
 	{"alloc", cmd_alloc},
 	{"release", cmd_release},
 	{"fat", cmd_fat},
 	{"create", cmd_create},
+	{"mkdir", cmd_mkdir},
 	{"remove", cmd_remove},
+	{"rmdir", cmd_rmdir},
 	{"trim", cmd_trim},
 	{"fill", cmd_fill},
 	{"tail", cmd_tail},
+	{"stat", cmd_stat},
 	{"help", cmd_help},
 	{"exit", cmd_exit},
 };
@@ -114,7 +118,6 @@ static int cmd_ls(int argc, char **argv, char **envp)
 static int cmd_cd(int argc, char **argv, char **envp)
 {
 	int dir = 0;
-	char *path = "/";
 	char buf[ARG_MAXLEN] = {};
 	char pwd[ARG_MAXLEN] = {};
 
@@ -157,34 +160,6 @@ static int cmd_cluster(int argc, char **argv, char **envp)
 			break;
 		case 2:
 			print_cluster(strtoul(argv[1], NULL, 10));
-			break;
-		default:
-			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
-			break;
-	}
-
-	return 0;
-}
-
-/**
- * cmd_entry - Print entry in current directory
- * @argc:      argument count
- * @argv:      argument vetor
- * @envp:      environment pointer
- *
- * @return     0 (success)
- */
-static int cmd_entry(int argc, char **argv, char **envp)
-{
-	size_t index = 0;
-
-	switch (argc) {
-		case 1:
-			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
-			break;
-		case 2:
-			index = strtoul(argv[1], NULL, 10);
-			info.ops->dentry(cluster, index);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
@@ -285,7 +260,7 @@ static int cmd_fat(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_create - Create file or Directory.
+ * cmd_create - Create file.
  * @argc:       argument count
  * @argv:       argument vetor
  * @envp:       environment pointer
@@ -294,37 +269,20 @@ static int cmd_fat(int argc, char **argv, char **envp)
  */
 static int cmd_create(int argc, char **argv, char **envp)
 {
-	int opt, create_option = 0;
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
 	char *filename;
 
-	/* To restart scanning a new argument vector */
-	optind = 1;
-
-	while ((opt = getopt(argc, argv, "d")) != -1) {
-		switch (opt) {
-			case 'd':
-				create_option = CREATE_DIRECTORY;
-				break;
-			default:
-				fprintf(stderr,"Usage: %s [-d] FILE\n", argv[0]);
-				fprintf(stderr, "\n");
-				fprintf(stderr, "  -d\tCreate directory\n");
-				return 0;
-		}
-	}
-
-	switch (argc - optind) {
-		case 0:
+	switch (argc) {
+		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
-		case 1:
-			filename = strtok_dir(argv[optind]);
-			if (filename != argv[optind]) {
-				pr_warn("Create doesn't support Absolute path.\n");
-				break;
-			}
-			info.ops->create(filename, cluster, create_option);
-			info.ops->reload(cluster);
+		case 2:
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->create(filename, dir);
+			info.ops->reload(dir);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
@@ -334,7 +292,39 @@ static int cmd_create(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_remove - Remove file or Directory.
+ * cmd_mkdir - create Directory.
+ * @argc:      argument count
+ * @argv:      argument vetor
+ * @envp:      environment pointer
+ *
+ * @return     0 (success)
+ */
+static int cmd_mkdir(int argc, char **argv, char **envp)
+{
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
+	char *filename;
+
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->mkdir(filename, dir);
+			info.ops->reload(dir);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
+ * cmd_remove - Remove file.
  * @argc:       argument count
  * @argv:       argument vetor
  * @envp:       environment pointer
@@ -343,6 +333,8 @@ static int cmd_create(int argc, char **argv, char **envp)
  */
 static int cmd_remove(int argc, char **argv, char **envp)
 {
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
 	char *filename;
 
 	switch (argc) {
@@ -350,13 +342,43 @@ static int cmd_remove(int argc, char **argv, char **envp)
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
-			filename = strtok_dir(argv[1]);
-			if (filename != argv[1]) {
-				pr_warn("Create doesn't support Absolute path.\n");
-				break;
-			}
-			info.ops->remove(filename, cluster, 0);
-			info.ops->reload(cluster);
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->remove(filename, dir);
+			info.ops->reload(dir);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
+ * cmd_rmdir - Remove Directory.
+ * @argc:      argument count
+ * @argv:      argument vetor
+ * @envp:      environment pointer
+ *
+ * @return     0 (success)
+ */
+static int cmd_rmdir(int argc, char **argv, char **envp)
+{
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
+	char *filename;
+
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->rmdir(filename, dir);
+			info.ops->reload(dir);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
@@ -425,12 +447,50 @@ static int cmd_fill(int argc, char **argv, char **envp)
  */
 static int cmd_tail(int argc, char **argv, char **envp)
 {
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
+	char *filename;
+
 	switch (argc) {
 		case 1:
 			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
 			break;
 		case 2:
-			info.ops->contents(argv[1], cluster, 0);
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->contents(filename, dir);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
+ * cmd_stat - Display file stat.
+ * @argc:     argument count
+ * @argv:     argument vetor
+ * @envp:     environment pointer
+ *
+ * @return    0 (success)
+ */
+static int cmd_stat(int argc, char **argv, char **envp)
+{
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
+	char *filename;
+
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->stat(filename, dir);
 			break;
 		default:
 			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
@@ -452,15 +512,17 @@ static int cmd_help(int argc, char **argv, char **envp)
 	fprintf(stderr, "ls         list current directory contents.\n");
 	fprintf(stderr, "cd         change directory.\n");
 	fprintf(stderr, "cluster    print cluster raw-data.\n");
-	fprintf(stderr, "entry      print directory entry.\n");
 	fprintf(stderr, "alloc      allocate cluster.\n");
 	fprintf(stderr, "release    release cluster.\n");
 	fprintf(stderr, "fat        change File Allocation Table entry\n");
-	fprintf(stderr, "create     create directory entry.\n");
-	fprintf(stderr, "remove     remove directory entry.\n");
+	fprintf(stderr, "create     create directory entry for file.\n");
+	fprintf(stderr, "mkdir      create directory entry for directory.\n");
+	fprintf(stderr, "remove     remove directory entry for file.\n");
+	fprintf(stderr, "rmdir      remove directory entry for directory.\n");
 	fprintf(stderr, "trim       trim deleted dentry.\n");
 	fprintf(stderr, "fill       fill in directory.\n");
 	fprintf(stderr, "tail       output the last part of files.\n");
+	fprintf(stderr, "stat       output file stat.\n");
 	fprintf(stderr, "help       display this help.\n");
 	fprintf(stderr, "\n");
 	return 0;

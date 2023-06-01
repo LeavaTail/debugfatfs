@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <inttypes.h>
+#include <errno.h>
 
 #include "list.h"
 #include "bitmap.h"
@@ -21,7 +22,7 @@
  * displayed when 'usage' and 'version'
  */
 #define PROGRAM_NAME     "debugfatfs"
-#define PROGRAM_VERSION  "0.3.0"
+#define PROGRAM_VERSION  "0.4.0"
 #define PROGRAM_AUTHOR   "LeavaTail"
 #define COPYRIGHT_YEAR   "2021"
 
@@ -81,6 +82,12 @@ extern FILE *output;
 #define FAT12_RESERVED  0xFF8
 #define FAT16_RESERVED  0xFFF8
 #define FAT32_RESERVED  0x0FFFFFF8
+#define FAT12_BADCLUSTER   0xFF7
+#define FAT16_BADCLUSTER   0xFFF7
+#define FAT32_BADCLUSTER   0x0FFFFFF7
+#define FAT12_LASTCLUSTER  0xFFF
+#define FAT16_LASTCLUSTER  0xFFFF
+#define FAT32_LASTCLUSTER  0x0FFFFFFF
 /*
  * exFAT definition
  */
@@ -139,18 +146,13 @@ struct device_info {
 };
 
 #define OPTION_ALL          (1 << 0)
-#define OPTION_QUIET        (1 << 1)
-#define OPTION_CLUSTER      (1 << 2)
-#define OPTION_INTERACTIVE  (1 << 3)
-#define OPTION_OUTPUT       (1 << 4)
-#define OPTION_SECTOR       (1 << 5)
-#define OPTION_UPPER        (1 << 6)
-#define OPTION_READONLY     (1 << 7)
-#define OPTION_DIRECTORY    (1 << 8)
-#define OPTION_ENTRY        (1 << 9)
-#define OPTION_FATENT       (1 << 10)
-
-#define CREATE_DIRECTORY    (1 << 0)
+#define OPTION_CLUSTER      (1 << 1)
+#define OPTION_INTERACTIVE  (1 << 2)
+#define OPTION_OUTPUT       (1 << 3)
+#define OPTION_SECTOR       (1 << 4)
+#define OPTION_UPPER        (1 << 5)
+#define OPTION_READONLY     (1 << 6)
+#define OPTION_FATENT       (1 << 7)
 
 struct directory {
 	unsigned char *name;
@@ -175,6 +177,8 @@ struct fat_fileinfo {
 	struct tm ctime;
 	struct tm atime;
 	struct tm mtime;
+	uint32_t clu;
+	struct fat_fileinfo *dir;
 };
 
 struct exfat_fileinfo {
@@ -188,6 +192,8 @@ struct exfat_fileinfo {
 	struct tm atime;
 	struct tm mtime;
 	uint16_t hash;
+	uint32_t clu;
+	struct exfat_fileinfo *dir;
 };
 
 struct pseudo_bootsec {
@@ -400,14 +406,17 @@ struct operations {
 	int (*clean)(uint32_t);
 	int (*setfat)(uint32_t, uint32_t);
 	int (*getfat)(uint32_t, uint32_t *);
-	int (*dentry)(uint32_t, size_t);
+	int (*validfat)(uint32_t);
 	int (*alloc)(uint32_t);
 	int (*release)(uint32_t);
-	int (*create)(const char *, uint32_t, int);
-	int (*remove)(const char *, uint32_t, int);
+	int (*create)(const char *, uint32_t);
+	int (*mkdir)(const char *, uint32_t);
+	int (*remove)(const char *, uint32_t);
+	int (*rmdir)(const char *, uint32_t);
 	int (*trim)(uint32_t);
 	int (*fill)(uint32_t, uint32_t);
-	int (*contents)(const char *, uint32_t, int);
+	int (*contents)(const char *, uint32_t);
+	int (*stat)(const char *, uint32_t);
 };
 
 #define TAIL_COUNT           10
@@ -476,10 +485,28 @@ static inline char* strtok_dir(char *path)
 {
 	int i;
 
-	for(i = strlen(path) - 1; i >= 0; i--)
-		if (path[i] == '/')
+	for(i = strlen(path) - 1; i >= 0; i--) {
+		if (path[i] == '/') {
+			path[i] = '\0';
 			return path + i + 1;
+		}
+	}
 	return path;
+}
+
+/**
+ * Return the length of the null-terminated word string
+ *
+ * @param[in] str word string
+ * @return length
+ */
+static inline size_t strwlen(const uint16_t *str)
+{
+	size_t len = 0;
+
+	while (str[len] != '\0')
+		len++;
+	return len;
 }
 
 extern struct device_info info;

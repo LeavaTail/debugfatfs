@@ -36,11 +36,15 @@ jobs:
     - name: build test
       run: make -C tests/unit_test
     - name: run test
+      id: test_step
       run: make check
     - name: unit test
       run: ./tests/unit_test/test
-    - name: confirm result
-      run: cat tests/*.log
+    - name: confirm test log
+      if: failure() && steps.test_step.outcome == 'failure'
+      run: tail -n+1 tests/*.log
+    - name: verify test log
+      run: ./script/verify_test_results.sh tests/
     - uses: actions/upload-artifact@v3
       with:
         name: artifact

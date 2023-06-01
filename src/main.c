@@ -35,8 +35,6 @@ static struct option const longopts[] =
 	{"all", no_argument, NULL, 'a'},
 	{"byte", required_argument, NULL, 'b'},
 	{"cluster", required_argument, NULL, 'c'},
-	{"directory", required_argument, NULL, 'd'},
-	{"entry", required_argument, NULL, 'e'},
 	{"fat", required_argument, NULL, 'f'},
 	{"interactive", no_argument, NULL, 'i'},
 	{"output", required_argument, NULL, 'o'},
@@ -61,8 +59,6 @@ static void usage(void)
 	fprintf(stderr, "  -a, --all\tTrverse all directories.\n");
 	fprintf(stderr, "  -b, --byte=offset\tdump the any byte after dump filesystem information.\n");
 	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
-	fprintf(stderr, "  -d, --direcotry=path\tread directory entry from path.\n");
-	fprintf(stderr, "  -e, --entry=index\tread raw directory entry in current directory.\n");
 	fprintf(stderr, "  -f, --fource\twrite foucibly even if filesystem image has already mounted.\n");
 	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
@@ -436,33 +432,65 @@ int print_cluster(uint32_t index)
 }
 
 /**
+ * format_path - format pathname
+ * @dist:        formatted file path (Output)
+ * @len:         filepath length
+ * @str          filepath
+ *
+ * @return       0
+ */
+static int format_path(char *dist, size_t len, char *str)
+{
+	char *saveptr = NULL;
+	char *token;
+	char *buf;
+
+	if ((token = strtok_r(str, "/", &saveptr)) == NULL) {
+		snprintf(dist, strlen("/") + 1, "/");
+		return 0;
+	}
+
+	buf = calloc(strlen(str), sizeof(char));
+
+	snprintf(dist, strlen("/") + 1, "/");
+
+	/* Remove redundant "/" */
+	snprintf(buf, len, "%s%s", dist, token);
+	strncpy(dist, buf, len);
+
+	while ((token = strtok_r(NULL, "/", &saveptr)) != NULL) {
+		snprintf(buf, len, "%s/%s", dist, token);
+		strncpy(dist, buf, len);
+	}
+
+	free(buf);
+
+	return 0;
+}
+
+/**
  * main   - main function
  * @argc:   argument count
  * @argv:   argument vector
  */
 int main(int argc, char *argv[])
 {
-	int i;
 	int opt;
 	int longindex;
 	int ret = 0;
-	int offset = 0;
-	int entries = 0;
 	uint32_t attr = 0;
 	uint32_t cluster = 0;
-	uint32_t index = 0;
 	uint32_t fatent = 0;
 	uint32_t value = 0;
 	uint32_t sector = 0;
+	char *filepath = NULL;
 	char *outfile = NULL;
-	char *dir = NULL;
 	char *input = NULL;
 	char out[MAX_NAME_LENGTH + 1] = {};
 	struct pseudo_bootsec bootsec;
-	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ab:c:d:e:f:il:o:qrs:u:v",
+					"ab:c:f:il:o:qrs:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
 			case 'a':
@@ -475,14 +503,6 @@ int main(int argc, char *argv[])
 			case 'c':
 				attr |= OPTION_CLUSTER;
 				cluster = strtoul(optarg, NULL, 0);
-				break;
-			case 'd':
-				attr |= OPTION_DIRECTORY;
-				dir = optarg;
-				break;
-			case 'e':
-				attr |= OPTION_ENTRY;
-				index = strtoul(optarg, NULL, 0);
 				break;
 			case 'f':
 				attr |= OPTION_FATENT;
@@ -499,7 +519,7 @@ int main(int argc, char *argv[])
 				attr |= OPTION_READONLY;
 				break;
 			case 'q':
-				attr |= OPTION_QUIET;
+				print_level = PRINT_ERR;
 				break;
 			case 'u':
 				attr |= OPTION_UPPER;
@@ -524,9 +544,16 @@ int main(int argc, char *argv[])
 	print_level = PRINT_DEBUG;
 #endif
 
-	if (optind != argc - 1) {
-		usage();
-		exit(EXIT_FAILURE);
+	switch (argc - optind) {
+		case 1:
+			break;
+		case 2:
+			filepath = argv[optind + 1];
+			break;
+		default:
+			usage();
+			exit(EXIT_FAILURE);
+			break;
 	}
 
 	init_device_info();
@@ -555,46 +582,12 @@ int main(int argc, char *argv[])
 		goto device_close;
 	}
 
-	if (!(attr & OPTION_QUIET))
+	/* Filesystem statistic: default or -a option */
+	if (!attr || (attr & OPTION_ALL)) {
 		ret = info.ops->statfs();
-	if (ret < 0)
-		goto device_close;
-
-	offset = info.root_offset;
-
-	/* Command line: -d option */
-	if (attr & OPTION_DIRECTORY) {
-		dirs = calloc(DIRECTORY_FILES, sizeof(struct directory));
-		entries = DIRECTORY_FILES;
-		offset = info.ops->lookup(info.root_offset, dir);
-		if (offset < 0)
-			goto out;
+		if (ret < 0)
+			goto device_close;
 	}
-	ret = info.ops->readdir(dirs, entries, offset);
-	if (attr & OPTION_DIRECTORY) {
-		if (ret < 0) {
-			/* Only once, expand dirs structure and execute readdir */
-			ret = abs(ret) + 1;
-			dirs_tmp = realloc(dirs, sizeof(struct directory) * (DIRECTORY_FILES + ret));
-			if (dirs_tmp) {
-				dirs = dirs_tmp;
-				ret = info.ops->readdir(dirs, DIRECTORY_FILES + ret, offset);
-				if (ret < 0)
-					goto out;
-			} else {
-				pr_err("Can't load directory because of failed to allocate space.\n");
-				goto out;
-			}
-		}
-
-		entries = ret;
-		pr_msg("Read \"/\" Directory (%d entries).\n", entries);
-		for (i = 0; i < entries; i++)
-			pr_msg("%s ", dirs[i].name);
-
-		pr_msg("\n");
-	}
-	ret = 0;
 
 	/* Command line: -a option */
 	if (attr & OPTION_ALL) {
@@ -607,13 +600,6 @@ int main(int argc, char *argv[])
 	if (attr & OPTION_FATENT) {
 		ret = info.ops->getfat(fatent, &value);
 		pr_msg("Get: Cluster %u is FAT entry %08x\n", fatent, value);
-		if (ret < 0)
-			goto device_close;
-	}
-
-	/* Command line: -e option */
-	if (attr & OPTION_ENTRY) {
-		ret = info.ops->dentry(offset, index);
 		if (ret < 0)
 			goto device_close;
 	}
@@ -637,12 +623,21 @@ int main(int argc, char *argv[])
 			goto out;
 	}
 
-out:
-	if (attr & OPTION_DIRECTORY) {
-		for (i = 0; i < entries; i++)
-			free(dirs[i].name);
-		free(dirs);
+	/* file argument */
+	if (filepath) {
+		uint32_t p_clu;
+		char *tmp;
+
+		tmp = calloc(strlen(filepath) + 1, sizeof(char));
+		format_path(tmp, strlen(filepath) + 1, filepath);
+		filepath = strtok_dir(tmp);
+		p_clu = info.ops->lookup(info.root_offset, tmp);
+		ret = info.ops->stat(filepath, p_clu);
+
+		free(tmp);
 	}
+
+out:
 	free(info.vol_label);
 	free(info.upcase_table);
 	free(info.alloc_table);
