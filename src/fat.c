@@ -647,7 +647,7 @@ static int fat_alloc_clusters(struct fat_fileinfo *f, uint32_t clu, size_t num_a
 		if (entry)
 			continue;
 
-		fat_set_fat_entry(next_clu, EXFAT_LASTCLUSTER);
+		fat_set_fat_entry(next_clu, LAST_CLUSTER);
 		fat_set_fat_entry(clu, next_clu);
 		clu = next_clu;
 		if (--total_alloc == 0)
@@ -671,7 +671,7 @@ static int fat_free_clusters(struct fat_fileinfo *f, uint32_t clu, size_t num_al
 	uint32_t tmp = clu;
 	uint32_t next_clu = FAT_FSTCLUSTER;
 	size_t cluster_num = 0;
-	uint32_t ret = EXFAT_LASTCLUSTER;
+	uint32_t ret = LAST_CLUSTER;
 
 	for (cluster_num = 0; fat_check_last_cluster(next_clu) == 0 ;cluster_num++) {
 		fat_get_fat_entry(tmp, &next_clu);
