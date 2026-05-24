@@ -248,7 +248,7 @@ void hexdump(void *data, size_t size)
 		for (byte = 0; byte < 0x10; byte++) {
 			pr_msg("%02X ", ((unsigned char *)data)[line * 0x10 + byte]);
 		}
-		putchar(' ');
+		pr_msg(" ");
 		for (byte = 0; byte < 0x10; byte++) {
 			char ch = ((unsigned char *)data)[line * 0x10 + byte];
 			pr_msg("%c", isprint(ch) ? ch : '.');
