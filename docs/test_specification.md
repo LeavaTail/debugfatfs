@@ -57,4 +57,4 @@ The following tests shall be performed.
 - DO NOT abort in each option and filesystem image(FAT12/FAT16/FAT32/exFAT)
 - DO NOT abort in shell mode command and filesystem image(FAT12/FAT16/FAT32/exFAT)
 - DO NOT abort in the wrong usage
-
+- Verify exFAT boot/stat/upcase smoke behavior
