@@ -450,7 +450,9 @@ static int format_path(char *dist, size_t len, char *str)
 		return 0;
 	}
 
-	buf = calloc(strlen(str), sizeof(char));
+	buf = calloc(len, sizeof(char));
+	if (!buf)
+		return -1;
 
 	snprintf(dist, strlen("/") + 1, "/");
 
