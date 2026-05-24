@@ -700,23 +700,23 @@ static int fat_free_clusters(struct fat_fileinfo *f, uint32_t clu, size_t num_al
  */
 static int fat_new_clusters(size_t num_alloc)
 {
-	uint32_t next_clu, clu;
+	uint32_t entry, clu;
+	uint32_t last_clu = 0;
 	uint32_t fst_clu = 0;
 
 	for (clu = FAT_FSTCLUSTER; clu < info.cluster_count; clu++) {
-		fat_get_fat_entry(clu, &next_clu);
-		if (!fat_check_last_cluster(next_clu))
+		fat_get_fat_entry(clu, &entry);
+		if (entry)
 			continue;
 
 		if (!fst_clu) {
-			fst_clu = clu = next_clu;
+			fst_clu = clu;
 			fat_set_fat_entry(fst_clu, EXFAT_LASTCLUSTER);
 		} else {
-			fat_set_fat_entry(next_clu, EXFAT_LASTCLUSTER);
-			fat_set_fat_entry(clu, next_clu);
-			clu = next_clu;
+			fat_set_fat_entry(clu, LAST_CLUSTER);
+			fat_set_fat_entry(last_clu, clu);
 		}
-
+		last_clu = clu;
 		if (--num_alloc == 0)
 			break;
 	}
