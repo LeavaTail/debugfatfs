@@ -83,7 +83,8 @@ function test_shell () {
 }
 
 function main() {
-	init_image
+	require_command expect
+	init_image "${IMAGES[@]}"
 
 	for fs in ${IMAGES[@]}; do
 		test_options ${fs}

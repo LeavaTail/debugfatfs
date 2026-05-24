@@ -24,7 +24,7 @@ function test_options () {
 }
 
 function main() {
-	init_image
+	init_image "${IMAGES[@]}"
 
 	for fs in ${IMAGES[@]}; do
 		test_options ${fs}

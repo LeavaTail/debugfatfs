@@ -48,7 +48,8 @@ function test_release () {
 }
 
 function main() {
-	init_image
+	require_command expect
+	init_image "${IMAGES[@]}"
 
 	for fs in ${IMAGES[@]}; do
 		test_allocate ${fs}
@@ -58,4 +59,3 @@ function main() {
 
 ### main function ###
 main "$@"
-
