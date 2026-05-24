@@ -15,6 +15,7 @@
 #include <mntent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <inttypes.h>
 
 #include "debugfatfs.h"
 FILE *output = NULL;
@@ -104,7 +105,8 @@ int get_sector(void *data, off_t index, size_t count)
 {
 	size_t sector_size = info.sector_size;
 
-	pr_debug("Get: Sector from 0x%lx to 0x%lx\n", index , index + (count * sector_size) - 1);
+	pr_debug("Get: Sector from 0x%" PRIxMAX " to 0x%" PRIxMAX "\n",
+		(uintmax_t)index , (uintmax_t)(index + (count * sector_size) - 1));
 	if ((pread(info.fd, data, count * sector_size, index)) < 0) {
 		pr_err("read: %s\n", strerror(errno));
 		return -1;
@@ -127,7 +129,8 @@ int set_sector(void *data, off_t index, size_t count)
 {
 	size_t sector_size = info.sector_size;
 
-	pr_debug("Set: Sector from 0x%lx to 0x%lx\n", index, index + (count * sector_size) - 1);
+	pr_debug("Set: Sector from 0x%" PRIxMAX " to 0x%" PRIxMAX "\n",
+		(uintmax_t)index, (uintmax_t)(index + (count * sector_size) - 1));
 	if ((pwrite(info.fd, data, count * sector_size, index)) < 0) {
 		pr_err("write: %s\n", strerror(errno));
 		return -1;
@@ -182,7 +185,7 @@ int get_clusters(void *data, off_t index, size_t num)
 	off_t heap_start = info.heap_offset * info.sector_size;
 
 	if (index < 2 || index + num > info.cluster_count) {
-		pr_err("invalid cluster index %lu.\n", index);
+		pr_err("invalid cluster index %" PRIuMAX ".\n", (uintmax_t)index);
 		return -1;
 	}
 
@@ -208,7 +211,7 @@ int set_clusters(void *data, off_t index, size_t num)
 	off_t heap_start = info.heap_offset * info.sector_size;
 
 	if (index < 2 || index + num > info.cluster_count) {
-		pr_err("invalid cluster index %lu.\n", index);
+		pr_err("invalid cluster index %" PRIuMAX ".\n", (uintmax_t)index);
 		return -1;
 	}
 
