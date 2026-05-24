@@ -14,6 +14,7 @@ TESTS = \
         tests/06_invalid_usage_check.sh \
         tests/07_invalid_image_check.sh \
         tests/11_alloc_free_check.sh \
+        tests/12_exfat_smoke_check.sh \
         tests/21_fat12_root_check.sh \
         tests/22_fat_lfn_check.sh
 

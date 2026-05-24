@@ -4,7 +4,7 @@ set -u
 
 source tests/common.sh
 
-IMAGES=("fat12.img" "fat16.img" "fat32.img" "exfat.img")
+IMAGES=("fat12.img" "fat16.img" "fat32.img")
 OUTPUT=data.dat
 
 function test_options () {
