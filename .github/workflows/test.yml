@@ -2,57 +2,89 @@ name: Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+
+permissions:
+  contents: read
 
 jobs:
   static_test:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-    - run: pip install cpplint
-    - run: cpplint --recursive --filter=-whitespace,-build,-readability .
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+          cache: pip
+
+      - name: Install cpplint
+        run: python -m pip install --upgrade cpplint
+
+      - name: Run cpplint
+        run: cpplint --recursive --filter=-whitespace,-build,-readability .
 
   dynamic_test:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: setup environment
-      run: |
-        sudo apt-get update
-        sudo apt-get install autoconf automake libtool make expect libcunit1-dev
-    - name: automake
-      run:  script/bootstrap.sh
-    - name: configure
-      run: ./configure --enable-gcov
-    - name: build package
-      run: make
-    - name: build test
-      run: make -C tests/unit_test
-    - name: run test
-      id: test_step
-      run: make check
-    - name: unit test
-      run: ./tests/unit_test/test
-    - name: confirm test log
-      if: failure() && steps.test_step.outcome == 'failure'
-      run: tail -n+1 tests/*.log
-    - name: verify test log
-      run: ./script/verify_test_results.sh tests/
-    - uses: actions/upload-artifact@v3
-      with:
-        name: artifact
-        path: src/*.gc??
-        retention-days: 1
-    - name: Upload coverage reports to Codecov with GitHub Action
-      uses: codecov/codecov-action@v3
-      with:
-        gcov: true
-        fail_ci_if_error: true
-        verbose: true
+      - uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf \
+            automake \
+            libtool \
+            make \
+            expect \
+            libcunit1-dev \
+            gcc \
+            gcovr \
+            pkg-config
+
+      - name: Bootstrap
+        run: script/bootstrap.sh
+
+      - name: Configure
+        run: ./configure --enable-gcov
+
+      - name: Build
+        run: make
+
+      - name: Build unit tests
+        run: make -C tests/unit_test
+
+      - name: Run check
+        id: test_step
+        run: make check
+
+      - name: Run unit tests
+        run: ./tests/unit_test/test
+
+      - name: Show test logs on failure
+        if: failure() && steps.test_step.outcome == 'failure'
+        run: tail -n +1 tests/*.log
+
+      - name: Verify test logs
+        run: ./script/verify_test_results.sh tests/
+
+      - name: Upload gcov artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gcov-files
+          path: src/*.gc??
+          retention-days: 1
+          if-no-files-found: warn
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          gcov: true
+          fail_ci_if_error: true
+          verbose: true
