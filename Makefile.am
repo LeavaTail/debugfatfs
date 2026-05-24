@@ -16,7 +16,8 @@ TESTS = \
         tests/11_alloc_free_check.sh \
         tests/12_exfat_smoke_check.sh \
         tests/21_fat12_root_check.sh \
-        tests/22_fat_lfn_check.sh
+        tests/22_fat_lfn_check.sh \
+        tests/23_fat12_fat_entry_check.sh
 
 EXTRA_DIST = include
 
