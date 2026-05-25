@@ -2,25 +2,25 @@
 
 ## Overview
  1. Please fork this repository
- 2. Commit your local repository and add Signed-Off information
- 3. Please send pull request to develop
+ 2. Commit your local changes and add Signed-off-by information
+ 3. Please send a pull request to develop
 
 ## Issue
- * Please check that you report bug for corresponding repository
- * Please check that if is already reported
- * Please use issue templete whenever possible
+ * Please check that you are reporting the bug to the correct repository
+ * Please check whether the issue has already been reported
+ * Please use the issue template whenever possible
    * Please fill issue description
-   * Please select Label
- * If you're working on issue, please set assinees to assign yourself
+   * Please select a label
+ * If you are working on an issue, please set assignees to assign yourself
 
 ## Pull Request
- * Please select target branch to "develop" branch.
- * Please use Pull Request templete whenever possible
+ * Please select the "develop" branch as the target branch.
+ * Please use the pull request template whenever possible
    * Please fill issue description
-   * Please confirm check list
-   * Please select Label
- * Please set reviwers to maintainer
- * Please set assinees to assign reviewers
+   * Please confirm the checklist
+   * Please select a label
+ * Please set reviewers to the maintainers
+ * Please set assignees to the authors
 
 ## Commit Message
 ```
@@ -28,12 +28,12 @@
 
 ${Detail}
 ```
- * 1st line - commit_type & outline (Select the appropriate commit type from the following)
+ * 1st line - commit_type and outline (select the appropriate commit type from the following)
    * Add: add new feature
    * Fix: fix current bug
    * Improve: update other
- * 2nd line - Blank
- * 3rd line - Detail
+ * 2nd line - blank
+ * 3rd line - detail
 
 ## Branch rules
  * main: release branch. [Protected]

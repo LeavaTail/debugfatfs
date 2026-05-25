@@ -53,20 +53,20 @@ static struct option const longopts[] =
  */
 static void usage(void)
 {
-	fprintf(stderr, "Usage: %s [OPTION]... FILE\n", PROGRAM_NAME);
+	fprintf(stderr, "Usage: %s [OPTION]... FILE [PATH]\n", PROGRAM_NAME);
 	fprintf(stderr, "dump FAT/exFAT filesystem information.\n");
 	fprintf(stderr, "\n");
 
-	fprintf(stderr, "  -a, --all\tTrverse all directories.\n");
-	fprintf(stderr, "  -b, --byte=offset\tdump the any byte after dump filesystem information.\n");
-	fprintf(stderr, "  -c, --cluster=index\tdump the cluster index after dump filesystem information.\n");
-	fprintf(stderr, "  -f, --fource\twrite foucibly even if filesystem image has already mounted.\n");
-	fprintf(stderr, "  -i, --interactive\tprompt the user operate filesystem.\n");
+	fprintf(stderr, "  -a, --all\ttraverse all directories.\n");
+	fprintf(stderr, "  -b, --byte=offset\tdump one sector-sized block from byte offset.\n");
+	fprintf(stderr, "  -c, --cluster=index\tdump cluster index after filesystem information.\n");
+	fprintf(stderr, "  -f, --fat=index\tread FAT entry value for cluster index.\n");
+	fprintf(stderr, "  -i, --interactive\tprompt the user to operate filesystem.\n");
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
-	fprintf(stderr, "  -q, --quiet\tSuppress message about Main boot Sector.\n");
-	fprintf(stderr, "  -r, --ro\tread only mode. \n");
-	fprintf(stderr, "  -u, --upper\tconvert into uppercase latter by up-case Table.\n");
-	fprintf(stderr, "  -v, --verbose\tVersion mode.\n");
+	fprintf(stderr, "  -q, --quiet\tsuppress message about main boot sector.\n");
+	fprintf(stderr, "  -r, --ro\tread-only mode.\n");
+	fprintf(stderr, "  -u, --upper=string\tconvert string through exFAT up-case table.\n");
+	fprintf(stderr, "  -v, --verbose\tverbose mode.\n");
 	fprintf(stderr, "  --help\tdisplay this help and exit.\n");
 	fprintf(stderr, "  --version\toutput version information and exit.\n");
 	fprintf(stderr, "\n");
@@ -74,6 +74,7 @@ static void usage(void)
 	fprintf(stderr, "Examples:\n");
 	fprintf(stderr, "  %s /dev/sda\tdump FAT/exFAT filesystem information.\n", PROGRAM_NAME);
 	fprintf(stderr, "  %s -c 2 /dev/sda\tdump FAT/exFAT filesystem information and cluster #2.\n", PROGRAM_NAME);
+	fprintf(stderr, "  %s /dev/sda /DIR/FILE.TXT\tdump file metadata.\n", PROGRAM_NAME);
 	fprintf(stderr, "\n");
 }
 
@@ -617,7 +618,7 @@ int main(int argc, char *argv[])
 		pr_msg("Convert: %s -> %s\n", input, out);
 	}
 
-	/* Command line: -c, -s option */
+	/* Command line: -b, -c option */
 	if ((attr & OPTION_SECTOR) || (attr & OPTION_CLUSTER)) {
 		if (attr & OPTION_CLUSTER)
 			ret = print_cluster(cluster);

@@ -1,11 +1,11 @@
 # Directory Chain Design
 
-This document described how to handle directroy/file in debugfatfs.
+This document describes how debugfatfs caches directory and file metadata.
 
 ## Overview
 
-debugfatfs caches the directroy and file metadata in memory.
-These caches are manged by List structure.
+debugfatfs caches directory and file metadata in memory while it traverses the image.
+The cache is implemented with the list helpers in `include/list.h`.
 
 The head of the list is "Directory",
 and after that elements are "File"/"Directory" under the "Directory".
@@ -47,8 +47,27 @@ flowchart TB
   d1 ~~~ d2 ~~~ d3
 ```
 
-The key value of the list depends on whether head or otherwise.
+The key value of each list node depends on its role.
 
 * head: First cluster index
 * otherwise: Name hash
 
+## Ownership
+
+The top-level directory cache is stored in `info.root`. Each element represents a directory chain.
+
+- The head node stores metadata for the directory itself.
+- Subsequent nodes store files and subdirectories directly contained by that directory.
+- FAT and exFAT implementations keep filesystem-specific metadata in their own fileinfo structures.
+
+## Lifecycle
+
+Directory metadata is loaded on demand by lookup and readdir operations. Commands that change directory contents, such as `create`, `mkdir`, `remove`, `rmdir`, `trim`, and `fill`, reload the affected directory after writing the image.
+
+At process shutdown, `free_dentry_list()` calls the filesystem-specific clean operation for each cached directory chain and then releases `info.root`.
+
+## Notes
+
+- The cache is an inspection and command helper; the filesystem image remains the source of truth.
+- Paths are resolved from the current directory in interactive mode and from the root directory for command-line file metadata lookup.
+- Name matching uses the filesystem implementation, so FAT long-file-name behavior and exFAT up-case behavior are handled below the shell layer.
