@@ -5,6 +5,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "debugfatfs.h"
 
@@ -52,6 +55,10 @@ static uint16_t fat_calculate_namehash(uint16_t *, uint8_t);
 static int fat_check_dir_empty(struct fat_fileinfo *, uint32_t);
 static int fat_add_entry(const char *, uint32_t, uint8_t);
 static int fat_remove_entry(const char *, uint32_t, uint8_t);
+static int fat_dentry_entry(const char *, uint32_t);
+static int fat_dentry_set_entry(const char *, uint32_t, const char *, const char *, uint32_t);
+static int fat_dentry_raw_entry(const char *, uint32_t, const char *, const char *,
+		const char *, const char *, uint32_t);
 
 /* Timestamp function prototype */
 static void fat_convert_unixtime(struct tm *, uint16_t, uint16_t, uint8_t);
@@ -85,6 +92,10 @@ int fat_trim(uint32_t);
 int fat_fill(uint32_t, uint32_t);
 int fat_contents(const char *, uint32_t);
 int fat_stat(const char *, uint32_t);
+int fat_dentry(const char *, uint32_t);
+int fat_dentry_set(const char *, uint32_t, const char *, const char *, uint32_t);
+int fat_dentry_raw(const char *, uint32_t, const char *, const char *, const char *,
+		const char *, uint32_t);
 
 static const struct operations fat_ops = {
 	.statfs = fat_print_bootsec,
@@ -107,6 +118,9 @@ static const struct operations fat_ops = {
 	.fill = fat_fill,
 	.contents = fat_contents,
 	.stat = fat_stat,
+	.dentry = fat_dentry,
+	.dentry_set = fat_dentry_set,
+	.dentry_raw = fat_dentry_raw,
 };
 
 static uint32_t BAD_CLUSTER = 0;
@@ -1362,6 +1376,470 @@ create_short:
 	return 0;
 }
 
+struct fat_dentry_location {
+	void *data;
+	size_t entries;
+	size_t root_sectors;
+	uint32_t clu;
+	size_t lfn_index;
+	size_t lfn_count;
+	size_t short_index;
+	struct fat_fileinfo *dir;
+};
+
+struct fat_dentry_field {
+	const char *name;
+	size_t offset;
+	size_t size;
+	bool lfn;
+};
+
+static const struct fat_dentry_field fat_short_fields[] = {
+	{"DIR_Attr", offsetof(struct fat_dentry, dentry.dir.DIR_Attr), 1, false},
+	{"DIR_NTRes", offsetof(struct fat_dentry, dentry.dir.DIR_NTRes), 1, false},
+	{"DIR_CrtTimeTenth", offsetof(struct fat_dentry, dentry.dir.DIR_CrtTimeTenth), 1, false},
+	{"DIR_CrtTime", offsetof(struct fat_dentry, dentry.dir.DIR_CrtTime), 2, false},
+	{"DIR_CrtDate", offsetof(struct fat_dentry, dentry.dir.DIR_CrtDate), 2, false},
+	{"DIR_LstAccDate", offsetof(struct fat_dentry, dentry.dir.DIR_LstAccDate), 2, false},
+	{"DIR_FstClusHI", offsetof(struct fat_dentry, dentry.dir.DIR_FstClusHI), 2, false},
+	{"DIR_WrtTime", offsetof(struct fat_dentry, dentry.dir.DIR_WrtTime), 2, false},
+	{"DIR_WrtDate", offsetof(struct fat_dentry, dentry.dir.DIR_WrtDate), 2, false},
+	{"DIR_FstClusLO", offsetof(struct fat_dentry, dentry.dir.DIR_FstClusLO), 2, false},
+	{"DIR_FileSize", offsetof(struct fat_dentry, dentry.dir.DIR_FileSize), 4, false},
+};
+
+static const struct fat_dentry_field fat_lfn_fields[] = {
+	{"LDIR_Ord", offsetof(struct fat_dentry, dentry.lfn.LDIR_Ord), 1, true},
+	{"LDIR_Attr", offsetof(struct fat_dentry, dentry.lfn.LDIR_Attr), 1, true},
+	{"LDIR_Type", offsetof(struct fat_dentry, dentry.lfn.LDIR_Type), 1, true},
+	{"LDIR_Chksum", offsetof(struct fat_dentry, dentry.lfn.LDIR_Chksum), 1, true},
+	{"LDIR_FstClusLO", offsetof(struct fat_dentry, dentry.lfn.LDIR_FstClusLO), 2, true},
+};
+
+static int fat_parse_u64(const char *str, uint64_t *value)
+{
+	char *end = NULL;
+
+	errno = 0;
+	*value = strtoull(str, &end, 0);
+	if (errno || !end || *end != '\0')
+		return -EINVAL;
+	return 0;
+}
+
+static void fat_write_le(void *ptr, size_t size, uint64_t value)
+{
+	uint8_t *p = ptr;
+	size_t i;
+
+	for (i = 0; i < size; i++)
+		p[i] = (value >> (i * 8)) & 0xff;
+}
+
+static int fat_load_dentry_location(uint32_t clu, struct fat_dentry_location *loc)
+{
+	size_t index = fat_get_index(clu);
+
+	memset(loc, 0, sizeof(*loc));
+	loc->clu = clu;
+	loc->dir = (struct fat_fileinfo *)info.root[index]->data;
+
+	if (clu) {
+		size_t cluster_num = 1;
+
+		loc->data = malloc(info.cluster_size);
+		if (!loc->data)
+			return -ENOMEM;
+		get_cluster(loc->data, clu);
+		cluster_num = fat_concat_cluster(loc->dir, clu, &loc->data);
+		loc->entries = (cluster_num * info.cluster_size) / sizeof(struct fat_dentry);
+	} else {
+		loc->root_sectors = info.root_length;
+		loc->entries = (info.root_length * info.sector_size) / sizeof(struct fat_dentry);
+		loc->data = malloc(info.root_length * info.sector_size);
+		if (!loc->data)
+			return -ENOMEM;
+		get_sector(loc->data, (info.fat_offset + info.fat_length) * info.sector_size,
+				info.root_length);
+	}
+
+	return 0;
+}
+
+static int fat_store_dentry_location(struct fat_dentry_location *loc)
+{
+	if (loc->clu)
+		return fat_set_cluster(loc->dir, loc->clu, loc->data);
+	return set_sector(loc->data, (info.fat_offset + info.fat_length) * info.sector_size,
+			loc->root_sectors);
+}
+
+static void fat_update_lfn_checksum(struct fat_dentry_location *loc)
+{
+	size_t i;
+	uint8_t checksum;
+	struct fat_dentry *short_dentry;
+
+	if (!loc->lfn_count)
+		return;
+
+	short_dentry = ((struct fat_dentry *)loc->data) + loc->short_index;
+	checksum = fat_calculate_checksum(short_dentry->dentry.dir.DIR_Name);
+
+	for (i = 0; i < loc->lfn_count; i++) {
+		struct fat_dentry *lfn = ((struct fat_dentry *)loc->data) + loc->lfn_index + i;
+
+		lfn->dentry.lfn.LDIR_Chksum = checksum;
+	}
+}
+
+static int fat_store_dentry_after_edit(struct fat_dentry_location *loc, uint32_t flags)
+{
+	if (flags & OPTION_UPDATE_CHECKSUM)
+		fat_update_lfn_checksum(loc);
+	return fat_store_dentry_location(loc);
+}
+
+static void fat_free_dentry_location(struct fat_dentry_location *loc)
+{
+	free(loc->data);
+	loc->data = NULL;
+}
+
+static int fat_match_lfn_name(struct fat_dentry_location *loc, size_t lfn_index,
+		size_t lfn_count, uint16_t *longname)
+{
+	size_t i;
+	uint16_t uniname[MAX_NAME_LENGTH] = {0};
+
+	for (i = 0; i < lfn_count; i++) {
+		struct fat_dentry *d = ((struct fat_dentry *)loc->data) + lfn_index +
+			lfn_count - i - 1;
+
+		memcpy(uniname + i * LONGNAME_MAX, d->dentry.lfn.LDIR_Name1,
+				5 * sizeof(uint16_t));
+		memcpy(uniname + i * LONGNAME_MAX + 5, d->dentry.lfn.LDIR_Name2,
+				6 * sizeof(uint16_t));
+		memcpy(uniname + i * LONGNAME_MAX + 11, d->dentry.lfn.LDIR_Name3,
+				2 * sizeof(uint16_t));
+	}
+
+	return !memcmp(uniname, longname, strwlen(longname) * sizeof(uint16_t));
+}
+
+static int fat_find_dentry_location(const char *name, uint32_t clu,
+		struct fat_dentry_location *loc)
+{
+	int i;
+	int long_len;
+	char shortname[11] = {0};
+	uint16_t longname[MAX_NAME_LENGTH] = {0};
+	uint8_t chksum;
+
+	if (!name || !*name)
+		return -EINVAL;
+
+	long_len = fat_create_nameentry(name, shortname, longname);
+	chksum = fat_calculate_checksum((unsigned char *)shortname);
+
+	if (fat_load_dentry_location(clu, loc))
+		return -1;
+
+	for (i = 0; i < loc->entries; i++) {
+		struct fat_dentry *d = ((struct fat_dentry *)loc->data) + i;
+
+		if (d->dentry.lfn.LDIR_Ord == DENTRY_UNUSED)
+			break;
+		if (d->dentry.lfn.LDIR_Ord == DENTRY_DELETED)
+			continue;
+
+		if (d->dentry.lfn.LDIR_Attr == ATTR_LONG_FILE_NAME) {
+			size_t lfn_index = i;
+			size_t lfn_count = d->dentry.lfn.LDIR_Ord & ~LAST_LONG_ENTRY;
+			size_t short_index = lfn_index + lfn_count;
+			struct fat_dentry *s;
+
+			if (!lfn_count || short_index >= loc->entries)
+				break;
+
+			s = ((struct fat_dentry *)loc->data) + short_index;
+			if (s->dentry.lfn.LDIR_Ord == DENTRY_UNUSED)
+				break;
+
+			if (!strncmp(shortname, (char *)s->dentry.dir.DIR_Name, 11) ||
+					(d->dentry.lfn.LDIR_Chksum == chksum &&
+					 fat_match_lfn_name(loc, lfn_index, lfn_count, longname))) {
+				loc->lfn_index = lfn_index;
+				loc->lfn_count = lfn_count;
+				loc->short_index = short_index;
+				return 0;
+			}
+
+			i += lfn_count;
+			continue;
+		}
+
+		if (!strncmp(shortname, (char *)d->dentry.dir.DIR_Name, 11)) {
+			loc->lfn_index = 0;
+			loc->lfn_count = 0;
+			loc->short_index = i;
+			return 0;
+		}
+	}
+
+	fat_free_dentry_location(loc);
+	return -ENOENT;
+}
+
+static void fat_print_short_dentry(struct fat_dentry *d)
+{
+	pr_msg("short:\n");
+	pr_msg("  DIR_Name:        %.11s\n", d->dentry.dir.DIR_Name);
+	pr_msg("  DIR_Attr:        0x%02x\n", d->dentry.dir.DIR_Attr);
+	pr_msg("  DIR_NTRes:       0x%02x\n", d->dentry.dir.DIR_NTRes);
+	pr_msg("  DIR_CrtTimeTenth:0x%02x\n", d->dentry.dir.DIR_CrtTimeTenth);
+	pr_msg("  DIR_CrtTime:     0x%04x\n", d->dentry.dir.DIR_CrtTime);
+	pr_msg("  DIR_CrtDate:     0x%04x\n", d->dentry.dir.DIR_CrtDate);
+	pr_msg("  DIR_LstAccDate:  0x%04x\n", d->dentry.dir.DIR_LstAccDate);
+	pr_msg("  DIR_FstClusHI:   0x%04x\n", d->dentry.dir.DIR_FstClusHI);
+	pr_msg("  DIR_WrtTime:     0x%04x\n", d->dentry.dir.DIR_WrtTime);
+	pr_msg("  DIR_WrtDate:     0x%04x\n", d->dentry.dir.DIR_WrtDate);
+	pr_msg("  DIR_FstClusLO:   0x%04x\n", d->dentry.dir.DIR_FstClusLO);
+	pr_msg("  DIR_FileSize:    0x%08x\n", d->dentry.dir.DIR_FileSize);
+}
+
+static void fat_print_lfn_dentry(struct fat_dentry *d, size_t index)
+{
+	pr_msg("lfn[%zu]:\n", index);
+	pr_msg("  LDIR_Ord:        0x%02x\n", d->dentry.lfn.LDIR_Ord);
+	pr_msg("  LDIR_Attr:       0x%02x\n", d->dentry.lfn.LDIR_Attr);
+	pr_msg("  LDIR_Type:       0x%02x\n", d->dentry.lfn.LDIR_Type);
+	pr_msg("  LDIR_Chksum:     0x%02x\n", d->dentry.lfn.LDIR_Chksum);
+	pr_msg("  LDIR_FstClusLO:  0x%04x\n", d->dentry.lfn.LDIR_FstClusLO);
+}
+
+static int fat_parse_lfn_selector(const char *selector, size_t *index)
+{
+	const char *p;
+	char *end = NULL;
+	unsigned long value;
+
+	if (!strncmp(selector, "lfn[", 4)) {
+		p = selector + 4;
+		value = strtoul(p, &end, 0);
+		if (!end || strcmp(end, "]"))
+			return -EINVAL;
+		*index = value;
+		return 0;
+	}
+
+	if (!strncmp(selector, "lfn", 3) && isdigit((unsigned char)selector[3])) {
+		value = strtoul(selector + 3, &end, 0);
+		if (!end || *end != '\0')
+			return -EINVAL;
+		*index = value;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int fat_select_dentry(struct fat_dentry_location *loc, const char *selector,
+		struct fat_dentry **d)
+{
+	size_t index;
+
+	if (!strcmp(selector, "short")) {
+		*d = ((struct fat_dentry *)loc->data) + loc->short_index;
+		return 0;
+	}
+
+	if (fat_parse_lfn_selector(selector, &index))
+		return -EINVAL;
+	if (index >= loc->lfn_count)
+		return -ERANGE;
+
+	*d = ((struct fat_dentry *)loc->data) + loc->lfn_index + index;
+	return 0;
+}
+
+static const char *fat_normalize_field(const char *field)
+{
+	if (!strncmp(field, "fat.", 4))
+		field += 4;
+	return field;
+}
+
+static int fat_parse_field_selector(const char *field, bool *lfn, size_t *lfn_index,
+		const char **name)
+{
+	const char *normalized = fat_normalize_field(field);
+	const char *dot;
+	char selector[32] = {};
+
+	dot = strchr(normalized, '.');
+	if (!dot) {
+		*lfn = false;
+		*lfn_index = 0;
+		*name = normalized;
+		return 0;
+	}
+
+	if ((size_t)(dot - normalized) >= sizeof(selector))
+		return -EINVAL;
+	memcpy(selector, normalized, dot - normalized);
+	selector[dot - normalized] = '\0';
+	*name = dot + 1;
+
+	if (!strcmp(selector, "short")) {
+		*lfn = false;
+		*lfn_index = 0;
+		return 0;
+	}
+
+	if (fat_parse_lfn_selector(selector, lfn_index))
+		return -EINVAL;
+	*lfn = true;
+	return 0;
+}
+
+static const struct fat_dentry_field *fat_find_field(const char *name, bool lfn)
+{
+	const struct fat_dentry_field *fields = lfn ? fat_lfn_fields : fat_short_fields;
+	size_t count = lfn ? sizeof(fat_lfn_fields) / sizeof(fat_lfn_fields[0]) :
+		sizeof(fat_short_fields) / sizeof(fat_short_fields[0]);
+	size_t i;
+
+	for (i = 0; i < count; i++) {
+		if (!strcmp(name, fields[i].name))
+			return &fields[i];
+	}
+	return NULL;
+}
+
+static int fat_dentry_entry(const char *name, uint32_t clu)
+{
+	size_t i;
+	struct fat_dentry_location loc;
+	int ret;
+
+	ret = fat_find_dentry_location(name, clu, &loc);
+	if (ret) {
+		pr_err("File is not found.\n");
+		return ret;
+	}
+
+	pr_msg("Dentry: %s\n", name);
+	pr_msg("  short index: %zu\n", loc.short_index);
+	pr_msg("  lfn index:   %zu\n", loc.lfn_index);
+	pr_msg("  lfn count:   %zu\n", loc.lfn_count);
+
+	for (i = 0; i < loc.lfn_count; i++)
+		fat_print_lfn_dentry(((struct fat_dentry *)loc.data) + loc.lfn_index + i, i);
+	fat_print_short_dentry(((struct fat_dentry *)loc.data) + loc.short_index);
+
+	fat_free_dentry_location(&loc);
+	return 0;
+}
+
+static int fat_dentry_set_entry(const char *name, uint32_t clu, const char *field,
+		const char *value, uint32_t flags)
+{
+	bool lfn;
+	size_t lfn_index = 0;
+	const char *field_name;
+	const struct fat_dentry_field *f;
+	struct fat_dentry_location loc;
+	struct fat_dentry *d;
+	uint64_t v;
+	int ret;
+
+	if (fat_parse_field_selector(field, &lfn, &lfn_index, &field_name)) {
+		pr_err("invalid dentry field: %s\n", field);
+		return -EINVAL;
+	}
+
+	f = fat_find_field(field_name, lfn);
+	if (!f) {
+		pr_err("unsupported dentry field: %s\n", field);
+		return -EINVAL;
+	}
+
+	if (fat_parse_u64(value, &v)) {
+		pr_err("invalid value: %s\n", value);
+		return -EINVAL;
+	}
+
+	ret = fat_find_dentry_location(name, clu, &loc);
+	if (ret) {
+		pr_err("File is not found.\n");
+		return ret;
+	}
+
+	if (lfn) {
+		if (lfn_index >= loc.lfn_count) {
+			pr_err("invalid lfn index: %zu\n", lfn_index);
+			ret = -ERANGE;
+			goto out;
+		}
+		d = ((struct fat_dentry *)loc.data) + loc.lfn_index + lfn_index;
+	} else {
+		d = ((struct fat_dentry *)loc.data) + loc.short_index;
+	}
+
+	fat_write_le(((uint8_t *)d) + f->offset, f->size, v);
+	ret = fat_store_dentry_after_edit(&loc, flags);
+	pr_msg("Set: %s %s = 0x%" PRIx64 "\n", name, field, v);
+out:
+	fat_free_dentry_location(&loc);
+	return ret;
+}
+
+static int fat_dentry_raw_entry(const char *name, uint32_t clu, const char *entry,
+		const char *offset, const char *size, const char *value, uint32_t flags)
+{
+	struct fat_dentry_location loc;
+	struct fat_dentry *d;
+	uint64_t off, bytes, v;
+	int ret;
+
+	if (fat_parse_u64(offset, &off) || fat_parse_u64(size, &bytes) ||
+			fat_parse_u64(value, &v)) {
+		pr_err("invalid raw dentry argument.\n");
+		return -EINVAL;
+	}
+
+	if (bytes != 1 && bytes != 2 && bytes != 4 && bytes != 8) {
+		pr_err("invalid raw write size: %" PRIu64 "\n", bytes);
+		return -EINVAL;
+	}
+
+	if (off + bytes > sizeof(struct fat_dentry)) {
+		pr_err("raw write exceeds dentry size.\n");
+		return -ERANGE;
+	}
+
+	ret = fat_find_dentry_location(name, clu, &loc);
+	if (ret) {
+		pr_err("File is not found.\n");
+		return ret;
+	}
+
+	ret = fat_select_dentry(&loc, entry, &d);
+	if (ret) {
+		pr_err("invalid dentry selector: %s\n", entry);
+		goto out;
+	}
+
+	fat_write_le(((uint8_t *)d) + off, bytes, v);
+	ret = fat_store_dentry_after_edit(&loc, flags);
+	pr_msg("Set: %s %s[0x%" PRIx64 ":0x%" PRIx64 "] = 0x%" PRIx64 "\n",
+			name, entry, off, bytes, v);
+out:
+	fat_free_dentry_location(&loc);
+	return ret;
+}
+
 /**
  * fat_remove_entry - Mark Delete flag to dentry
  * @name:             Filename in UTF-8
@@ -2030,6 +2508,52 @@ int fat_rmdir(const char *name, uint32_t clu)
 }
 
 /**
+ * fat_dentry - function interface to display directory entries
+ * @name:      Filename in UTF-8
+ * @clu:       Current Directory Index
+ *
+ * @return     0 (Success)
+ */
+int fat_dentry(const char *name, uint32_t clu)
+{
+	return fat_dentry_entry(name, clu);
+}
+
+/**
+ * fat_dentry_set - function interface to update a directory-entry field
+ * @name:          Filename in UTF-8
+ * @clu:           Current Directory Index
+ * @field:         Field selector
+ * @value:         New value
+ * @flags:         Command options
+ *
+ * @return         0 (Success)
+ */
+int fat_dentry_set(const char *name, uint32_t clu, const char *field,
+		const char *value, uint32_t flags)
+{
+	return fat_dentry_set_entry(name, clu, field, value, flags);
+}
+
+/**
+ * fat_dentry_raw - function interface to update raw directory-entry bytes
+ * @name:          Filename in UTF-8
+ * @clu:           Current Directory Index
+ * @entry:         Entry selector
+ * @offset:        Offset in the entry
+ * @size:          Write size
+ * @value:         New value
+ * @flags:         Command options
+ *
+ * @return         0 (Success)
+ */
+int fat_dentry_raw(const char *name, uint32_t clu, const char *entry,
+		const char *offset, const char *size, const char *value, uint32_t flags)
+{
+	return fat_dentry_raw_entry(name, clu, entry, offset, size, value, flags);
+}
+
+/**
  * fat_trim -  function interface to trim cluster
  * @clu:       Current Directory Index
  *
@@ -2251,4 +2775,3 @@ int fat_stat(const char *name, uint32_t clu)
 
 	return 0;
 }
-

@@ -419,6 +419,10 @@ struct operations {
 	int (*fill)(uint32_t, uint32_t);
 	int (*contents)(const char *, uint32_t);
 	int (*stat)(const char *, uint32_t);
+	int (*dentry)(const char *, uint32_t);
+	int (*dentry_set)(const char *, uint32_t, const char *, const char *, uint32_t);
+	int (*dentry_raw)(const char *, uint32_t, const char *, const char *, const char *,
+			const char *, uint32_t);
 };
 
 #define TAIL_COUNT           10

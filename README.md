@@ -198,10 +198,43 @@ File Size:   0
 - `fill [count]`: fill the current directory with generated entries
 - `tail file`: print file contents
 - `stat file`: print file metadata
+- `dentry file`: print FAT directory entries for a file
+- `dentry-set file field value`: update a FAT directory-entry field without refreshing checksums
+- `dentry-raw file entry offset size value`: update raw bytes in a FAT directory entry
 - `help`: display interactive help
 - `exit`: exit interactive mode
 
 Commands that modify the image are intended for test-image preparation and bug reproduction. Prefer `-r` for inspection-only sessions.
+
+The `dentry`, `dentry-set`, and `dentry-raw` commands currently support FAT images. They are intended for creating corrupted images for fsck testing. By default they do not refresh LFN checksums; pass `--update-checksum` when you want LFN checksums recalculated after the edit. For example:
+
+```text
+/> dentry /00/FILE1.TXT
+/> dentry-set /00/FILE1.TXT fat.short.DIR_FileSize 0xffffffff
+/> dentry-set /01/ABCDEFGHIJKLMNOPQRSTUVWXYZ! fat.lfn[0].LDIR_Chksum 0x00
+/> dentry-raw /00/FILE1.TXT short 0x0c 1 0x34
+```
+
+Supported `dentry-set` FAT fields:
+
+- `fat.short.DIR_Attr`
+- `fat.short.DIR_NTRes`
+- `fat.short.DIR_CrtTimeTenth`
+- `fat.short.DIR_CrtTime`
+- `fat.short.DIR_CrtDate`
+- `fat.short.DIR_LstAccDate`
+- `fat.short.DIR_FstClusHI`
+- `fat.short.DIR_WrtTime`
+- `fat.short.DIR_WrtDate`
+- `fat.short.DIR_FstClusLO`
+- `fat.short.DIR_FileSize`
+- `fat.lfn[N].LDIR_Ord`
+- `fat.lfn[N].LDIR_Attr`
+- `fat.lfn[N].LDIR_Type`
+- `fat.lfn[N].LDIR_Chksum`
+- `fat.lfn[N].LDIR_FstClusLO`
+
+`dentry-raw` accepts `short`, `lfnN`, or `lfn[N]` as the entry selector. `offset`, `size`, and `value` accept decimal or `0x` hexadecimal numbers. The supported write sizes are 1, 2, 4, and 8 bytes.
 
 ## Documentation
 
