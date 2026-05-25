@@ -110,6 +110,8 @@ Options:
 - `-r`, `--ro`: open the image read-only
 - `-u`, `--upper=string`: convert `string` through the exFAT up-case table
 - `-v`, `--verbose`: increase message verbosity
+- `--no-update-checksum`: do not refresh directory-entry checksums after dentry edits
+- `--update-checksum`: refresh directory-entry checksums after dentry edits
 - `--help`: display command-line help
 - `--version`: display version information
 

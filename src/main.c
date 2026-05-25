@@ -27,7 +27,9 @@ struct device_info info;
 enum
 {
 	GETOPT_HELP_CHAR = (CHAR_MIN - 2),
-	GETOPT_VERSION_CHAR = (CHAR_MIN - 3)
+	GETOPT_VERSION_CHAR = (CHAR_MIN - 3),
+	GETOPT_NO_UPDATE_CHECKSUM_CHAR = (CHAR_MIN - 4),
+	GETOPT_UPDATE_CHECKSUM_CHAR = (CHAR_MIN - 5)
 };
 
 /* option data {"long name", needs argument, flags, "short name"} */
@@ -45,6 +47,8 @@ static struct option const longopts[] =
 	{"verbose", no_argument, NULL, 'v'},
 	{"help", no_argument, NULL, GETOPT_HELP_CHAR},
 	{"version", no_argument, NULL, GETOPT_VERSION_CHAR},
+	{"no-update-checksum", no_argument, NULL, GETOPT_NO_UPDATE_CHECKSUM_CHAR},
+	{"update-checksum", no_argument, NULL, GETOPT_UPDATE_CHECKSUM_CHAR},
 	{0,0,0,0}
 };
 
@@ -67,6 +71,8 @@ static void usage(void)
 	fprintf(stderr, "  -r, --ro\tread-only mode.\n");
 	fprintf(stderr, "  -u, --upper=string\tconvert string through exFAT up-case table.\n");
 	fprintf(stderr, "  -v, --verbose\tverbose mode.\n");
+	fprintf(stderr, "  --no-update-checksum\tdo not refresh directory-entry checksums.\n");
+	fprintf(stderr, "  --update-checksum\trefresh directory-entry checksums after edits.\n");
 	fprintf(stderr, "  --help\tdisplay this help and exit.\n");
 	fprintf(stderr, "  --version\toutput version information and exit.\n");
 	fprintf(stderr, "\n");
@@ -540,6 +546,12 @@ int main(int argc, char *argv[])
 			case GETOPT_VERSION_CHAR:
 				version(PROGRAM_NAME, PROGRAM_VERSION, PROGRAM_AUTHOR);
 				exit(EXIT_SUCCESS);
+			case GETOPT_NO_UPDATE_CHECKSUM_CHAR:
+				attr &= ~OPTION_UPDATE_CHECKSUM;
+				break;
+			case GETOPT_UPDATE_CHECKSUM_CHAR:
+				attr |= OPTION_UPDATE_CHECKSUM;
+				break;
 			default:
 				usage();
 				exit(EXIT_FAILURE);
