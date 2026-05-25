@@ -441,19 +441,18 @@ static int fat32_print_fsinfo(struct fat32_fsinfo *fsi)
 static int fat12_set_fat_entry(uint32_t clu, uint32_t entry)
 {
 	uint32_t FATOffset = clu + (clu / 2);
-	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
 	uint8_t *fat;
 
 	fat = malloc(info.sector_size * info.fat_length);
-	get_sector(fat, info.fat_offset * info.sector_size, 1);
+	get_sector(fat, info.fat_offset * info.sector_size, info.fat_length);
 	if (clu % 2) {
-		*(fat + ThisFATEntOffset) = (fat[ThisFATEntOffset] & 0x0F) | entry << 4;
-		*(fat + ThisFATEntOffset + 1) = entry >> 4;
+		*(fat + FATOffset) = (fat[FATOffset] & 0x0F) | entry << 4;
+		*(fat + FATOffset + 1) = entry >> 4;
 	} else {
-		*(fat + ThisFATEntOffset) = entry & 0xff;
-		*(fat + ThisFATEntOffset + 1) = (fat[ThisFATEntOffset + 1] & 0xF0) | (entry >> 8);
+		*(fat + FATOffset) = entry & 0xff;
+		*(fat + FATOffset + 1) = (fat[FATOffset + 1] & 0xF0) | (entry >> 8);
 	}
-	set_sector(fat, info.fat_offset * info.sector_size, 1);
+	set_sector(fat, info.fat_offset * info.sector_size, info.fat_length);
 	free(fat);
 	return 0;
 }
@@ -513,18 +512,16 @@ static uint32_t fat12_get_fat_entry(uint32_t clu)
 {
 	uint32_t ret = 0;
 	uint32_t FATOffset = clu + (clu / 2);
-	uint32_t ThisFATSecNum = info.fat_offset + (FATOffset / info.sector_size); 
-	uint32_t ThisFATEntOffset = FATOffset % info.sector_size;
 	uint8_t *fat;
 
 	fat = malloc(info.sector_size * info.fat_length);
-	get_sector(fat, ThisFATSecNum * info.sector_size, info.fat_length);
+	get_sector(fat, info.fat_offset * info.sector_size, info.fat_length);
 	if (clu % 2) {
-		ret = (fat[ThisFATEntOffset] >> 4)
-			| (fat[ThisFATEntOffset + 1] << 4);
+		ret = (fat[FATOffset] >> 4)
+			| (fat[FATOffset + 1] << 4);
 	} else {
-		ret = fat[ThisFATEntOffset]
-			| (fat[ThisFATEntOffset + 1] << 8);
+		ret = fat[FATOffset]
+			| (fat[FATOffset + 1] << 8);
 	}
 	free(fat);
 	return ret;
@@ -650,7 +647,7 @@ static int fat_alloc_clusters(struct fat_fileinfo *f, uint32_t clu, size_t num_a
 		if (entry)
 			continue;
 
-		fat_set_fat_entry(next_clu, EXFAT_LASTCLUSTER);
+		fat_set_fat_entry(next_clu, LAST_CLUSTER);
 		fat_set_fat_entry(clu, next_clu);
 		clu = next_clu;
 		if (--total_alloc == 0)
@@ -674,7 +671,7 @@ static int fat_free_clusters(struct fat_fileinfo *f, uint32_t clu, size_t num_al
 	uint32_t tmp = clu;
 	uint32_t next_clu = FAT_FSTCLUSTER;
 	size_t cluster_num = 0;
-	uint32_t ret = EXFAT_LASTCLUSTER;
+	uint32_t ret = LAST_CLUSTER;
 
 	for (cluster_num = 0; fat_check_last_cluster(next_clu) == 0 ;cluster_num++) {
 		fat_get_fat_entry(tmp, &next_clu);
@@ -703,23 +700,23 @@ static int fat_free_clusters(struct fat_fileinfo *f, uint32_t clu, size_t num_al
  */
 static int fat_new_clusters(size_t num_alloc)
 {
-	uint32_t next_clu, clu;
+	uint32_t entry, clu;
+	uint32_t last_clu = 0;
 	uint32_t fst_clu = 0;
 
 	for (clu = FAT_FSTCLUSTER; clu < info.cluster_count; clu++) {
-		fat_get_fat_entry(clu, &next_clu);
-		if (!fat_check_last_cluster(next_clu))
+		fat_get_fat_entry(clu, &entry);
+		if (entry)
 			continue;
 
 		if (!fst_clu) {
-			fst_clu = clu = next_clu;
+			fst_clu = clu;
 			fat_set_fat_entry(fst_clu, EXFAT_LASTCLUSTER);
 		} else {
-			fat_set_fat_entry(next_clu, EXFAT_LASTCLUSTER);
-			fat_set_fat_entry(clu, next_clu);
-			clu = next_clu;
+			fat_set_fat_entry(clu, LAST_CLUSTER);
+			fat_set_fat_entry(last_clu, clu);
 		}
-
+		last_clu = clu;
 		if (--num_alloc == 0)
 			break;
 	}

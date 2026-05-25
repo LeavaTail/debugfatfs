@@ -36,16 +36,17 @@ extern FILE *output;
 #define PRINT_INFO     3
 #define PRINT_DEBUG    4
 
-#define print(level, fmt, ...) \
-	do { \
-		if (print_level >= level) { \
-			if (level == PRINT_DEBUG) \
-			fprintf( output, "(%s:%u): " fmt, \
-					__func__, __LINE__, ##__VA_ARGS__); \
-			else \
-			fprintf( output, "" fmt, ##__VA_ARGS__); \
-		} \
-	} while (0) \
+#define print(level, fmt, ...)                                      \
+    do {                                                            \
+        if (print_level >= (level) && output != NULL) {             \
+            if ((level) == PRINT_DEBUG) {                           \
+                fprintf(output, "(%s:%u): " fmt,                    \
+                        __func__, __LINE__, ##__VA_ARGS__);         \
+            } else {                                                \
+                fprintf(output, fmt, ##__VA_ARGS__);                \
+            }                                                       \
+        }                                                           \
+    } while (0)
 
 #define pr_err(fmt, ...)   print(PRINT_ERR, fmt, ##__VA_ARGS__)
 #define pr_warn(fmt, ...)  print(PRINT_WARNING, fmt, ##__VA_ARGS__)

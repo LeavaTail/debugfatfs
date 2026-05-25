@@ -56,3 +56,8 @@ debugfatfs.8
 # (which is called by configure script))
 Makefile
 
+# Generated Test files
+*.img
+tests/*.log
+tests/*.trs
+test-suite.log

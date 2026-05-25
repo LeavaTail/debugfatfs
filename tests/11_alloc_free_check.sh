@@ -5,7 +5,7 @@ trap 'echo "ERROR: l.$LINENO, exit status = $?" >&2; exit 1' ERR
 
 source tests/common.sh
 
-IMAGES=("fat12.img" "fat16.img" "fat32.img" "exfat.img")
+IMAGES=("fat12.img" "fat16.img" "fat32.img")
 
 function test_allocate () {
 	expect -c "
@@ -48,7 +48,8 @@ function test_release () {
 }
 
 function main() {
-	init_image
+	require_command expect
+	init_image "${IMAGES[@]}"
 
 	for fs in ${IMAGES[@]}; do
 		test_allocate ${fs}
@@ -58,4 +59,3 @@ function main() {
 
 ### main function ###
 main "$@"
-

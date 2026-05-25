@@ -2,41 +2,57 @@ name: Build check
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
-        arch: [amd64, armhf, arm64]
         include:
-        - arch: amd64
-        - arch: armhf
-          cc: arm-linux-gnueabihf
-        - arch: arm64
-          cc: aarch64-linux-gnu
-
-    runs-on: ubuntu-latest
+          - arch: amd64
+          - arch: armhf
+            host: arm-linux-gnueabihf
+            cross_package: crossbuild-essential-armhf
+          - arch: arm64
+            host: aarch64-linux-gnu
+            cross_package: crossbuild-essential-arm64
 
     steps:
-    - uses: actions/checkout@v3
-    - name: setup environment
-      run: |
-        sudo apt-get update
-        sudo apt-get install autoconf automake libtool make
-    - name: automake
-      run:  script/bootstrap.sh
-    - name: native compiler
-      if: ${{ matrix.arch }} == 'amd64'
-      run: |
-        ./configure CFLAGS=-Werror
-    - name: cross compiler
-      if: ${{ matrix.arch }} != 'amd64'
-      run: |
-        sudo apt-get install crossbuild-essential-${{ matrix.arch }}
-        ./configure CFLAGS=-Werror --host=${{ matrix.cc }}
-    - name: build package
-      run: make
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf \
+            automake \
+            libtool \
+            make \
+            gcc \
+            pkg-config
+
+      - name: Install cross compiler
+        if: matrix.arch != 'amd64'
+        run: sudo apt-get install -y ${{ matrix.cross_package }}
+
+      - name: Bootstrap
+        run: script/bootstrap.sh
+
+      - name: Configure native build
+        if: matrix.arch == 'amd64'
+        run: ./configure CFLAGS="-Werror"
+
+      - name: Configure cross build
+        if: matrix.arch != 'amd64'
+        run: ./configure CFLAGS="-Werror" --host=${{ matrix.host }}
+
+      - name: Build
+        run: make

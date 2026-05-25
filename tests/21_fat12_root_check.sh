@@ -38,7 +38,8 @@ function test_remove () {
 }
 
 function main() {
-	init_image
+	require_command expect
+	init_image "${IMAGES[@]}"
 
 	for fs in ${IMAGES[@]}; do
 		test_create ${fs}
@@ -48,4 +49,3 @@ function main() {
 
 ### main function ###
 main "$@"
-
