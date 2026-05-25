@@ -1622,11 +1622,11 @@ static int fat_parse_lfn_selector(const char *selector, size_t *index)
 {
 	const char *p;
 	char *end = NULL;
-	unsigned long value;
+	uint64_t value;
 
 	if (!strncmp(selector, "lfn[", 4)) {
 		p = selector + 4;
-		value = strtoul(p, &end, 0);
+		value = strtoull(p, &end, 0);
 		if (!end || strcmp(end, "]"))
 			return -EINVAL;
 		*index = value;
@@ -1634,7 +1634,7 @@ static int fat_parse_lfn_selector(const char *selector, size_t *index)
 	}
 
 	if (!strncmp(selector, "lfn", 3) && isdigit((unsigned char)selector[3])) {
-		value = strtoul(selector + 3, &end, 0);
+		value = strtoull(selector + 3, &end, 0);
 		if (!end || *end != '\0')
 			return -EINVAL;
 		*index = value;
