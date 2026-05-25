@@ -30,6 +30,9 @@ static int cmd_trim(int, char **, char **);
 static int cmd_fill(int, char **, char **);
 static int cmd_tail(int, char **, char **);
 static int cmd_stat(int, char **, char **);
+static int cmd_dentry(int, char **, char **);
+static int cmd_dentry_set(int, char **, char **);
+static int cmd_dentry_raw(int, char **, char **);
 static int cmd_help(int, char **, char **);
 static int cmd_exit(int, char **, char **);
 
@@ -51,6 +54,9 @@ struct command cmd[] = {
 	{"fill", cmd_fill},
 	{"tail", cmd_tail},
 	{"stat", cmd_stat},
+	{"dentry", cmd_dentry},
+	{"dentry-set", cmd_dentry_set},
+	{"dentry-raw", cmd_dentry_raw},
 	{"help", cmd_help},
 	{"exit", cmd_exit},
 };
@@ -500,6 +506,120 @@ static int cmd_stat(int argc, char **argv, char **envp)
 }
 
 /**
+ * cmd_dentry - Display file directory entries.
+ * @argc:     argument count
+ * @argv:     argument vetor
+ * @envp:     environment pointer
+ *
+ * @return    0 (success)
+ */
+static int cmd_dentry(int argc, char **argv, char **envp)
+{
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
+	char *filename;
+
+	switch (argc) {
+		case 1:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 2:
+			if (!info.ops->dentry) {
+				fprintf(stdout, "dentry: unsupported filesystem.\n");
+				break;
+			}
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->dentry(filename, dir);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
+ * cmd_dentry_set - Update a file directory-entry field.
+ * @argc:         argument count
+ * @argv:         argument vetor
+ * @envp:         environment pointer
+ *
+ * @return        0 (success)
+ */
+static int cmd_dentry_set(int argc, char **argv, char **envp)
+{
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
+	char *filename;
+
+	switch (argc) {
+		case 1:
+		case 2:
+		case 3:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 4:
+			if (!info.ops->dentry_set) {
+				fprintf(stdout, "dentry-set: unsupported filesystem.\n");
+				break;
+			}
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->dentry_set(filename, dir, argv[2], argv[3], info.attr);
+			info.ops->reload(dir);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
+ * cmd_dentry_raw - Update raw bytes in a file directory entry.
+ * @argc:         argument count
+ * @argv:         argument vetor
+ * @envp:         environment pointer
+ *
+ * @return        0 (success)
+ */
+static int cmd_dentry_raw(int argc, char **argv, char **envp)
+{
+	int dir = 0;
+	char buf[ARG_MAXLEN] = {};
+	char *filename;
+
+	switch (argc) {
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+			fprintf(stdout, "%s: too few arguments.\n", argv[0]);
+			break;
+		case 6:
+			if (!info.ops->dentry_raw) {
+				fprintf(stdout, "dentry-raw: unsupported filesystem.\n");
+				break;
+			}
+			format_path(buf, ARG_MAXLEN, argv[1], envp);
+			filename = strtok_dir(buf);
+			dir = info.ops->lookup(cluster, buf);
+			info.ops->dentry_raw(filename, dir, argv[2], argv[3], argv[4], argv[5],
+					info.attr);
+			info.ops->reload(dir);
+			break;
+		default:
+			fprintf(stdout, "%s: too many arguments.\n", argv[0]);
+			break;
+	}
+	return 0;
+}
+
+/**
  * cmd_help - display help
  * @argc:     argument count
  * @argv:     argument vector
@@ -523,6 +643,9 @@ static int cmd_help(int argc, char **argv, char **envp)
 	fprintf(stderr, "fill       fill in directory.\n");
 	fprintf(stderr, "tail       output the last part of files.\n");
 	fprintf(stderr, "stat       output file stat.\n");
+	fprintf(stderr, "dentry     output file directory entries.\n");
+	fprintf(stderr, "dentry-set update a directory-entry field.\n");
+	fprintf(stderr, "dentry-raw update raw bytes in a directory entry.\n");
 	fprintf(stderr, "help       display this help.\n");
 	fprintf(stderr, "\n");
 	return 0;

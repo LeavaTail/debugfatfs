@@ -73,7 +73,7 @@ jobs:
         run: ./script/verify_test_results.sh tests/
 
       - name: Upload gcov artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gcov-files
           path: src/*.gc??
@@ -81,9 +81,9 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          gcov: true
+          plugins: gcov
           fail_ci_if_error: true
           verbose: true

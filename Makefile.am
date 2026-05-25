@@ -18,7 +18,8 @@ TESTS = \
         tests/21_fat12_root_check.sh \
         tests/22_fat_lfn_check.sh \
         tests/23_fat12_fat_entry_check.sh \
-        tests/24_fat_directory_cluster_check.sh
+        tests/24_fat_directory_cluster_check.sh \
+        tests/25_fat_dentry_check.sh
 
 EXTRA_DIST = include
 
