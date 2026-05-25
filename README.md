@@ -198,20 +198,21 @@ File Size:   0
 - `fill [count]`: fill the current directory with generated entries
 - `tail file`: print file contents
 - `stat file`: print file metadata
-- `dentry file`: print FAT directory entries for a file
-- `dentry-set file field value`: update a FAT directory-entry field without refreshing checksums
-- `dentry-raw file entry offset size value`: update raw bytes in a FAT directory entry
+- `dentry file`: print FAT/exFAT directory entries for a file
+- `dentry-set file field value`: update a FAT/exFAT directory-entry field without refreshing checksums
+- `dentry-raw file entry offset size value`: update raw bytes in a FAT/exFAT directory entry
 - `help`: display interactive help
 - `exit`: exit interactive mode
 
 Commands that modify the image are intended for test-image preparation and bug reproduction. Prefer `-r` for inspection-only sessions.
 
-The `dentry`, `dentry-set`, and `dentry-raw` commands currently support FAT images. They are intended for creating corrupted images for fsck testing. By default they do not refresh LFN checksums; pass `--update-checksum` when you want LFN checksums recalculated after the edit. For example:
+The `dentry`, `dentry-set`, and `dentry-raw` commands support FAT and exFAT images. They are intended for creating corrupted images for fsck testing. By default they do not refresh FAT LFN checksums or exFAT set checksums; pass `--update-checksum` when you want checksums recalculated after the edit. For example:
 
 ```text
 /> dentry /00/FILE1.TXT
 /> dentry-set /00/FILE1.TXT fat.short.DIR_FileSize 0xffffffff
 /> dentry-set /01/ABCDEFGHIJKLMNOPQRSTUVWXYZ! fat.lfn[0].LDIR_Chksum 0x00
+/> dentry-set /00/FILE1.TXT exfat.stream.DataLength 0xffffffff
 /> dentry-raw /00/FILE1.TXT short 0x0c 1 0x34
 ```
 
@@ -235,6 +236,32 @@ Supported `dentry-set` FAT fields:
 - `fat.lfn[N].LDIR_FstClusLO`
 
 `dentry-raw` accepts `short`, `lfnN`, or `lfn[N]` as the entry selector. `offset`, `size`, and `value` accept decimal or `0x` hexadecimal numbers. The supported write sizes are 1, 2, 4, and 8 bytes.
+
+Supported `dentry-set` exFAT fields:
+
+- `exfat.file.EntryType`
+- `exfat.file.SecondaryCount`
+- `exfat.file.SetChecksum`
+- `exfat.file.FileAttributes`
+- `exfat.file.CreateTimestamp`
+- `exfat.file.LastModifiedTimestamp`
+- `exfat.file.LastAccessedTimestamp`
+- `exfat.file.Create10msIncrement`
+- `exfat.file.LastModified10msIncrement`
+- `exfat.file.CreateUtcOffset`
+- `exfat.file.LastModifiedUtcOffset`
+- `exfat.file.LastAccessdUtcOffset`
+- `exfat.stream.EntryType`
+- `exfat.stream.GeneralSecondaryFlags`
+- `exfat.stream.NameLength`
+- `exfat.stream.NameHash`
+- `exfat.stream.ValidDataLength`
+- `exfat.stream.FirstCluster`
+- `exfat.stream.DataLength`
+- `exfat.name[N].EntryType`
+- `exfat.name[N].GeneralSecondaryFlags`
+
+For exFAT, `dentry-raw` accepts `file`, `stream`, `nameN`, or `name[N]` as the entry selector.
 
 ## Documentation
 

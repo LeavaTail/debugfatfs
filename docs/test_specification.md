@@ -79,7 +79,7 @@ The test suite covers the following behavior.
 - FAT12 FAT entries can be read and updated beyond the first FAT sector
 - FAT long-file-name entries can be created with lower-case and mixed-case names
 - FAT directory creation allocates a real cluster instead of cluster 0
-- FAT directory entries can be displayed and corrupted by field name or raw offset
+- FAT and exFAT directory entries can be displayed and corrupted by field name or raw offset
 - exFAT boot, file metadata, and up-case table behavior work in smoke tests
 - Cluster allocation and release helpers work across supported images
 

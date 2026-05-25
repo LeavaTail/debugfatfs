@@ -8,6 +8,8 @@
 #include <limits.h>
 #include <time.h>
 #include <ctype.h>
+#include <stddef.h>
+#include <string.h>
 
 #include "debugfatfs.h"
 
@@ -55,6 +57,10 @@ static int exfat_check_dir_empty(struct exfat_fileinfo *, uint32_t);
 static int exfat_add_entry(const char *, uint32_t, uint8_t);
 static int exfat_remove_entry(const char *, uint32_t, uint8_t);
 static int exfat_update_filesize(struct exfat_fileinfo *, uint32_t);
+static int exfat_dentry_entry(const char *, uint32_t);
+static int exfat_dentry_set_entry(const char *, uint32_t, const char *, const char *, uint32_t);
+static int exfat_dentry_raw_entry(const char *, uint32_t, const char *, const char *,
+		const char *, const char *, uint32_t);
 
 /* Timestamp function prototype */
 static void exfat_convert_unixtime(struct tm *, uint32_t, uint8_t, uint8_t);
@@ -89,6 +95,10 @@ int exfat_trim(uint32_t);
 int exfat_fill(uint32_t, uint32_t);
 int exfat_contents(const char *, uint32_t);
 int exfat_stat(const char *, uint32_t);
+int exfat_dentry(const char *, uint32_t);
+int exfat_dentry_set(const char *, uint32_t, const char *, const char *, uint32_t);
+int exfat_dentry_raw(const char *, uint32_t, const char *, const char *, const char *,
+		const char *, uint32_t);
 
 static const struct operations exfat_ops = {
 	.statfs = exfat_print_bootsec,
@@ -111,6 +121,9 @@ static const struct operations exfat_ops = {
 	.fill = exfat_fill,
 	.contents = exfat_contents,
 	.stat = exfat_stat,
+	.dentry = exfat_dentry,
+	.dentry_set = exfat_dentry_set,
+	.dentry_raw = exfat_dentry_raw,
 };
 
 /*************************************************************************************************/
@@ -1192,6 +1205,513 @@ static uint32_t exfat_calculate_tablechecksum(unsigned char *table, uint64_t len
 		checksum = ((checksum & 1) ? 0x80000000 : 0) + (checksum >> 1) + (uint32_t)table[index];
 
 	return checksum;
+}
+
+struct exfat_dentry_location {
+	void *data;
+	size_t entries;
+	uint32_t clu;
+	size_t file_index;
+	size_t stream_index;
+	size_t name_index;
+	size_t name_count;
+	struct exfat_fileinfo *dir;
+};
+
+struct exfat_dentry_field {
+	const char *name;
+	size_t offset;
+	size_t size;
+	int type;
+};
+
+enum exfat_dentry_selector {
+	EXFAT_DENTRY_FILE,
+	EXFAT_DENTRY_STREAM,
+	EXFAT_DENTRY_NAME,
+};
+
+static const struct exfat_dentry_field exfat_file_fields[] = {
+	{"EntryType", offsetof(struct exfat_dentry, EntryType), 1, EXFAT_DENTRY_FILE},
+	{"SecondaryCount", offsetof(struct exfat_dentry, dentry.file.SecondaryCount), 1,
+		EXFAT_DENTRY_FILE},
+	{"SetChecksum", offsetof(struct exfat_dentry, dentry.file.SetChecksum), 2,
+		EXFAT_DENTRY_FILE},
+	{"FileAttributes", offsetof(struct exfat_dentry, dentry.file.FileAttributes), 2,
+		EXFAT_DENTRY_FILE},
+	{"CreateTimestamp", offsetof(struct exfat_dentry, dentry.file.CreateTimestamp), 4,
+		EXFAT_DENTRY_FILE},
+	{"LastModifiedTimestamp", offsetof(struct exfat_dentry, dentry.file.LastModifiedTimestamp), 4,
+		EXFAT_DENTRY_FILE},
+	{"LastAccessedTimestamp", offsetof(struct exfat_dentry, dentry.file.LastAccessedTimestamp), 4,
+		EXFAT_DENTRY_FILE},
+	{"Create10msIncrement", offsetof(struct exfat_dentry, dentry.file.Create10msIncrement), 1,
+		EXFAT_DENTRY_FILE},
+	{"LastModified10msIncrement",
+		offsetof(struct exfat_dentry, dentry.file.LastModified10msIncrement), 1,
+		EXFAT_DENTRY_FILE},
+	{"CreateUtcOffset", offsetof(struct exfat_dentry, dentry.file.CreateUtcOffset), 1,
+		EXFAT_DENTRY_FILE},
+	{"LastModifiedUtcOffset", offsetof(struct exfat_dentry, dentry.file.LastModifiedUtcOffset), 1,
+		EXFAT_DENTRY_FILE},
+	{"LastAccessdUtcOffset", offsetof(struct exfat_dentry, dentry.file.LastAccessdUtcOffset), 1,
+		EXFAT_DENTRY_FILE},
+};
+
+static const struct exfat_dentry_field exfat_stream_fields[] = {
+	{"EntryType", offsetof(struct exfat_dentry, EntryType), 1, EXFAT_DENTRY_STREAM},
+	{"GeneralSecondaryFlags", offsetof(struct exfat_dentry, dentry.stream.GeneralSecondaryFlags), 1,
+		EXFAT_DENTRY_STREAM},
+	{"NameLength", offsetof(struct exfat_dentry, dentry.stream.NameLength), 1,
+		EXFAT_DENTRY_STREAM},
+	{"NameHash", offsetof(struct exfat_dentry, dentry.stream.NameHash), 2,
+		EXFAT_DENTRY_STREAM},
+	{"ValidDataLength", offsetof(struct exfat_dentry, dentry.stream.ValidDataLength), 8,
+		EXFAT_DENTRY_STREAM},
+	{"FirstCluster", offsetof(struct exfat_dentry, dentry.stream.FirstCluster), 4,
+		EXFAT_DENTRY_STREAM},
+	{"DataLength", offsetof(struct exfat_dentry, dentry.stream.DataLength), 8,
+		EXFAT_DENTRY_STREAM},
+};
+
+static const struct exfat_dentry_field exfat_name_fields[] = {
+	{"EntryType", offsetof(struct exfat_dentry, EntryType), 1, EXFAT_DENTRY_NAME},
+	{"GeneralSecondaryFlags", offsetof(struct exfat_dentry, dentry.name.GeneralSecondaryFlags), 1,
+		EXFAT_DENTRY_NAME},
+};
+
+static int exfat_parse_u64(const char *str, uint64_t *value)
+{
+	char *end = NULL;
+
+	errno = 0;
+	*value = strtoull(str, &end, 0);
+	if (errno || !end || *end != '\0')
+		return -EINVAL;
+	return 0;
+}
+
+static void exfat_write_le(void *ptr, size_t size, uint64_t value)
+{
+	uint8_t *p = ptr;
+	size_t i;
+
+	for (i = 0; i < size; i++)
+		p[i] = (value >> (i * 8)) & 0xff;
+}
+
+static int exfat_load_dentry_location(uint32_t clu, struct exfat_dentry_location *loc)
+{
+	size_t index = exfat_get_index(clu);
+	size_t cluster_num = 1;
+
+	memset(loc, 0, sizeof(*loc));
+	loc->clu = clu;
+	loc->dir = (struct exfat_fileinfo *)info.root[index]->data;
+
+	loc->data = malloc(info.cluster_size);
+	if (!loc->data)
+		return -ENOMEM;
+
+	get_cluster(loc->data, clu);
+	cluster_num = exfat_concat_cluster(loc->dir, clu, &loc->data);
+	loc->entries = (cluster_num * info.cluster_size) / sizeof(struct exfat_dentry);
+
+	return 0;
+}
+
+static int exfat_store_dentry_location(struct exfat_dentry_location *loc)
+{
+	return exfat_set_cluster(loc->dir, loc->clu, loc->data);
+}
+
+static void exfat_free_dentry_location(struct exfat_dentry_location *loc)
+{
+	free(loc->data);
+	loc->data = NULL;
+}
+
+static void exfat_update_dentry_checksum(struct exfat_dentry_location *loc)
+{
+	struct exfat_dentry *file = ((struct exfat_dentry *)loc->data) + loc->file_index;
+
+	file->dentry.file.SetChecksum =
+		exfat_calculate_checksum((unsigned char *)file, file->dentry.file.SecondaryCount);
+}
+
+static int exfat_store_dentry_after_edit(struct exfat_dentry_location *loc, uint32_t flags)
+{
+	if (flags & OPTION_UPDATE_CHECKSUM)
+		exfat_update_dentry_checksum(loc);
+	return exfat_store_dentry_location(loc);
+}
+
+static int exfat_match_dentry_name(struct exfat_dentry_location *loc, uint8_t name_len,
+		uint16_t *uniname)
+{
+	int j;
+	uint16_t uniname2[MAX_NAME_LENGTH] = {0};
+
+	for (j = 0; j < loc->name_count; j++) {
+		size_t len = MIN(ENTRY_NAME_MAX, name_len - j * ENTRY_NAME_MAX);
+
+		memcpy(uniname2 + j * ENTRY_NAME_MAX,
+				(((struct exfat_dentry *)loc->data) + loc->name_index + j)->dentry.name.FileName,
+				len * sizeof(uint16_t));
+	}
+
+	return !memcmp(uniname, uniname2, name_len * sizeof(uint16_t));
+}
+
+static int exfat_find_dentry_location(const char *name, uint32_t clu,
+		struct exfat_dentry_location *loc)
+{
+	size_t i;
+	uint16_t uniname[MAX_NAME_LENGTH] = {0};
+	uint16_t uppername[MAX_NAME_LENGTH] = {0};
+	uint8_t name_len;
+	uint16_t namehash = 0;
+
+	if (!name || !*name)
+		return -EINVAL;
+
+	name_len = utf8s_to_utf16s((unsigned char *)name, strlen(name), uniname);
+	exfat_convert_upper_character(uniname, name_len, uppername);
+	namehash = exfat_calculate_namehash(uppername, name_len);
+
+	if (exfat_load_dentry_location(clu, loc))
+		return -1;
+
+	for (i = 0; i < loc->entries; i++) {
+		struct exfat_dentry *file = ((struct exfat_dentry *)loc->data) + i;
+		struct exfat_dentry *stream;
+		size_t remaining;
+
+		if (file->EntryType == DENTRY_UNUSED)
+			break;
+		if (file->EntryType != DENTRY_FILE)
+			continue;
+
+		remaining = file->dentry.file.SecondaryCount;
+		if (!remaining || i + remaining >= loc->entries)
+			break;
+
+		stream = ((struct exfat_dentry *)loc->data) + i + 1;
+		if (stream->EntryType != DENTRY_STREAM) {
+			i += remaining;
+			continue;
+		}
+
+		if (stream->dentry.stream.NameHash != namehash ||
+				stream->dentry.stream.NameLength != name_len) {
+			i += remaining;
+			continue;
+		}
+
+		loc->file_index = i;
+		loc->stream_index = i + 1;
+		loc->name_index = i + 2;
+		loc->name_count = remaining - 1;
+		if (exfat_match_dentry_name(loc, name_len, uniname))
+			return 0;
+
+		i += remaining;
+	}
+
+	exfat_free_dentry_location(loc);
+	return -ENOENT;
+}
+
+static void exfat_print_file_dentry(struct exfat_dentry *d)
+{
+	pr_msg("file:\n");
+	pr_msg("  EntryType:                 0x%02x\n", d->EntryType);
+	pr_msg("  SecondaryCount:            0x%02x\n", d->dentry.file.SecondaryCount);
+	pr_msg("  SetChecksum:               0x%04x\n", d->dentry.file.SetChecksum);
+	pr_msg("  FileAttributes:            0x%04x\n", d->dentry.file.FileAttributes);
+	pr_msg("  CreateTimestamp:           0x%08x\n", d->dentry.file.CreateTimestamp);
+	pr_msg("  LastModifiedTimestamp:     0x%08x\n", d->dentry.file.LastModifiedTimestamp);
+	pr_msg("  LastAccessedTimestamp:     0x%08x\n", d->dentry.file.LastAccessedTimestamp);
+	pr_msg("  Create10msIncrement:       0x%02x\n", d->dentry.file.Create10msIncrement);
+	pr_msg("  LastModified10msIncrement: 0x%02x\n",
+			d->dentry.file.LastModified10msIncrement);
+	pr_msg("  CreateUtcOffset:           0x%02x\n", d->dentry.file.CreateUtcOffset);
+	pr_msg("  LastModifiedUtcOffset:     0x%02x\n", d->dentry.file.LastModifiedUtcOffset);
+	pr_msg("  LastAccessdUtcOffset:      0x%02x\n", d->dentry.file.LastAccessdUtcOffset);
+}
+
+static void exfat_print_stream_dentry(struct exfat_dentry *d)
+{
+	pr_msg("stream:\n");
+	pr_msg("  EntryType:                 0x%02x\n", d->EntryType);
+	pr_msg("  GeneralSecondaryFlags:     0x%02x\n", d->dentry.stream.GeneralSecondaryFlags);
+	pr_msg("  NameLength:                0x%02x\n", d->dentry.stream.NameLength);
+	pr_msg("  NameHash:                  0x%04x\n", d->dentry.stream.NameHash);
+	pr_msg("  ValidDataLength:           0x%016" PRIx64 "\n",
+			d->dentry.stream.ValidDataLength);
+	pr_msg("  FirstCluster:              0x%08x\n", d->dentry.stream.FirstCluster);
+	pr_msg("  DataLength:                0x%016" PRIx64 "\n", d->dentry.stream.DataLength);
+}
+
+static void exfat_print_name_dentry(struct exfat_dentry *d, size_t index)
+{
+	pr_msg("name[%zu]:\n", index);
+	pr_msg("  EntryType:                 0x%02x\n", d->EntryType);
+	pr_msg("  GeneralSecondaryFlags:     0x%02x\n", d->dentry.name.GeneralSecondaryFlags);
+}
+
+static int exfat_parse_name_selector(const char *selector, size_t *index)
+{
+	const char *p;
+	char *end = NULL;
+	unsigned long value;
+
+	if (!strncmp(selector, "name[", 5)) {
+		p = selector + 5;
+		value = strtoul(p, &end, 0);
+		if (!end || strcmp(end, "]"))
+			return -EINVAL;
+		*index = value;
+		return 0;
+	}
+
+	if (!strncmp(selector, "name", 4) && isdigit((unsigned char)selector[4])) {
+		value = strtoul(selector + 4, &end, 0);
+		if (!end || *end != '\0')
+			return -EINVAL;
+		*index = value;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int exfat_select_dentry(struct exfat_dentry_location *loc, const char *selector,
+		struct exfat_dentry **d)
+{
+	size_t index;
+
+	if (!strcmp(selector, "file")) {
+		*d = ((struct exfat_dentry *)loc->data) + loc->file_index;
+		return 0;
+	}
+
+	if (!strcmp(selector, "stream")) {
+		*d = ((struct exfat_dentry *)loc->data) + loc->stream_index;
+		return 0;
+	}
+
+	if (exfat_parse_name_selector(selector, &index))
+		return -EINVAL;
+	if (index >= loc->name_count)
+		return -ERANGE;
+
+	*d = ((struct exfat_dentry *)loc->data) + loc->name_index + index;
+	return 0;
+}
+
+static const char *exfat_normalize_field(const char *field)
+{
+	if (!strncmp(field, "exfat.", 6))
+		field += 6;
+	return field;
+}
+
+static int exfat_parse_field_selector(const char *field, int *type, size_t *name_index,
+		const char **name)
+{
+	const char *normalized = exfat_normalize_field(field);
+	const char *dot;
+	char selector[32] = {};
+
+	dot = strchr(normalized, '.');
+	if (!dot)
+		return -EINVAL;
+
+	if ((size_t)(dot - normalized) >= sizeof(selector))
+		return -EINVAL;
+	memcpy(selector, normalized, dot - normalized);
+	selector[dot - normalized] = '\0';
+	*name = dot + 1;
+
+	if (!strcmp(selector, "file")) {
+		*type = EXFAT_DENTRY_FILE;
+		return 0;
+	}
+
+	if (!strcmp(selector, "stream")) {
+		*type = EXFAT_DENTRY_STREAM;
+		return 0;
+	}
+
+	if (exfat_parse_name_selector(selector, name_index))
+		return -EINVAL;
+	*type = EXFAT_DENTRY_NAME;
+	return 0;
+}
+
+static const struct exfat_dentry_field *exfat_find_field(const char *name, int type)
+{
+	const struct exfat_dentry_field *fields;
+	size_t count;
+	size_t i;
+
+	switch (type) {
+		case EXFAT_DENTRY_FILE:
+			fields = exfat_file_fields;
+			count = sizeof(exfat_file_fields) / sizeof(exfat_file_fields[0]);
+			break;
+		case EXFAT_DENTRY_STREAM:
+			fields = exfat_stream_fields;
+			count = sizeof(exfat_stream_fields) / sizeof(exfat_stream_fields[0]);
+			break;
+		case EXFAT_DENTRY_NAME:
+			fields = exfat_name_fields;
+			count = sizeof(exfat_name_fields) / sizeof(exfat_name_fields[0]);
+			break;
+		default:
+			return NULL;
+	}
+
+	for (i = 0; i < count; i++) {
+		if (!strcmp(name, fields[i].name))
+			return &fields[i];
+	}
+	return NULL;
+}
+
+static int exfat_dentry_entry(const char *name, uint32_t clu)
+{
+	size_t i;
+	struct exfat_dentry_location loc;
+	int ret;
+
+	ret = exfat_find_dentry_location(name, clu, &loc);
+	if (ret) {
+		pr_err("File is not found.\n");
+		return ret;
+	}
+
+	pr_msg("Dentry: %s\n", name);
+	pr_msg("  file index:   %zu\n", loc.file_index);
+	pr_msg("  stream index: %zu\n", loc.stream_index);
+	pr_msg("  name index:   %zu\n", loc.name_index);
+	pr_msg("  name count:   %zu\n", loc.name_count);
+
+	exfat_print_file_dentry(((struct exfat_dentry *)loc.data) + loc.file_index);
+	exfat_print_stream_dentry(((struct exfat_dentry *)loc.data) + loc.stream_index);
+	for (i = 0; i < loc.name_count; i++)
+		exfat_print_name_dentry(((struct exfat_dentry *)loc.data) + loc.name_index + i, i);
+
+	exfat_free_dentry_location(&loc);
+	return 0;
+}
+
+static int exfat_dentry_set_entry(const char *name, uint32_t clu, const char *field,
+		const char *value, uint32_t flags)
+{
+	int type = 0;
+	size_t name_index = 0;
+	const char *field_name;
+	const struct exfat_dentry_field *f;
+	struct exfat_dentry_location loc;
+	struct exfat_dentry *d;
+	uint64_t v;
+	int ret;
+
+	if (exfat_parse_field_selector(field, &type, &name_index, &field_name)) {
+		pr_err("invalid dentry field: %s\n", field);
+		return -EINVAL;
+	}
+
+	f = exfat_find_field(field_name, type);
+	if (!f) {
+		pr_err("unsupported dentry field: %s\n", field);
+		return -EINVAL;
+	}
+
+	if (exfat_parse_u64(value, &v)) {
+		pr_err("invalid value: %s\n", value);
+		return -EINVAL;
+	}
+
+	ret = exfat_find_dentry_location(name, clu, &loc);
+	if (ret) {
+		pr_err("File is not found.\n");
+		return ret;
+	}
+
+	switch (type) {
+		case EXFAT_DENTRY_FILE:
+			d = ((struct exfat_dentry *)loc.data) + loc.file_index;
+			break;
+		case EXFAT_DENTRY_STREAM:
+			d = ((struct exfat_dentry *)loc.data) + loc.stream_index;
+			break;
+		case EXFAT_DENTRY_NAME:
+			if (name_index >= loc.name_count) {
+				pr_err("invalid name index: %zu\n", name_index);
+				ret = -ERANGE;
+				goto out;
+			}
+			d = ((struct exfat_dentry *)loc.data) + loc.name_index + name_index;
+			break;
+		default:
+			ret = -EINVAL;
+			goto out;
+	}
+
+	exfat_write_le(((uint8_t *)d) + f->offset, f->size, v);
+	ret = exfat_store_dentry_after_edit(&loc, flags);
+	pr_msg("Set: %s %s = 0x%" PRIx64 "\n", name, field, v);
+out:
+	exfat_free_dentry_location(&loc);
+	return ret;
+}
+
+static int exfat_dentry_raw_entry(const char *name, uint32_t clu, const char *entry,
+		const char *offset, const char *size, const char *value, uint32_t flags)
+{
+	struct exfat_dentry_location loc;
+	struct exfat_dentry *d;
+	uint64_t off, bytes, v;
+	int ret;
+
+	if (exfat_parse_u64(offset, &off) || exfat_parse_u64(size, &bytes) ||
+			exfat_parse_u64(value, &v)) {
+		pr_err("invalid raw dentry argument.\n");
+		return -EINVAL;
+	}
+
+	if (bytes != 1 && bytes != 2 && bytes != 4 && bytes != 8) {
+		pr_err("invalid raw write size: %" PRIu64 "\n", bytes);
+		return -EINVAL;
+	}
+
+	if (off + bytes > sizeof(struct exfat_dentry)) {
+		pr_err("raw write exceeds dentry size.\n");
+		return -ERANGE;
+	}
+
+	ret = exfat_find_dentry_location(name, clu, &loc);
+	if (ret) {
+		pr_err("File is not found.\n");
+		return ret;
+	}
+
+	ret = exfat_select_dentry(&loc, entry, &d);
+	if (ret) {
+		pr_err("invalid dentry selector: %s\n", entry);
+		goto out;
+	}
+
+	exfat_write_le(((uint8_t *)d) + off, bytes, v);
+	ret = exfat_store_dentry_after_edit(&loc, flags);
+	pr_msg("Set: %s %s[0x%" PRIx64 ":0x%" PRIx64 "] = 0x%" PRIx64 "\n",
+			name, entry, off, bytes, v);
+out:
+	exfat_free_dentry_location(&loc);
+	return ret;
 }
 
 /**
@@ -2280,6 +2800,52 @@ int exfat_contents(const char *name, uint32_t clu)
 out:
 	free(data);
 	return ret;
+}
+
+/**
+ * exfat_dentry - function interface to display directory entries
+ * @name:        Filename in UTF-8
+ * @clu:         Current Directory Index
+ *
+ * @return       0 (Success)
+ */
+int exfat_dentry(const char *name, uint32_t clu)
+{
+	return exfat_dentry_entry(name, clu);
+}
+
+/**
+ * exfat_dentry_set - function interface to update a directory-entry field
+ * @name:            Filename in UTF-8
+ * @clu:             Current Directory Index
+ * @field:           Field selector
+ * @value:           New value
+ * @flags:           Command options
+ *
+ * @return           0 (Success)
+ */
+int exfat_dentry_set(const char *name, uint32_t clu, const char *field,
+		const char *value, uint32_t flags)
+{
+	return exfat_dentry_set_entry(name, clu, field, value, flags);
+}
+
+/**
+ * exfat_dentry_raw - function interface to update raw directory-entry bytes
+ * @name:            Filename in UTF-8
+ * @clu:             Current Directory Index
+ * @entry:           Entry selector
+ * @offset:          Offset in the entry
+ * @size:            Write size
+ * @value:           New value
+ * @flags:           Command options
+ *
+ * @return           0 (Success)
+ */
+int exfat_dentry_raw(const char *name, uint32_t clu, const char *entry,
+		const char *offset, const char *size, const char *value, uint32_t flags)
+{
+	return exfat_dentry_raw_entry(name, clu, entry, offset, size, value, flags);
 }
 
 /**
