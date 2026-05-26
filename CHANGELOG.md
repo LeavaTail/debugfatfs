@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.5.0] - 2026-05-26
+
+### Added
+
+- Support modify special dentry
+- check the range in dentry
+- Support script file in shell
+- Support dentry command
+- enabled support for Option --update-checksum
+
+### Fixed
+
+- fat_new_cluster() set cluster:0
+- The terminal cluster is LAST_CLUSTER
+- load the entire FAT area in FAT12
+
 ## [0.4.0] - 2023-06-01
 
 ### Added

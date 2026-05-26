@@ -174,7 +174,7 @@ Start interactive mode:
 
 ```bash
 $ sudo debugfatfs -i /dev/sdc2
-Welcome to debugfatfs 0.4.0 (Interactive Mode)
+Welcome to debugfatfs 0.5.0 (Interactive Mode)
 
 /> ls
 ----A        0 2020-11-21 08:01:46 FILE
