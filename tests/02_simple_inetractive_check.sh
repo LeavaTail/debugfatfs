@@ -6,6 +6,7 @@ trap 'echo "ERROR: l.$LINENO, exit status = $?" >&2; exit 1' ERR
 source tests/common.sh
 
 IMAGES=("fat12.img" "fat16.img" "fat32.img")
+SCRIPT=data.dat
 
 function test_shell () {
 	expect -c "
@@ -44,6 +45,21 @@ function test_shell () {
 	sync
 }
 
+function test_script () {
+	printf "%s\n" \
+		"# run shell commands from a script file" \
+		"cd 00" \
+		"stat FILE1.TXT" \
+		"dentry-set FILE1.TXT fat.short.DIR_NTRes 0x12" \
+		"dentry FILE1.TXT" > ${SCRIPT}
+
+	OUTPUT=$(./debugfatfs -q --no-update-checksum --script ${SCRIPT} $1)
+	echo "${OUTPUT}"
+	echo "${OUTPUT}" | grep -F "Short Name:  FILE1.TXT"
+	echo "${OUTPUT}" | grep -F "Dentry: FILE1.TXT"
+	echo "${OUTPUT}" | grep -F "DIR_NTRes:       0x12"
+}
+
 function main() {
 	require_command expect
 	init_image "${IMAGES[@]}"
@@ -51,6 +67,7 @@ function main() {
 	for fs in ${IMAGES[@]}; do
 		test_shell ${fs}
 	done
+	test_script fat12.img
 }
 
 ### main function ###

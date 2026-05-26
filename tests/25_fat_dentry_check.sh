@@ -142,6 +142,64 @@ function test_exfat_dentry_raw () {
 	sync
 }
 
+function test_exfat_dentry_name_and_invalid () {
+	expect -c "
+	set timeout 5
+	spawn ./debugfatfs --no-update-checksum -iq exfat.img
+	expect \"/> \"
+	send \"dentry-set /00/FILE1.TXT exfat.name\\[0\\].GeneralSecondaryFlags 0x01\n\"
+	expect \"Set: FILE1.TXT exfat.name\\[0\\].GeneralSecondaryFlags = 0x1\"
+	expect \"/> \"
+	send \"dentry-raw /00/FILE1.TXT name0 0x01 1 0x02\n\"
+	expect \"Set: FILE1.TXT name0\"
+	expect \"/> \"
+	send \"dentry /00/NOFILE.TXT\n\"
+	expect \"File is not found.\"
+	expect \"/> \"
+	send \"dentry-set /00/FILE1.TXT invalid 0x1\n\"
+	expect \"invalid dentry field: invalid\"
+	expect \"/> \"
+	send \"dentry-set /00/FILE1.TXT exfat.file.INVALID 0x1\n\"
+	expect \"unsupported dentry field: exfat.file.INVALID\"
+	expect \"/> \"
+	send \"dentry-set /00/FILE1.TXT exfat.file.FileAttributes invalid\n\"
+	expect \"invalid value: invalid\"
+	expect \"/> \"
+	send \"dentry-set /00/FILE1.TXT exfat.file.FileAttributes 0x10000\n\"
+	expect \"value exceeds dentry field size: 0x10000\"
+	expect \"/> \"
+	send \"dentry-set /00/NOFILE.TXT exfat.file.FileAttributes 0x20\n\"
+	expect \"File is not found.\"
+	expect \"/> \"
+	send \"dentry-set /00/FILE1.TXT exfat.name\\[99\\].GeneralSecondaryFlags 0x1\n\"
+	expect \"invalid name index: 99\"
+	expect \"/> \"
+	send \"dentry-raw /00/FILE1.TXT stream invalid 1 0x1\n\"
+	expect \"invalid raw dentry argument.\"
+	expect \"/> \"
+	send \"dentry-raw /00/FILE1.TXT stream 0 3 0x1\n\"
+	expect \"invalid raw write size: 3\"
+	expect \"/> \"
+	send \"dentry-raw /00/FILE1.TXT stream 0x20 1 0x1\n\"
+	expect \"raw write exceeds dentry size.\"
+	expect \"/> \"
+	send \"dentry-raw /00/NOFILE.TXT stream 0 1 0x1\n\"
+	expect \"File is not found.\"
+	expect \"/> \"
+	send \"dentry-raw /00/FILE1.TXT invalid 0 1 0x1\n\"
+	expect \"invalid dentry selector: invalid\"
+	expect \"/> \"
+	send \"dentry-raw /00/FILE1.TXT name0 0x01 1 0x00\n\"
+	expect \"Set: FILE1.TXT name0\"
+	expect \"/> \"
+	send \"exit\n\"
+	expect eof
+	exit
+	"
+	echo ""
+	sync
+}
+
 function test_exfat_dentry_update_checksum () {
 	expect -c "
 	set timeout 5
@@ -188,6 +246,7 @@ function main() {
 	test_fat_dentry_update_checksum
 	test_exfat_dentry
 	test_exfat_dentry_raw
+	test_exfat_dentry_name_and_invalid
 	test_exfat_dentry_update_checksum
 }
 

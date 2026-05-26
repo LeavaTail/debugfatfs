@@ -1436,6 +1436,13 @@ static void fat_write_le(void *ptr, size_t size, uint64_t value)
 		p[i] = (value >> (i * 8)) & 0xff;
 }
 
+static bool fat_value_fits(size_t size, uint64_t value)
+{
+	if (size >= sizeof(value))
+		return true;
+	return value < (UINT64_C(1) << (size * 8));
+}
+
 static int fat_load_dentry_location(uint32_t clu, struct fat_dentry_location *loc)
 {
 	size_t index = fat_get_index(clu);
@@ -1768,6 +1775,10 @@ static int fat_dentry_set_entry(const char *name, uint32_t clu, const char *fiel
 	if (fat_parse_u64(value, &v)) {
 		pr_err("invalid value: %s\n", value);
 		return -EINVAL;
+	}
+	if (!fat_value_fits(f->size, v)) {
+		pr_err("value exceeds dentry field size: %s\n", value);
+		return -ERANGE;
 	}
 
 	ret = fat_find_dentry_location(name, clu, &loc);

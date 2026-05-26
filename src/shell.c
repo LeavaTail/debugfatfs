@@ -39,7 +39,7 @@ static int cmd_exit(int, char **, char **);
 /**
  * command list
  */
-struct command cmd[] = {
+static const struct command cmd[] = {
 	{"ls", cmd_ls},
 	{"cd", cmd_cd},
 	{"cluster", cmd_cluster},
@@ -78,16 +78,23 @@ static int cmd_ls(int argc, char **argv, char **envp)
 	struct directory *dirs = NULL, *dirs_tmp = NULL;
 
 	dirs = malloc(sizeof(struct directory) * DIRECTORY_FILES);
+	if (!dirs) {
+		fprintf(stdout, "ls: failed to allocate directory buffer.\n");
+		return 1;
+	}
+
 	ret = info.ops->readdir(dirs, DIRECTORY_FILES, cluster);
 	if (ret < 0) {
 		/* Only once, expand dirs structure and execute readdir */
 		ret = abs(ret) + 1;
-		dirs_tmp = realloc(dirs, sizeof(struct directory) * (DIRECTORY_FILES + ret));
+		dirs_tmp = realloc(dirs,
+				sizeof(struct directory) * (DIRECTORY_FILES + ret));
 		if (dirs_tmp) {
 			dirs = dirs_tmp;
 			ret = info.ops->readdir(dirs, DIRECTORY_FILES + ret, cluster);
 		} else {
 			fprintf(stdout, "ls: failed to load firectory.\n");
+			free(dirs);
 			return 1;
 		}
 	}
@@ -110,6 +117,7 @@ static int cmd_ls(int argc, char **argv, char **envp)
 	}
 
 	fprintf(stdout, "\n");
+	free(dirs);
 	return 0;
 }
 
@@ -685,6 +693,9 @@ static int format_path(char *dist, size_t len, char *str, char **envp)
 	}
 
 	buf = calloc(ARG_MAXLEN, sizeof(char));
+	if (!buf)
+		return -ENOMEM;
+
 	/* Create full path */
 	get_env(envp, "PWD", buf);
 
@@ -696,11 +707,11 @@ static int format_path(char *dist, size_t len, char *str, char **envp)
 
 	/* Remove redundant "/" */
 	snprintf(buf, len, "%s%s", dist, token);
-	strncpy(dist, buf, len);
+	snprintf(dist, len, "%s", buf);
 
 	while ((token = strtok_r(NULL, "/", &saveptr)) != NULL) {
 		snprintf(buf, len, "%s/%s", dist, token);
-		strncpy(dist, buf, len);
+		snprintf(dist, len, "%s", buf);
 	}
 
 	free(buf);
@@ -723,9 +734,11 @@ static int execute_cmd(int argc, char **argv, char **envp)
 
 	if (!argc)
 		return 0;
+	if (argv[0][0] == '#')
+		return 0;
 
 	for (i = 0; i < (sizeof(cmd) / sizeof(struct command)); i++) {
-		if(!strcmp(argv[0], cmd[i].name))
+		if (!strcmp(argv[0], cmd[i].name))
 			return cmd[i].func(argc, argv, envp);
 	}
 
@@ -749,9 +762,13 @@ static int decode_cmd(char *str, char **argv, char **envp)
 
 	token = strtok_r(str, CMD_DELIM, &saveptr);
 	while ((token != NULL) && (argc < ARG_MAXNUM)) {
+		if (strlen(token) >= ARG_MAXLEN)
+			return -ENAMETOOLONG;
 		snprintf(argv[argc++], ARG_MAXLEN, "%s", token);
 		token = strtok_r(NULL, CMD_DELIM, &saveptr);
 	}
+	if (token)
+		return -E2BIG;
 	return argc;
 }
 
@@ -762,10 +779,18 @@ static int decode_cmd(char *str, char **argv, char **envp)
  * @return    0 (success)
  *            1 (failed)
  */
-static int read_cmd(char *buf)
+static int read_cmd(FILE *input, char *buf)
 {
-	if (fgets(buf, CMD_MAXLEN, stdin) == NULL) {
+	if (fgets(buf, CMD_MAXLEN, input) == NULL)
 		return 1;
+
+	if (!strchr(buf, '\n') && !feof(input)) {
+		fprintf(stdout, "command is too long.\n");
+		do {
+			if (fgets(buf, CMD_MAXLEN, input) == NULL)
+				break;
+		} while (!strchr(buf, '\n'));
+		buf[0] = '\0';
 	}
 	return 0;
 }
@@ -786,7 +811,7 @@ static int set_env(char **envp, char *env, char *value)
 	char *token;
 
 	for (i = 0; i < ENV_MAXNUM - 1; i++) {
-		strncpy(str, envp[i], ARG_MAXLEN);
+		snprintf(str, sizeof(str), "%s", envp[i]);
 		token = strtok_r(str, "=", &saveptr);
 		if (token && !strcmp(token, env))
 			break;
@@ -813,11 +838,11 @@ static int get_env(char **envp, char *env, char *value)
 	char *saveptr = NULL;
 
 	for (i = 0; envp[i]; i++) {
-		strncpy(str, envp[i], ARG_MAXLEN);
+		snprintf(str, sizeof(str), "%s", envp[i]);
 		tp = strtok_r(str, "=", &saveptr);
 		if (tp && !strcmp(tp, env)) {
 			tp = strtok_r(NULL, "=", &saveptr);
-			strncpy(value, tp, ARG_MAXLEN);
+			snprintf(value, ARG_MAXLEN, "%s", tp);
 			return 0;
 		}
 	}
@@ -842,39 +867,70 @@ static int init_env(char **envp)
  *
  * @return  0
  */
-int shell(void)
+int shell(FILE *input, bool prompt)
 {
-	int i, argc = 0;
+	int i, argc = 0, ret = 0;
 	char buf[CMD_MAXLEN] = {};
 	char **argv = calloc(ARG_MAXNUM, sizeof(char *));
 	char **envp = calloc(ENV_MAXNUM, sizeof(char *));
 
-	for (i = 0; i < ARG_MAXNUM; i++)
-		argv[i] = calloc(ARG_MAXLEN, sizeof(char));
-	for (i = 0; i < ENV_MAXNUM; i++)
-		envp[i] = calloc(ARG_MAXLEN, sizeof(char));
+	if (!argv || !envp) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
-	fprintf(stdout, "Welcome to %s %s (Interactive Mode)\n\n", PROGRAM_NAME, PROGRAM_VERSION);
+	for (i = 0; i < ARG_MAXNUM; i++) {
+		argv[i] = calloc(ARG_MAXLEN, sizeof(char));
+		if (!argv[i]) {
+			ret = -ENOMEM;
+			goto out;
+		}
+	}
+	for (i = 0; i < ENV_MAXNUM; i++) {
+		envp[i] = calloc(ARG_MAXLEN, sizeof(char));
+		if (!envp[i]) {
+			ret = -ENOMEM;
+			goto out;
+		}
+	}
+
+	if (prompt)
+		fprintf(stdout, "Welcome to %s %s (Interactive Mode)\n\n", PROGRAM_NAME,
+				PROGRAM_VERSION);
 	init_env(envp);
 	srand(time(NULL));
 	info.ops->readdir(NULL, 0, cluster);
 	while (1) {
-		get_env(envp, "PWD", buf);
-		fprintf(stdout, "%s> ", buf);
-		fflush(stdout);
-		if (read_cmd(buf))
+		if (prompt) {
+			get_env(envp, "PWD", buf);
+			fprintf(stdout, "%s> ", buf);
+			fflush(stdout);
+		}
+		if (read_cmd(input, buf))
 			break;
 		argc = decode_cmd(buf, argv, envp);
+		if (argc < 0) {
+			if (argc == -E2BIG)
+				fprintf(stdout, "too many arguments.\n");
+			else
+				fprintf(stdout, "argument is too long.\n");
+			continue;
+		}
 		if (execute_cmd(argc, argv, envp))
 			break;
 	}
 
-	for (i = 0; i < ENV_MAXNUM; i++)
-		free(envp[i]);
-	for (i = 0; i < ARG_MAXNUM; i++)
-		free(argv[i]);
+out:
+	if (envp) {
+		for (i = 0; i < ENV_MAXNUM; i++)
+			free(envp[i]);
+	}
+	if (argv) {
+		for (i = 0; i < ARG_MAXNUM; i++)
+			free(argv[i]);
+	}
 
 	free(argv);
 	free(envp);
-	return 0;
+	return ret;
 }

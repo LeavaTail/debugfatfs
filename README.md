@@ -108,6 +108,7 @@ Options:
 - `-o`, `--output=file`: write output to `file` instead of stdout
 - `-q`, `--quiet`: suppress boot sector output
 - `-r`, `--ro`: open the image read-only
+- `-s`, `--script=file`: run interactive shell commands from `file`
 - `-u`, `--upper=string`: convert `string` through the exFAT up-case table
 - `-v`, `--verbose`: increase message verbosity
 - `--no-update-checksum`: do not refresh directory-entry checksums after dentry edits
@@ -182,6 +183,19 @@ File Name:   FILE
 File Size:   0
 ```
 
+Run shell commands from a script file:
+
+```text
+# commands.txt
+cd /00
+dentry-set FILE1.TXT fat.short.DIR_NTRes 0x12
+dentry-raw FILE1.TXT short 0x0c 1 0x34
+```
+
+```bash
+$ debugfatfs --no-update-checksum --script commands.txt fat16.img
+```
+
 ## Interactive Commands
 
 - `ls`: list current directory contents
@@ -204,6 +218,8 @@ File Size:   0
 - `help`: display interactive help
 - `exit`: exit interactive mode
 
+Interactive commands can also be read from a file with `-s` or `--script`. Empty lines are ignored, lines starting with `#` are treated as comments, and reaching EOF exits the shell.
+
 Commands that modify the image are intended for test-image preparation and bug reproduction. Prefer `-r` for inspection-only sessions.
 
 The `dentry`, `dentry-set`, and `dentry-raw` commands support FAT and exFAT images. They are intended for creating corrupted images for fsck testing. By default they do not refresh FAT LFN checksums or exFAT set checksums; pass `--update-checksum` when you want checksums recalculated after the edit. For example:
@@ -215,6 +231,8 @@ The `dentry`, `dentry-set`, and `dentry-raw` commands support FAT and exFAT imag
 /> dentry-set /00/FILE1.TXT exfat.stream.DataLength 0xffffffff
 /> dentry-raw /00/FILE1.TXT short 0x0c 1 0x34
 ```
+
+`dentry-set` rejects values that do not fit in the selected field size. Use `dentry-raw` when you intentionally want byte-level writes.
 
 Supported `dentry-set` FAT fields:
 
@@ -235,7 +253,7 @@ Supported `dentry-set` FAT fields:
 - `fat.lfn[N].LDIR_Chksum`
 - `fat.lfn[N].LDIR_FstClusLO`
 
-`dentry-raw` accepts `short`, `lfnN`, or `lfn[N]` as the entry selector. `offset`, `size`, and `value` accept decimal or `0x` hexadecimal numbers. The supported write sizes are 1, 2, 4, and 8 bytes.
+FAT `dentry-raw` accepts `short`, `lfnN`, or `lfn[N]` as the entry selector. `offset`, `size`, and `value` accept decimal or `0x` hexadecimal numbers. The supported write sizes are 1, 2, 4, and 8 bytes.
 
 Supported `dentry-set` exFAT fields:
 
@@ -261,7 +279,7 @@ Supported `dentry-set` exFAT fields:
 - `exfat.name[N].EntryType`
 - `exfat.name[N].GeneralSecondaryFlags`
 
-For exFAT, `dentry-raw` accepts `file`, `stream`, `nameN`, or `name[N]` as the entry selector.
+exFAT `dentry-raw` accepts `file`, `stream`, `nameN`, or `name[N]` as the entry selector.
 
 ## Documentation
 
