@@ -50,12 +50,14 @@ function test_script () {
 		"# run shell commands from a script file" \
 		"cd 00" \
 		"stat FILE1.TXT" \
+		"dentry-set FILE1.TXT fat.short.DIR_NTRes 0x12" \
 		"dentry FILE1.TXT" > ${SCRIPT}
 
-	OUTPUT=$(./debugfatfs -q --script ${SCRIPT} $1)
+	OUTPUT=$(./debugfatfs -q --no-update-checksum --script ${SCRIPT} $1)
 	echo "${OUTPUT}"
 	echo "${OUTPUT}" | grep -F "Short Name:  FILE1.TXT"
 	echo "${OUTPUT}" | grep -F "Dentry: FILE1.TXT"
+	echo "${OUTPUT}" | grep -F "DIR_NTRes:       0x12"
 }
 
 function main() {

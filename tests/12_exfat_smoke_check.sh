@@ -38,6 +38,8 @@ function test_exfat_command () {
 	expect \"/00> \"
 	send \"mkdir DIR00001.TXT\n\"
 	expect \"/00> \"
+	send \"fill 1100\n\"
+	expect \"/00> \"
 	send \"remove FILE2.TXT\n\"
 	expect \"/00> \"
 	send \"rmdir DIR00001.TXT\n\"
