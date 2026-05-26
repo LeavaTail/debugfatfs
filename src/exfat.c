@@ -1300,6 +1300,13 @@ static void exfat_write_le(void *ptr, size_t size, uint64_t value)
 		p[i] = (value >> (i * 8)) & 0xff;
 }
 
+static bool exfat_value_fits(size_t size, uint64_t value)
+{
+	if (size >= sizeof(value))
+		return true;
+	return value < (UINT64_C(1) << (size * 8));
+}
+
 static int exfat_load_dentry_location(uint32_t clu, struct exfat_dentry_location *loc)
 {
 	size_t index = exfat_get_index(clu);
@@ -1633,6 +1640,10 @@ static int exfat_dentry_set_entry(const char *name, uint32_t clu, const char *fi
 	if (exfat_parse_u64(value, &v)) {
 		pr_err("invalid value: %s\n", value);
 		return -EINVAL;
+	}
+	if (!exfat_value_fits(f->size, v)) {
+		pr_err("value exceeds dentry field size: %s\n", value);
+		return -ERANGE;
 	}
 
 	ret = exfat_find_dentry_location(name, clu, &loc);

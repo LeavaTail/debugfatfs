@@ -232,6 +232,8 @@ The `dentry`, `dentry-set`, and `dentry-raw` commands support FAT and exFAT imag
 /> dentry-raw /00/FILE1.TXT short 0x0c 1 0x34
 ```
 
+`dentry-set` rejects values that do not fit in the selected field size. Use `dentry-raw` when you intentionally want byte-level writes.
+
 Supported `dentry-set` FAT fields:
 
 - `fat.short.DIR_Attr`
@@ -251,7 +253,7 @@ Supported `dentry-set` FAT fields:
 - `fat.lfn[N].LDIR_Chksum`
 - `fat.lfn[N].LDIR_FstClusLO`
 
-`dentry-raw` accepts `short`, `lfnN`, or `lfn[N]` as the entry selector. `offset`, `size`, and `value` accept decimal or `0x` hexadecimal numbers. The supported write sizes are 1, 2, 4, and 8 bytes.
+FAT `dentry-raw` accepts `short`, `lfnN`, or `lfn[N]` as the entry selector. `offset`, `size`, and `value` accept decimal or `0x` hexadecimal numbers. The supported write sizes are 1, 2, 4, and 8 bytes.
 
 Supported `dentry-set` exFAT fields:
 
@@ -277,7 +279,7 @@ Supported `dentry-set` exFAT fields:
 - `exfat.name[N].EntryType`
 - `exfat.name[N].GeneralSecondaryFlags`
 
-For exFAT, `dentry-raw` accepts `file`, `stream`, `nameN`, or `name[N]` as the entry selector.
+exFAT `dentry-raw` accepts `file`, `stream`, `nameN`, or `name[N]` as the entry selector.
 
 ## Documentation
 
