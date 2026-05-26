@@ -5,6 +5,9 @@
 #ifndef _SHELL_H
 #define _SHELL_H
 
+#include <stdio.h>
+#include <stdbool.h>
+
 #define CMD_MAXLEN 4096
 #define ARG_MAXNUM 6
 #define ARG_MAXLEN 1024
@@ -16,6 +19,6 @@ struct command {
 	int (*func)(int, char **, char **);
 };
 
-int shell(void);
+int shell(FILE *input, bool prompt);
 
 #endif /*_SHELL_H */

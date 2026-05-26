@@ -155,6 +155,7 @@ struct device_info {
 #define OPTION_READONLY     (1 << 6)
 #define OPTION_FATENT       (1 << 7)
 #define OPTION_UPDATE_CHECKSUM (1 << 8)
+#define OPTION_SCRIPT       (1 << 9)
 
 struct directory {
 	unsigned char *name;

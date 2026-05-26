@@ -723,6 +723,8 @@ static int execute_cmd(int argc, char **argv, char **envp)
 
 	if (!argc)
 		return 0;
+	if (argv[0][0] == '#')
+		return 0;
 
 	for (i = 0; i < (sizeof(cmd) / sizeof(struct command)); i++) {
 		if(!strcmp(argv[0], cmd[i].name))
@@ -762,9 +764,9 @@ static int decode_cmd(char *str, char **argv, char **envp)
  * @return    0 (success)
  *            1 (failed)
  */
-static int read_cmd(char *buf)
+static int read_cmd(FILE *input, char *buf)
 {
-	if (fgets(buf, CMD_MAXLEN, stdin) == NULL) {
+	if (fgets(buf, CMD_MAXLEN, input) == NULL) {
 		return 1;
 	}
 	return 0;
@@ -842,7 +844,7 @@ static int init_env(char **envp)
  *
  * @return  0
  */
-int shell(void)
+int shell(FILE *input, bool prompt)
 {
 	int i, argc = 0;
 	char buf[CMD_MAXLEN] = {};
@@ -854,15 +856,19 @@ int shell(void)
 	for (i = 0; i < ENV_MAXNUM; i++)
 		envp[i] = calloc(ARG_MAXLEN, sizeof(char));
 
-	fprintf(stdout, "Welcome to %s %s (Interactive Mode)\n\n", PROGRAM_NAME, PROGRAM_VERSION);
+	if (prompt)
+		fprintf(stdout, "Welcome to %s %s (Interactive Mode)\n\n", PROGRAM_NAME,
+				PROGRAM_VERSION);
 	init_env(envp);
 	srand(time(NULL));
 	info.ops->readdir(NULL, 0, cluster);
 	while (1) {
-		get_env(envp, "PWD", buf);
-		fprintf(stdout, "%s> ", buf);
-		fflush(stdout);
-		if (read_cmd(buf))
+		if (prompt) {
+			get_env(envp, "PWD", buf);
+			fprintf(stdout, "%s> ", buf);
+			fflush(stdout);
+		}
+		if (read_cmd(input, buf))
 			break;
 		argc = decode_cmd(buf, argv, envp);
 		if (execute_cmd(argc, argv, envp))

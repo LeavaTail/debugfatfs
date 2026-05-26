@@ -43,6 +43,7 @@ static struct option const longopts[] =
 	{"output", required_argument, NULL, 'o'},
 	{"quiet", no_argument, NULL, 'q'},
 	{"ro", no_argument, NULL, 'r'},
+	{"script", required_argument, NULL, 's'},
 	{"upper", required_argument, NULL, 'u'},
 	{"verbose", no_argument, NULL, 'v'},
 	{"help", no_argument, NULL, GETOPT_HELP_CHAR},
@@ -69,6 +70,7 @@ static void usage(void)
 	fprintf(stderr, "  -o, --output=file\tsend output to file rather than stdout.\n");
 	fprintf(stderr, "  -q, --quiet\tsuppress message about main boot sector.\n");
 	fprintf(stderr, "  -r, --ro\tread-only mode.\n");
+	fprintf(stderr, "  -s, --script=file\trun interactive shell commands from file.\n");
 	fprintf(stderr, "  -u, --upper=string\tconvert string through exFAT up-case table.\n");
 	fprintf(stderr, "  -v, --verbose\tverbose mode.\n");
 	fprintf(stderr, "  --no-update-checksum\tdo not refresh directory-entry checksums.\n");
@@ -497,9 +499,11 @@ int main(int argc, char *argv[])
 	uint32_t sector = 0;
 	char *filepath = NULL;
 	char *outfile = NULL;
+	char *scriptfile = NULL;
 	char *input = NULL;
 	char out[MAX_NAME_LENGTH + 1] = {};
 	struct pseudo_bootsec bootsec;
+	FILE *script = NULL;
 
 	while ((opt = getopt_long(argc, argv,
 					"ab:c:f:il:o:qrs:u:v",
@@ -529,6 +533,10 @@ int main(int argc, char *argv[])
 				break;
 			case 'r':
 				attr |= OPTION_READONLY;
+				break;
+			case 's':
+				attr |= OPTION_SCRIPT;
+				scriptfile = optarg;
 				break;
 			case 'q':
 				print_level = PRINT_ERR;
@@ -594,9 +602,19 @@ int main(int argc, char *argv[])
 	if (ret < 0)
 		goto device_close;
 
-	/* Interactive Mode: -i option */
-	if (attr & OPTION_INTERACTIVE) {
-		shell();
+	/* Interactive Mode: -i option, or script mode: -s option */
+	if ((attr & OPTION_INTERACTIVE) || (attr & OPTION_SCRIPT)) {
+		if (attr & OPTION_SCRIPT) {
+			script = fopen(scriptfile, "r");
+			if (!script) {
+				pr_err("open: %s\n", strerror(errno));
+				ret = -1;
+				goto device_close;
+			}
+		}
+		shell(script ? script : stdin, !(attr & OPTION_SCRIPT));
+		if (script)
+			fclose(script);
 		goto device_close;
 	}
 

@@ -108,6 +108,7 @@ Options:
 - `-o`, `--output=file`: write output to `file` instead of stdout
 - `-q`, `--quiet`: suppress boot sector output
 - `-r`, `--ro`: open the image read-only
+- `-s`, `--script=file`: run interactive shell commands from `file`
 - `-u`, `--upper=string`: convert `string` through the exFAT up-case table
 - `-v`, `--verbose`: increase message verbosity
 - `--no-update-checksum`: do not refresh directory-entry checksums after dentry edits
@@ -182,6 +183,19 @@ File Name:   FILE
 File Size:   0
 ```
 
+Run shell commands from a script file:
+
+```text
+# commands.txt
+cd /00
+dentry-set FILE1.TXT fat.short.DIR_NTRes 0x12
+dentry-raw FILE1.TXT short 0x0c 1 0x34
+```
+
+```bash
+$ debugfatfs --no-update-checksum --script commands.txt fat16.img
+```
+
 ## Interactive Commands
 
 - `ls`: list current directory contents
@@ -203,6 +217,8 @@ File Size:   0
 - `dentry-raw file entry offset size value`: update raw bytes in a FAT/exFAT directory entry
 - `help`: display interactive help
 - `exit`: exit interactive mode
+
+Interactive commands can also be read from a file with `-s` or `--script`. Empty lines are ignored, lines starting with `#` are treated as comments, and reaching EOF exits the shell.
 
 Commands that modify the image are intended for test-image preparation and bug reproduction. Prefer `-r` for inspection-only sessions.
 
