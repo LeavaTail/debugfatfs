@@ -236,6 +236,32 @@ function test_exfat_dentry_update_checksum () {
 	sync
 }
 
+function test_exfat_special_dentry () {
+	expect -c "
+	set timeout 5
+	spawn ./debugfatfs --no-update-checksum -iq exfat.img
+	expect \"/> \"
+	send \"dentry /\n\"
+	expect \"bitmap index:\"
+	expect \"upcase index:\"
+	expect \"/> \"
+	send \"dentry-set / exfat.bitmap.DataLength 0x10\n\"
+	expect \"Set: / exfat.bitmap.DataLength = 0x10\"
+	expect \"/> \"
+	send \"dentry-set / exfat.upcase.FirstCluster 0x5\n\"
+	expect \"Set: / exfat.upcase.FirstCluster = 0x5\"
+	expect \"/> \"
+	send \"dentry-raw / volume 0x01 1 0x00\n\"
+	expect \"Set: / volume\"
+	expect \"/> \"
+	send \"exit\n\"
+	expect eof
+	exit
+	"
+	echo ""
+	sync
+}
+
 function main() {
 	require_command expect
 	init_image fat12.img fat16.img fat32.img exfat.img
@@ -248,6 +274,7 @@ function main() {
 	test_exfat_dentry_raw
 	test_exfat_dentry_name_and_invalid
 	test_exfat_dentry_update_checksum
+	test_exfat_special_dentry
 }
 
 ### main function ###
