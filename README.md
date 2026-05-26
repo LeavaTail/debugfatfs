@@ -174,7 +174,7 @@ Start interactive mode:
 
 ```bash
 $ sudo debugfatfs -i /dev/sdc2
-Welcome to debugfatfs 0.4.0 (Interactive Mode)
+Welcome to debugfatfs 0.5.0 (Interactive Mode)
 
 /> ls
 ----A        0 2020-11-21 08:01:46 FILE
@@ -212,9 +212,9 @@ $ debugfatfs --no-update-checksum --script commands.txt fat16.img
 - `fill [count]`: fill the current directory with generated entries
 - `tail file`: print file contents
 - `stat file`: print file metadata
-- `dentry file`: print FAT/exFAT directory entries for a file
-- `dentry-set file field value`: update a FAT/exFAT directory-entry field without refreshing checksums
-- `dentry-raw file entry offset size value`: update raw bytes in a FAT/exFAT directory entry
+- `dentry target`: print FAT/exFAT directory entries for a target
+- `dentry-set target field value`: update a FAT/exFAT directory-entry field without refreshing checksums
+- `dentry-raw target entry offset size value`: update raw bytes in a FAT/exFAT directory entry
 - `help`: display interactive help
 - `exit`: exit interactive mode
 
@@ -222,13 +222,14 @@ Interactive commands can also be read from a file with `-s` or `--script`. Empty
 
 Commands that modify the image are intended for test-image preparation and bug reproduction. Prefer `-r` for inspection-only sessions.
 
-The `dentry`, `dentry-set`, and `dentry-raw` commands support FAT and exFAT images. They are intended for creating corrupted images for fsck testing. By default they do not refresh FAT LFN checksums or exFAT set checksums; pass `--update-checksum` when you want checksums recalculated after the edit. For example:
+The `dentry`, `dentry-set`, and `dentry-raw` commands support FAT and exFAT images. The first argument is the target: normally a file path, or `/` for exFAT root special entries such as the Allocation Bitmap, Up-case Table, and Volume Label. They are intended for creating corrupted images for fsck testing. By default they do not refresh FAT LFN checksums or exFAT set checksums; pass `--update-checksum` when you want checksums recalculated after the edit. For example:
 
 ```text
 /> dentry /00/FILE1.TXT
 /> dentry-set /00/FILE1.TXT fat.short.DIR_FileSize 0xffffffff
 /> dentry-set /01/ABCDEFGHIJKLMNOPQRSTUVWXYZ! fat.lfn[0].LDIR_Chksum 0x00
 /> dentry-set /00/FILE1.TXT exfat.stream.DataLength 0xffffffff
+/> dentry-set / exfat.bitmap.FirstCluster 0xffffffff
 /> dentry-raw /00/FILE1.TXT short 0x0c 1 0x34
 ```
 
@@ -278,8 +279,20 @@ Supported `dentry-set` exFAT fields:
 - `exfat.stream.DataLength`
 - `exfat.name[N].EntryType`
 - `exfat.name[N].GeneralSecondaryFlags`
+- `exfat.bitmap.EntryType`
+- `exfat.bitmap.BitmapFlags`
+- `exfat.bitmap.FirstCluster`
+- `exfat.bitmap.DataLength`
+- `exfat.upcase.EntryType`
+- `exfat.upcase.TableCheckSum`
+- `exfat.upcase.FirstCluster`
+- `exfat.upcase.DataLength`
+- `exfat.volume.EntryType`
+- `exfat.volume.CharacterCount`
 
-exFAT `dentry-raw` accepts `file`, `stream`, `nameN`, or `name[N]` as the entry selector.
+For exFAT special root entries, use `/` as the target argument. exFAT `dentry-raw`
+accepts `file`, `stream`, `nameN`, `name[N]`, `bitmap`, `upcase`, or `volume`
+as the entry selector.
 
 ## Documentation
 

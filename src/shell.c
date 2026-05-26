@@ -514,7 +514,7 @@ static int cmd_stat(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_dentry - Display file directory entries.
+ * cmd_dentry - Display target directory entries.
  * @argc:     argument count
  * @argv:     argument vetor
  * @envp:     environment pointer
@@ -538,7 +538,7 @@ static int cmd_dentry(int argc, char **argv, char **envp)
 			}
 			format_path(buf, ARG_MAXLEN, argv[1], envp);
 			filename = strtok_dir(buf);
-			dir = info.ops->lookup(cluster, buf);
+			dir = *buf ? info.ops->lookup(cluster, buf) : info.root_offset;
 			info.ops->dentry(filename, dir);
 			break;
 		default:
@@ -549,7 +549,7 @@ static int cmd_dentry(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_dentry_set - Update a file directory-entry field.
+ * cmd_dentry_set - Update a target directory-entry field.
  * @argc:         argument count
  * @argv:         argument vetor
  * @envp:         environment pointer
@@ -575,7 +575,7 @@ static int cmd_dentry_set(int argc, char **argv, char **envp)
 			}
 			format_path(buf, ARG_MAXLEN, argv[1], envp);
 			filename = strtok_dir(buf);
-			dir = info.ops->lookup(cluster, buf);
+			dir = *buf ? info.ops->lookup(cluster, buf) : info.root_offset;
 			info.ops->dentry_set(filename, dir, argv[2], argv[3], info.attr);
 			info.ops->reload(dir);
 			break;
@@ -587,7 +587,7 @@ static int cmd_dentry_set(int argc, char **argv, char **envp)
 }
 
 /**
- * cmd_dentry_raw - Update raw bytes in a file directory entry.
+ * cmd_dentry_raw - Update raw bytes in a target directory entry.
  * @argc:         argument count
  * @argv:         argument vetor
  * @envp:         environment pointer
@@ -615,7 +615,7 @@ static int cmd_dentry_raw(int argc, char **argv, char **envp)
 			}
 			format_path(buf, ARG_MAXLEN, argv[1], envp);
 			filename = strtok_dir(buf);
-			dir = info.ops->lookup(cluster, buf);
+			dir = *buf ? info.ops->lookup(cluster, buf) : info.root_offset;
 			info.ops->dentry_raw(filename, dir, argv[2], argv[3], argv[4], argv[5],
 					info.attr);
 			info.ops->reload(dir);
