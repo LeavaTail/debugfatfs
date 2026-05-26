@@ -15,7 +15,7 @@
 #define CMD_DELIM " \t\r\n\a"
 
 struct command {
-	char *name;
+	const char *name;
 	int (*func)(int, char **, char **);
 };
 

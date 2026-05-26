@@ -470,11 +470,11 @@ static int format_path(char *dist, size_t len, char *str)
 
 	/* Remove redundant "/" */
 	snprintf(buf, len, "%s%s", dist, token);
-	strncpy(dist, buf, len);
+	snprintf(dist, len, "%s", buf);
 
 	while ((token = strtok_r(NULL, "/", &saveptr)) != NULL) {
 		snprintf(buf, len, "%s/%s", dist, token);
-		strncpy(dist, buf, len);
+		snprintf(dist, len, "%s", buf);
 	}
 
 	free(buf);
@@ -506,63 +506,63 @@ int main(int argc, char *argv[])
 	FILE *script = NULL;
 
 	while ((opt = getopt_long(argc, argv,
-					"ab:c:f:il:o:qrs:u:v",
+					"ab:c:f:io:qrs:u:v",
 					longopts, &longindex)) != -1) {
 		switch (opt) {
-			case 'a':
-				attr |= OPTION_ALL;
-				break;
-			case 'b':
-				attr |= OPTION_SECTOR;
-				sector = strtoul(optarg, NULL, 0);
-				break;
-			case 'c':
-				attr |= OPTION_CLUSTER;
-				cluster = strtoul(optarg, NULL, 0);
-				break;
-			case 'f':
-				attr |= OPTION_FATENT;
-				fatent = strtoul(optarg, NULL, 0);
-				break;
-			case 'i':
-				attr |= OPTION_INTERACTIVE;
-				break;
-			case 'o':
-				attr |= OPTION_OUTPUT;
-				outfile = optarg;
-				break;
-			case 'r':
-				attr |= OPTION_READONLY;
-				break;
-			case 's':
-				attr |= OPTION_SCRIPT;
-				scriptfile = optarg;
-				break;
-			case 'q':
-				print_level = PRINT_ERR;
-				break;
-			case 'u':
-				attr |= OPTION_UPPER;
-				input = optarg;
-				break;
-			case 'v':
-				print_level = PRINT_INFO;
-				break;
-			case GETOPT_HELP_CHAR:
-				usage();
-				exit(EXIT_SUCCESS);
-			case GETOPT_VERSION_CHAR:
-				version(PROGRAM_NAME, PROGRAM_VERSION, PROGRAM_AUTHOR);
-				exit(EXIT_SUCCESS);
-			case GETOPT_NO_UPDATE_CHECKSUM_CHAR:
-				attr &= ~OPTION_UPDATE_CHECKSUM;
-				break;
-			case GETOPT_UPDATE_CHECKSUM_CHAR:
-				attr |= OPTION_UPDATE_CHECKSUM;
-				break;
-			default:
-				usage();
-				exit(EXIT_FAILURE);
+		case 'a':
+			attr |= OPTION_ALL;
+			break;
+		case 'b':
+			attr |= OPTION_SECTOR;
+			sector = strtoul(optarg, NULL, 0);
+			break;
+		case 'c':
+			attr |= OPTION_CLUSTER;
+			cluster = strtoul(optarg, NULL, 0);
+			break;
+		case 'f':
+			attr |= OPTION_FATENT;
+			fatent = strtoul(optarg, NULL, 0);
+			break;
+		case 'i':
+			attr |= OPTION_INTERACTIVE;
+			break;
+		case 'o':
+			attr |= OPTION_OUTPUT;
+			outfile = optarg;
+			break;
+		case 'r':
+			attr |= OPTION_READONLY;
+			break;
+		case 's':
+			attr |= OPTION_SCRIPT;
+			scriptfile = optarg;
+			break;
+		case 'q':
+			print_level = PRINT_ERR;
+			break;
+		case 'u':
+			attr |= OPTION_UPPER;
+			input = optarg;
+			break;
+		case 'v':
+			print_level = PRINT_INFO;
+			break;
+		case GETOPT_HELP_CHAR:
+			usage();
+			exit(EXIT_SUCCESS);
+		case GETOPT_VERSION_CHAR:
+			version(PROGRAM_NAME, PROGRAM_VERSION, PROGRAM_AUTHOR);
+			exit(EXIT_SUCCESS);
+		case GETOPT_NO_UPDATE_CHECKSUM_CHAR:
+			attr &= ~OPTION_UPDATE_CHECKSUM;
+			break;
+		case GETOPT_UPDATE_CHECKSUM_CHAR:
+			attr |= OPTION_UPDATE_CHECKSUM;
+			break;
+		default:
+			usage();
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -571,15 +571,20 @@ int main(int argc, char *argv[])
 #endif
 
 	switch (argc - optind) {
-		case 1:
-			break;
-		case 2:
-			filepath = argv[optind + 1];
-			break;
-		default:
-			usage();
-			exit(EXIT_FAILURE);
-			break;
+	case 1:
+		break;
+	case 2:
+		filepath = argv[optind + 1];
+		break;
+	default:
+		usage();
+		exit(EXIT_FAILURE);
+	}
+
+	if ((attr & OPTION_OUTPUT) && (attr & OPTION_SCRIPT) &&
+			!strcmp(outfile, scriptfile)) {
+		fprintf(stderr, "output file and script file must be different.\n");
+		exit(EXIT_FAILURE);
 	}
 
 	init_device_info();
@@ -593,7 +598,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	memcpy(info.name, argv[optind], 255);
+	snprintf(info.name, sizeof(info.name), "%s", argv[optind]);
 	ret = get_device_info(attr);
 	if (ret < 0)
 		goto output_close;
@@ -612,7 +617,7 @@ int main(int argc, char *argv[])
 				goto device_close;
 			}
 		}
-		shell(script ? script : stdin, !(attr & OPTION_SCRIPT));
+		ret = shell(script ? script : stdin, !(attr & OPTION_SCRIPT));
 		if (script)
 			fclose(script);
 		goto device_close;
@@ -643,7 +648,7 @@ int main(int argc, char *argv[])
 	/* Command line: -u option */
 	if (attr & OPTION_UPPER) {
 		ret = info.ops->convert(input, strlen(input), out);
-		if(ret < 0)
+		if (ret < 0)
 			goto out;
 		pr_msg("Convert: %s -> %s\n", input, out);
 	}
@@ -665,7 +670,15 @@ int main(int argc, char *argv[])
 		char *tmp;
 
 		tmp = calloc(strlen(filepath) + 1, sizeof(char));
-		format_path(tmp, strlen(filepath) + 1, filepath);
+		if (!tmp) {
+			ret = -ENOMEM;
+			goto out;
+		}
+		ret = format_path(tmp, strlen(filepath) + 1, filepath);
+		if (ret < 0) {
+			free(tmp);
+			goto out;
+		}
 		filepath = strtok_dir(tmp);
 		p_clu = info.ops->lookup(info.root_offset, tmp);
 		ret = info.ops->stat(filepath, p_clu);
